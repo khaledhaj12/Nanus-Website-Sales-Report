@@ -30,6 +30,7 @@ const navigationItems = [
   { id: "locations", label: "Locations", icon: MapPin },
   { id: "users", label: "User Access", icon: Users, adminOnly: true },
   { id: "upload", label: "Upload Data", icon: Upload, adminOnly: true },
+  { id: "notes", label: "Notes", icon: StickyNote, adminOnly: true },
 ];
 
 export default function Sidebar({ activeSection, onSectionChange, isOpen, onToggle }: SidebarProps) {
