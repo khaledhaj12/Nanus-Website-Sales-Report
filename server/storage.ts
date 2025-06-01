@@ -290,7 +290,9 @@ export class DatabaseStorage implements IStorage {
     if (month) {
       const [year, monthNum] = month.split('-');
       const startDate = `${year}-${monthNum}-01`;
-      const endDate = `${year}-${monthNum}-31`;
+      // Get the last day of the month properly
+      const lastDay = new Date(parseInt(year), parseInt(monthNum), 0).getDate();
+      const endDate = `${year}-${monthNum}-${lastDay.toString().padStart(2, '0')}`;
       whereConditions.push(gte(orders.orderDate, startDate));
       whereConditions.push(lte(orders.orderDate, endDate));
     }
@@ -331,7 +333,9 @@ export class DatabaseStorage implements IStorage {
     for (let month = 1; month <= 12; month++) {
       const monthStr = month.toString().padStart(2, '0');
       const startDate = `${year}-${monthStr}-01`;
-      const endDate = `${year}-${monthStr}-31`;
+      // Get the last day of the month properly
+      const lastDay = new Date(year, month, 0).getDate();
+      const endDate = `${year}-${monthStr}-${lastDay.toString().padStart(2, '0')}`;
       
       let whereConditions = [
         gte(orders.orderDate, startDate),
