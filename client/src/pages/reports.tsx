@@ -11,6 +11,7 @@ import { Badge } from "@/components/ui/badge";
 import Header from "@/components/layout/header";
 import { SortableHeader } from "@/components/ui/sortable-header";
 import { MonthYearPicker } from "@/components/ui/month-year-picker";
+import { MonthRangePicker } from "@/components/ui/month-range-picker";
 import { formatCurrency } from "@/lib/feeCalculations";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
