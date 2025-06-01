@@ -4,7 +4,7 @@ import { storage } from "./storage";
 import session from "express-session";
 import multer from "multer";
 import * as XLSX from "xlsx";
-import * as csv from "csv-parser";
+import csv from "csv-parser";
 import { Readable } from "stream";
 import { z } from "zod";
 import { insertUserSchema, insertOrderSchema } from "@shared/schema";
@@ -553,11 +553,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // File upload routes
   app.post('/api/upload', requireAdmin, upload.single('file'), async (req: any, res) => {
     try {
+      console.log("Upload started, file:", req.file?.originalname);
+      
       if (!req.file) {
         return res.status(400).json({ message: "No file uploaded" });
       }
 
       const userId = req.session.user.id;
+      console.log("Processing upload for user ID:", userId);
       
       // Create file upload record
       const fileUpload = await storage.createFileUpload({
@@ -568,19 +571,25 @@ export async function registerRoutes(app: Express): Promise<Server> {
         recordsProcessed: 0,
       });
 
+      console.log("File upload record created:", fileUpload.id);
+
       // Process file based on type
       try {
         if (req.file.mimetype === 'text/csv') {
+          console.log("Processing CSV file");
           await processCSVFile(req.file.buffer, fileUpload.id, userId);
         } else {
+          console.log("Processing XLSX file");
           await processXLSXFile(req.file.buffer, fileUpload.id, userId);
         }
         
+        console.log("File processing completed successfully");
         res.json({
           message: "File uploaded and processed successfully",
           fileId: fileUpload.id,
         });
       } catch (processError) {
+        console.error("File processing error:", processError);
         await storage.updateFileUpload(fileUpload.id, { status: 'failed' });
         throw processError;
       }
