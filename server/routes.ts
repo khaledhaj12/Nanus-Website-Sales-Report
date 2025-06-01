@@ -126,17 +126,25 @@ async function processOrderData(data: any[], uploadId: number, userId: number): 
       const netAmount = calculateNetAmount(amount);
 
       // Create order
+      const total = parseFloat(row.total || row.Total || row['Total (-Refund)'] || row.amount || row.Amount || '0');
+      const tax = parseFloat(row.tax || row.Tax || '0');
+      
       const orderData = {
         orderId: row.order_id || row.OrderId || row['Order ID'] || `ORD-${Date.now()}-${processedCount}`,
         locationId: location.id,
         customerName: row.customer_name || row.CustomerName || row['Customer Name'] || '',
+        firstName: row.first_name || row.FirstName || row['First Name'] || '',
         customerEmail: row.customer_email || row.CustomerEmail || row['Customer Email'] || '',
         cardLast4: row.card_last4 || row.CardLast4 || row['Card Last 4'] || '',
+        paymentMethod: row.payment || row.Payment || row['Payment Method'] || '',
         amount: amount.toString(),
+        tax: tax.toString(),
+        total: total.toString(),
         status: (row.status || row.Status || 'completed').toLowerCase(),
         platformFee: platformFee.toString(),
         stripeFee: stripeFee.toString(),
         netAmount: netAmount.toString(),
+        orderNotes: row.notes || row.Notes || row['Order Notes'] || '',
         orderDate: new Date(row.order_date || row.OrderDate || row['Order Date'] || new Date()).toISOString().split('T')[0],
       };
 
@@ -465,6 +473,57 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Recent uploads error:", error);
       res.status(500).json({ message: "Failed to fetch recent uploads" });
+    }
+  });
+
+  app.delete('/api/uploads', requireAdmin, async (req, res) => {
+    try {
+      const { ids } = req.body;
+      if (!Array.isArray(ids) || ids.length === 0) {
+        return res.status(400).json({ message: "Invalid file IDs" });
+      }
+      
+      await storage.deleteFileUploads(ids);
+      res.json({ message: "Files deleted successfully" });
+    } catch (error) {
+      console.error("Delete uploads error:", error);
+      res.status(500).json({ message: "Failed to delete files" });
+    }
+  });
+
+  app.delete('/api/locations', requireAdmin, async (req, res) => {
+    try {
+      const { ids } = req.body;
+      if (!Array.isArray(ids) || ids.length === 0) {
+        return res.status(400).json({ message: "Invalid location IDs" });
+      }
+      
+      await storage.deleteLocations(ids);
+      res.json({ message: "Locations deleted successfully" });
+    } catch (error) {
+      console.error("Delete locations error:", error);
+      res.status(500).json({ message: "Failed to delete locations" });
+    }
+  });
+
+  app.put('/api/users/:id', requireAdmin, async (req, res) => {
+    try {
+      const userId = parseInt(req.params.id);
+      const userData = req.body;
+      
+      // Update user
+      const updatedUser = await storage.updateUser(userId, userData);
+      
+      // Update location access if provided
+      if (req.body.locationIds && Array.isArray(req.body.locationIds)) {
+        await storage.setUserLocationAccess(userId, req.body.locationIds);
+      }
+      
+      const { password, ...safeUser } = updatedUser;
+      res.json(safeUser);
+    } catch (error) {
+      console.error("Update user error:", error);
+      res.status(500).json({ message: "Failed to update user" });
     }
   });
 

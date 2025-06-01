@@ -34,6 +34,7 @@ export interface IStorage {
   getLocationByName(name: string): Promise<Location | undefined>;
   createLocation(location: InsertLocation): Promise<Location>;
   getAllLocations(): Promise<Location[]>;
+  deleteLocations(ids: number[]): Promise<void>;
   
   // Order operations
   getOrder(id: number): Promise<Order | undefined>;
@@ -49,6 +50,7 @@ export interface IStorage {
   createFileUpload(fileUpload: InsertFileUpload): Promise<FileUpload>;
   updateFileUpload(id: number, fileUpload: Partial<InsertFileUpload>): Promise<FileUpload>;
   getRecentFileUploads(limit?: number): Promise<FileUpload[]>;
+  deleteFileUploads(ids: number[]): Promise<void>;
   
   // User location access
   getUserLocationAccess(userId: number): Promise<number[]>;
@@ -247,6 +249,14 @@ export class DatabaseStorage implements IStorage {
       .from(fileUploads)
       .orderBy(desc(fileUploads.createdAt))
       .limit(limit);
+  }
+
+  async deleteFileUploads(ids: number[]): Promise<void> {
+    await db.delete(fileUploads).where(inArray(fileUploads.id, ids));
+  }
+
+  async deleteLocations(ids: number[]): Promise<void> {
+    await db.delete(locations).where(inArray(locations.id, ids));
   }
 
   async getUserLocationAccess(userId: number): Promise<number[]> {

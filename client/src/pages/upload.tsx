@@ -3,10 +3,13 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import Header from "@/components/layout/header";
 import { useToast } from "@/hooks/use-toast";
 import { formatFileSize, getFileIcon, validateFileType, validateFileSize } from "@/lib/fileUtils";
-import { CloudUpload, FileText } from "lucide-react";
+import { apiRequest } from "@/lib/queryClient";
+import { CloudUpload, FileText, Trash2 } from "lucide-react";
 
 interface UploadProps {
   onMenuClick: () => void;
