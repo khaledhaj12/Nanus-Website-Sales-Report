@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -9,6 +9,7 @@ import { Input } from "@/components/ui/input";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import Header from "@/components/layout/header";
+import { SortableHeader } from "@/components/ui/sortable-header";
 import { formatCurrency } from "@/lib/feeCalculations";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
@@ -28,6 +29,8 @@ export default function Reports({ onMenuClick }: ReportsProps) {
   const [searchQuery, setSearchQuery] = useState("");
   const [orderLocationFilter, setOrderLocationFilter] = useState("all");
   const [orderMonthFilter, setOrderMonthFilter] = useState("all");
+  const [sortBy, setSortBy] = useState<string>('orderDate');
+  const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
   const { toast } = useToast();
 
   const { data: locations = [] } = useQuery({

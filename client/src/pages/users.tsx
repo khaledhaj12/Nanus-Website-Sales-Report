@@ -1,10 +1,11 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import Header from "@/components/layout/header";
 import UserModal from "@/components/modals/user-modal";
+import { SortableHeader } from "@/components/ui/sortable-header";
 import { Edit, Plus, MapPin, Trash2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
@@ -49,6 +50,8 @@ interface UsersProps {
 export default function Users({ onMenuClick }: UsersProps) {
   const [isUserModalOpen, setIsUserModalOpen] = useState(false);
   const [editingUser, setEditingUser] = useState<any>(null);
+  const [sortBy, setSortBy] = useState<string>('username');
+  const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('asc');
   const { toast } = useToast();
   const queryClient = useQueryClient();
   
@@ -85,6 +88,54 @@ export default function Users({ onMenuClick }: UsersProps) {
       deleteUserMutation.mutate(user.id);
     }
   };
+
+  const handleSort = (key: string) => {
+    if (sortBy === key) {
+      setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc');
+    } else {
+      setSortBy(key);
+      setSortOrder('asc');
+    }
+  };
+
+  const sortedUsers = useMemo(() => {
+    if (!Array.isArray(users)) return [];
+    
+    return [...users].sort((a, b) => {
+      let aValue, bValue;
+      
+      switch (sortBy) {
+        case 'username':
+          aValue = a.username || '';
+          bValue = b.username || '';
+          break;
+        case 'name':
+          aValue = `${a.firstName || ''} ${a.lastName || ''}`.trim() || a.username;
+          bValue = `${b.firstName || ''} ${b.lastName || ''}`.trim() || b.username;
+          break;
+        case 'email':
+          aValue = a.email || '';
+          bValue = b.email || '';
+          break;
+        case 'role':
+          aValue = a.role || '';
+          bValue = b.role || '';
+          break;
+        case 'phoneNumber':
+          aValue = a.phoneNumber || '';
+          bValue = b.phoneNumber || '';
+          break;
+        default:
+          return 0;
+      }
+      
+      if (sortOrder === 'asc') {
+        return aValue.localeCompare(bValue);
+      } else {
+        return bValue.localeCompare(aValue);
+      }
+    });
+  }, [users, sortBy, sortOrder]);
 
   if (isLoading) {
     return (
@@ -131,10 +182,53 @@ export default function Users({ onMenuClick }: UsersProps) {
                 Add User
               </Button>
             </div>
+            <div className="grid grid-cols-12 gap-4 mt-4 py-2 text-sm font-medium text-gray-600 border-b">
+              <div className="col-span-3">
+                <SortableHeader
+                  sortKey="name"
+                  currentSort={sortBy}
+                  currentOrder={sortOrder}
+                  onSort={handleSort}
+                >
+                  Name / Username
+                </SortableHeader>
+              </div>
+              <div className="col-span-3">
+                <SortableHeader
+                  sortKey="email"
+                  currentSort={sortBy}
+                  currentOrder={sortOrder}
+                  onSort={handleSort}
+                >
+                  Email
+                </SortableHeader>
+              </div>
+              <div className="col-span-2">
+                <SortableHeader
+                  sortKey="phoneNumber"
+                  currentSort={sortBy}
+                  currentOrder={sortOrder}
+                  onSort={handleSort}
+                >
+                  Phone
+                </SortableHeader>
+              </div>
+              <div className="col-span-2">
+                <SortableHeader
+                  sortKey="role"
+                  currentSort={sortBy}
+                  currentOrder={sortOrder}
+                  onSort={handleSort}
+                >
+                  Role
+                </SortableHeader>
+              </div>
+              <div className="col-span-2 text-right">Actions</div>
+            </div>
           </CardHeader>
           <CardContent>
             <div className="space-y-4">
-              {users.map((user: any) => (
+              {sortedUsers.map((user: any) => (
                 <div key={user.id} className="border border-gray-200 rounded-lg p-4">
                   <div className="flex items-center justify-between">
                     <div>
