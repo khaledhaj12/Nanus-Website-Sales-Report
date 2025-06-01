@@ -26,9 +26,10 @@ export default function Reports({ onMenuClick }: ReportsProps) {
   const currentDate = new Date();
   const currentMonth = `${currentDate.getFullYear()}-${(currentDate.getMonth() + 1).toString().padStart(2, '0')}`;
   
-  const [dateRange, setDateRange] = useState("last30days");
+  const [selectedHistoricalMonth, setSelectedHistoricalMonth] = useState(currentMonth);
   const [selectedLocation, setSelectedLocation] = useState(isAdmin ? "all" : "");
   const [reportType, setReportType] = useState("summary");
+  const [historicalSearchQuery, setHistoricalSearchQuery] = useState("");
   const [selectedOrders, setSelectedOrders] = useState<number[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
   const [orderLocationFilter, setOrderLocationFilter] = useState("all");
@@ -195,11 +196,14 @@ export default function Reports({ onMenuClick }: ReportsProps) {
   };
 
   const { data: reportData, isLoading } = useQuery({
-    queryKey: ["/api/dashboard/summary", { location: selectedLocation, dateRange }],
+    queryKey: ["/api/dashboard/summary", { location: selectedLocation, month: selectedHistoricalMonth }],
     queryFn: async () => {
       const params = new URLSearchParams();
       if (selectedLocation && selectedLocation !== "all") {
         params.append("location", selectedLocation);
+      }
+      if (selectedHistoricalMonth) {
+        params.append("month", selectedHistoricalMonth);
       }
       
       const response = await fetch(`/api/dashboard/summary?${params}`, {
@@ -213,6 +217,60 @@ export default function Reports({ onMenuClick }: ReportsProps) {
       return response.json();
     },
   });
+
+  // Query for historical orders with filters
+  const { data: rawHistoricalOrders = [] } = useQuery({
+    queryKey: ["/api/orders", selectedLocation, selectedHistoricalMonth, historicalSearchQuery],
+    enabled: reportType === "summary",
+    queryFn: async () => {
+      const params = new URLSearchParams();
+      if (selectedLocation && selectedLocation !== "all") {
+        params.append("location", selectedLocation);
+      }
+      if (historicalSearchQuery) {
+        params.append("search", historicalSearchQuery);
+      }
+      if (selectedHistoricalMonth) {
+        params.append("month", selectedHistoricalMonth);
+      }
+      
+      const response = await fetch(`/api/orders?${params}`, {
+        credentials: "include",
+      });
+      
+      if (!response.ok) {
+        throw new Error("Failed to fetch orders");
+      }
+      
+      return response.json();
+    },
+  });
+
+  // Apply sorting to historical orders
+  const historicalOrders = useMemo(() => {
+    const sorted = [...rawHistoricalOrders].sort((a: any, b: any) => {
+      let aValue = a[sortBy];
+      let bValue = b[sortBy];
+
+      // Handle specific field types
+      if (sortBy === 'amount' || sortBy === 'refundAmount') {
+        aValue = parseFloat(aValue || '0');
+        bValue = parseFloat(bValue || '0');
+      } else if (sortBy === 'orderDate') {
+        aValue = new Date(aValue).getTime();
+        bValue = new Date(bValue).getTime();
+      } else if (typeof aValue === 'string') {
+        aValue = aValue.toLowerCase();
+        bValue = bValue?.toLowerCase() || '';
+      }
+
+      if (aValue < bValue) return sortOrder === 'asc' ? -1 : 1;
+      if (aValue > bValue) return sortOrder === 'asc' ? 1 : -1;
+      return 0;
+    });
+
+    return sorted;
+  }, [rawHistoricalOrders, sortBy, sortOrder]);
 
   const reportCards = [
     {
@@ -255,22 +313,16 @@ export default function Reports({ onMenuClick }: ReportsProps) {
                 <CardTitle>Historical Reports</CardTitle>
               </CardHeader>
               <CardContent>
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+                <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Date Range
+                      Month & Year
                     </label>
-                    <Select value={dateRange} onValueChange={setDateRange}>
-                      <SelectTrigger>
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="last30days">Last 30 Days</SelectItem>
-                        <SelectItem value="last3months">Last 3 Months</SelectItem>
-                        <SelectItem value="last6months">Last 6 Months</SelectItem>
-                        <SelectItem value="lastyear">Last Year</SelectItem>
-                      </SelectContent>
-                    </Select>
+                    <MonthYearPicker
+                      value={selectedHistoricalMonth}
+                      onChange={setSelectedHistoricalMonth}
+                      placeholder="Select month"
+                    />
                   </div>
 
                   {isAdmin && (
@@ -293,9 +345,35 @@ export default function Reports({ onMenuClick }: ReportsProps) {
                       </Select>
                     </div>
                   )}
+
+                  <div className="relative">
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Search Orders
+                    </label>
+                    <Search className="absolute left-3 top-9 h-4 w-4 text-gray-400" />
+                    <Input
+                      placeholder="Search by order ID, customer..."
+                      value={historicalSearchQuery}
+                      onChange={(e) => setHistoricalSearchQuery(e.target.value)}
+                      className="pl-10"
+                    />
+                  </div>
+
+                  <div className="flex items-end">
+                    <Button 
+                      variant="outline" 
+                      onClick={() => {
+                        setHistoricalSearchQuery("");
+                        setSelectedLocation(isAdmin ? "all" : "");
+                        setSelectedHistoricalMonth(currentMonth);
+                      }}
+                    >
+                      Clear Filters
+                    </Button>
+                  </div>
                 </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
                   {reportCards.map((card, index) => (
                     <Card key={index}>
                       <CardContent className="p-6">
@@ -310,6 +388,149 @@ export default function Reports({ onMenuClick }: ReportsProps) {
                     </Card>
                   ))}
                 </div>
+
+                {/* Historical Orders Table */}
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Order Details</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    {historicalOrders.length === 0 ? (
+                      <div className="text-center py-8 text-gray-500">
+                        No orders found for the selected filters.
+                      </div>
+                    ) : (
+                      <div className="overflow-x-auto">
+                        <Table>
+                          <TableHeader>
+                            <TableRow>
+                              <SortableHeader 
+                                field="orderDate" 
+                                currentSort={sortBy} 
+                                currentOrder={sortOrder} 
+                                onSort={(key: string) => {
+                                  if (sortBy === key) {
+                                    setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc');
+                                  } else {
+                                    setSortBy(key);
+                                    setSortOrder('asc');
+                                  }
+                                }}
+                              >
+                                Date
+                              </SortableHeader>
+                              <SortableHeader 
+                                field="orderId" 
+                                currentSort={sortBy} 
+                                currentOrder={sortOrder} 
+                                onSort={(key: string) => {
+                                  if (sortBy === key) {
+                                    setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc');
+                                  } else {
+                                    setSortBy(key);
+                                    setSortOrder('asc');
+                                  }
+                                }}
+                              >
+                                Order ID
+                              </SortableHeader>
+                              <SortableHeader 
+                                field="customerName" 
+                                currentSort={sortBy} 
+                                currentOrder={sortOrder} 
+                                onSort={(key: string) => {
+                                  if (sortBy === key) {
+                                    setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc');
+                                  } else {
+                                    setSortBy(key);
+                                    setSortOrder('asc');
+                                  }
+                                }}
+                              >
+                                Customer
+                              </SortableHeader>
+                              <SortableHeader 
+                                field="amount" 
+                                currentSort={sortBy} 
+                                currentOrder={sortOrder} 
+                                onSort={(key: string) => {
+                                  if (sortBy === key) {
+                                    setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc');
+                                  } else {
+                                    setSortBy(key);
+                                    setSortOrder('asc');
+                                  }
+                                }}
+                              >
+                                Amount
+                              </SortableHeader>
+                              <SortableHeader 
+                                field="refundAmount" 
+                                currentSort={sortBy} 
+                                currentOrder={sortOrder} 
+                                onSort={(key: string) => {
+                                  if (sortBy === key) {
+                                    setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc');
+                                  } else {
+                                    setSortBy(key);
+                                    setSortOrder('asc');
+                                  }
+                                }}
+                              >
+                                Refund
+                              </SortableHeader>
+                              <SortableHeader 
+                                field="status" 
+                                currentSort={sortBy} 
+                                currentOrder={sortOrder} 
+                                onSort={(key: string) => {
+                                  if (sortBy === key) {
+                                    setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc');
+                                  } else {
+                                    setSortBy(key);
+                                    setSortOrder('asc');
+                                  }
+                                }}
+                              >
+                                Status
+                              </SortableHeader>
+                              {isAdmin && (
+                                <TableHead>Location</TableHead>
+                              )}
+                            </TableRow>
+                          </TableHeader>
+                          <TableBody>
+                            {historicalOrders.map((order: any) => (
+                              <TableRow key={order.id}>
+                                <TableCell>{new Date(order.orderDate).toLocaleDateString()}</TableCell>
+                                <TableCell className="font-mono text-sm">{order.orderId}</TableCell>
+                                <TableCell>{order.customerName || order.firstName || "N/A"}</TableCell>
+                                <TableCell className="font-medium">{formatCurrency(parseFloat(order.amount))}</TableCell>
+                                <TableCell className="text-red-600">
+                                  {order.refundAmount ? formatCurrency(parseFloat(order.refundAmount)) : "-"}
+                                </TableCell>
+                                <TableCell>
+                                  <Badge variant={
+                                    order.status === "completed" ? "default" :
+                                    order.status === "refunded" ? "destructive" :
+                                    order.status === "pending" ? "secondary" : "outline"
+                                  }>
+                                    {order.status}
+                                  </Badge>
+                                </TableCell>
+                                {isAdmin && (
+                                  <TableCell>
+                                    {Array.isArray(locations) && locations.find((loc: any) => loc.id === order.locationId)?.name || "Unknown"}
+                                  </TableCell>
+                                )}
+                              </TableRow>
+                            ))}
+                          </TableBody>
+                        </Table>
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
               </CardContent>
             </Card>
           </TabsContent>
