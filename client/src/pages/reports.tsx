@@ -405,7 +405,7 @@ export default function Reports({ onMenuClick }: ReportsProps) {
                           <TableHeader>
                             <TableRow>
                               <SortableHeader 
-                                field="orderDate" 
+                                sortKey="orderDate" 
                                 currentSort={sortBy} 
                                 currentOrder={sortOrder} 
                                 onSort={(key: string) => {
@@ -420,7 +420,7 @@ export default function Reports({ onMenuClick }: ReportsProps) {
                                 Date
                               </SortableHeader>
                               <SortableHeader 
-                                field="orderId" 
+                                sortKey="orderId" 
                                 currentSort={sortBy} 
                                 currentOrder={sortOrder} 
                                 onSort={(key: string) => {
@@ -435,7 +435,7 @@ export default function Reports({ onMenuClick }: ReportsProps) {
                                 Order ID
                               </SortableHeader>
                               <SortableHeader 
-                                field="customerName" 
+                                sortKey="customerName" 
                                 currentSort={sortBy} 
                                 currentOrder={sortOrder} 
                                 onSort={(key: string) => {
@@ -450,7 +450,7 @@ export default function Reports({ onMenuClick }: ReportsProps) {
                                 Customer
                               </SortableHeader>
                               <SortableHeader 
-                                field="amount" 
+                                sortKey="amount" 
                                 currentSort={sortBy} 
                                 currentOrder={sortOrder} 
                                 onSort={(key: string) => {
@@ -465,7 +465,7 @@ export default function Reports({ onMenuClick }: ReportsProps) {
                                 Amount
                               </SortableHeader>
                               <SortableHeader 
-                                field="refundAmount" 
+                                sortKey="refundAmount" 
                                 currentSort={sortBy} 
                                 currentOrder={sortOrder} 
                                 onSort={(key: string) => {
@@ -480,7 +480,7 @@ export default function Reports({ onMenuClick }: ReportsProps) {
                                 Refund
                               </SortableHeader>
                               <SortableHeader 
-                                field="status" 
+                                sortKey="status" 
                                 currentSort={sortBy} 
                                 currentOrder={sortOrder} 
                                 onSort={(key: string) => {
