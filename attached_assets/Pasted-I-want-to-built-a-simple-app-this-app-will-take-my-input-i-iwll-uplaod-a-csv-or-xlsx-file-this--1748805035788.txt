@@ -1,0 +1,13 @@
+I want to built a simple app. this app will take my input (i iwll uplaod a csv or xlsx file) 
+this file contains sales data for my different locations i provide website serveice to. 
+the app is a report that shows all sales data for all location. i want to simply be able to upload this app and show all sales like total sales, total refunds, total number or orders per location. make it very simple and very modern lokking and mobile repoinsive. 
+usally i would need to break down per location, calculate the cost. subtract fees from the  total sales per locatoin. 
+the fees are 1- platform fees = 7Percent of total fees and 2- (2.9% + 0.cent per order for strip fees) this will leave each locatoin a deposit of (total sales minus the sum of Stripe fees plus platform fee)
+look and feel is simple login portal. once i login i have a 
+1- dashboard with a monthly selection (default is current month) a location selection. and a filter) and summary smart site cards.
+2- reports, i can pull historycal data and filters (smart cards as well, like totals total plat form fees, total stripe fees, deposit amount (which is the amount after platform and stripe fees)
+3- locations. Everytime i upload a csv file, the locations are created based on what you find in the locatins tab on the csv o xlsx file. 
+4-  user acces. i (the admin) should be able to crate user (basic, username, password, first and last name and assigned them access which will allow them to login and view reports only that are to that locations i gave them access to) 
+ofcouce as an admin  i can view and edit and make changes to everyhingn like delet orders. or edit the totals etc..
+note that based on the status colum of the xlsx you may see the same order (priginal one and the same order with a refunded status, which tells you that that specific order was refuded)
+make it a nice layout where i can expand each month (which will be a compact row showind totals, but if i expand it then i can view each order details (add a seaerch where i can search any order number, or total, find the order record by last 4 of card, name, email etc. like a nice filter 
