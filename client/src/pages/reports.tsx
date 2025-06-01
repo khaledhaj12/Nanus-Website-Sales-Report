@@ -10,6 +10,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Badge } from "@/components/ui/badge";
 import Header from "@/components/layout/header";
 import { SortableHeader } from "@/components/ui/sortable-header";
+import { MonthYearPicker } from "@/components/ui/month-year-picker";
 import { formatCurrency } from "@/lib/feeCalculations";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
@@ -22,13 +23,16 @@ interface ReportsProps {
 
 export default function Reports({ onMenuClick }: ReportsProps) {
   const { isAdmin } = useAuth();
+  const currentDate = new Date();
+  const currentMonth = `${currentDate.getFullYear()}-${(currentDate.getMonth() + 1).toString().padStart(2, '0')}`;
+  
   const [dateRange, setDateRange] = useState("last30days");
   const [selectedLocation, setSelectedLocation] = useState(isAdmin ? "all" : "");
   const [reportType, setReportType] = useState("summary");
   const [selectedOrders, setSelectedOrders] = useState<number[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
   const [orderLocationFilter, setOrderLocationFilter] = useState("all");
-  const [orderMonthFilter, setOrderMonthFilter] = useState("all");
+  const [orderMonthFilter, setOrderMonthFilter] = useState(currentMonth);
   const [sortBy, setSortBy] = useState<string>('orderDate');
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
   const { toast } = useToast();
@@ -353,23 +357,11 @@ export default function Reports({ onMenuClick }: ReportsProps) {
                     </SelectContent>
                   </Select>
                   
-                  <Select value={orderMonthFilter} onValueChange={setOrderMonthFilter}>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Filter by month" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="all">All Months</SelectItem>
-                      <SelectItem value="2025-06">June 2025</SelectItem>
-                      <SelectItem value="2025-05">May 2025</SelectItem>
-                      <SelectItem value="2025-04">April 2025</SelectItem>
-                      <SelectItem value="2025-03">March 2025</SelectItem>
-                      <SelectItem value="2025-02">February 2025</SelectItem>
-                      <SelectItem value="2025-01">January 2025</SelectItem>
-                      <SelectItem value="2024-12">December 2024</SelectItem>
-                      <SelectItem value="2024-11">November 2024</SelectItem>
-                      <SelectItem value="2024-10">October 2024</SelectItem>
-                    </SelectContent>
-                  </Select>
+                  <MonthYearPicker
+                    value={orderMonthFilter}
+                    onChange={setOrderMonthFilter}
+                    placeholder="Filter by month"
+                  />
                   
                   <Button 
                     variant="outline" 
