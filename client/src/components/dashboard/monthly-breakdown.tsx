@@ -126,28 +126,47 @@ export default function MonthlyBreakdown({ data, isLoading }: MonthlyBreakdownPr
             return (
               <div key={monthData.month} className="border-b border-gray-200 last:border-b-0">
                 <div
-                  className="p-6 cursor-pointer hover:bg-gray-50 transition-colors"
+                  className="p-4 cursor-pointer hover:bg-gray-50 transition-colors"
                   onClick={() => toggleMonth(monthData.month)}
                 >
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center space-x-4">
-                      <Icon className="text-gray-400 h-5 w-5 transition-transform" />
-                      <div>
-                        <h4 className="font-medium text-gray-900">
+                  <div className="flex items-center">
+                    <div className="flex items-center space-x-3 min-w-0 flex-1">
+                      <Icon className="text-gray-400 h-5 w-5 transition-transform flex-shrink-0" />
+                      <div className="min-w-0">
+                        <h4 className="font-medium text-gray-900 truncate">
                           {formatMonthLabel(monthData.month)}
                         </h4>
-                        <p className="text-sm text-gray-600">
+                        <p className="text-xs text-gray-500">
                           {completedOrders.length} orders • {refundedOrders.length} refunds
                         </p>
                       </div>
                     </div>
-                    <div className="text-right">
-                      <p className="font-semibold text-gray-900">
-                        {formatCurrency(monthData.totalSales)}
-                      </p>
-                      <p className="text-sm text-gray-600">
-                        Net: {formatCurrency(monthData.netAmount)}
-                      </p>
+                    
+                    <div className="grid grid-cols-6 gap-3 text-right text-sm flex-shrink-0 ml-4">
+                      <div>
+                        <p className="font-semibold text-gray-900">{formatCurrency(monthData.totalSales)}</p>
+                        <p className="text-xs text-gray-500">Sales</p>
+                      </div>
+                      <div>
+                        <p className="font-medium text-gray-700">{monthData.totalOrders}</p>
+                        <p className="text-xs text-gray-500">Orders</p>
+                      </div>
+                      <div>
+                        <p className="font-medium text-yellow-600">{formatCurrency(monthData.totalSales * 0.07)}</p>
+                        <p className="text-xs text-gray-500">Platform</p>
+                      </div>
+                      <div>
+                        <p className="font-medium text-blue-600">{formatCurrency((monthData.totalSales * 0.029) + (monthData.totalOrders * 0.30))}</p>
+                        <p className="text-xs text-gray-500">Stripe</p>
+                      </div>
+                      <div>
+                        <p className="font-medium text-red-600">{formatCurrency(monthData.totalRefunds)}</p>
+                        <p className="text-xs text-gray-500">Refunds</p>
+                      </div>
+                      <div>
+                        <p className="font-semibold text-green-600">{formatCurrency(monthData.netAmount)}</p>
+                        <p className="text-xs text-gray-500">Net</p>
+                      </div>
                     </div>
                   </div>
                 </div>
