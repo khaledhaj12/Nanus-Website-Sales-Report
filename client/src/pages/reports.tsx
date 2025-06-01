@@ -65,6 +65,66 @@ export default function Reports({ onMenuClick }: ReportsProps) {
     },
   });
 
+  const handleSort = (key: string) => {
+    if (sortBy === key) {
+      setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc');
+    } else {
+      setSortBy(key);
+      setSortOrder('asc');
+    }
+  };
+
+  const sortedOrders = useMemo(() => {
+    if (!Array.isArray(orders)) return [];
+    
+    return [...orders].sort((a, b) => {
+      let aValue, bValue;
+      
+      switch (sortBy) {
+        case 'orderId':
+          aValue = a.orderId || '';
+          bValue = b.orderId || '';
+          break;
+        case 'orderDate':
+          aValue = new Date(a.orderDate).getTime();
+          bValue = new Date(b.orderDate).getTime();
+          break;
+        case 'customerName':
+          aValue = a.customerName || '';
+          bValue = b.customerName || '';
+          break;
+        case 'amount':
+          aValue = parseFloat(a.amount) || 0;
+          bValue = parseFloat(b.amount) || 0;
+          break;
+        case 'refundAmount':
+          aValue = parseFloat(a.refundAmount) || 0;
+          bValue = parseFloat(b.refundAmount) || 0;
+          break;
+        case 'status':
+          aValue = a.status || '';
+          bValue = b.status || '';
+          break;
+        default:
+          return 0;
+      }
+      
+      if (typeof aValue === 'string' && typeof bValue === 'string') {
+        if (sortOrder === 'asc') {
+          return aValue.localeCompare(bValue);
+        } else {
+          return bValue.localeCompare(aValue);
+        }
+      } else {
+        if (sortOrder === 'asc') {
+          return aValue - bValue;
+        } else {
+          return bValue - aValue;
+        }
+      }
+    });
+  }, [orders, sortBy, sortOrder]);
+
   // Delete orders mutation
   const deleteOrdersMutation = useMutation({
     mutationFn: async (orderIds: number[]) => {
