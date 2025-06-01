@@ -559,6 +559,28 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  app.delete('/api/users/:id', requireAdmin, async (req, res) => {
+    try {
+      const userId = parseInt(req.params.id);
+      
+      // Don't allow deleting the current admin user
+      if (userId === req.session.user.id) {
+        return res.status(400).json({ message: "Cannot delete your own account" });
+      }
+      
+      // First remove user location access
+      await storage.setUserLocationAccess(userId, []);
+      
+      // Then delete the user
+      await storage.deleteUser(userId);
+      
+      res.json({ message: "User deleted successfully" });
+    } catch (error) {
+      console.error("Delete user error:", error);
+      res.status(500).json({ message: "Failed to delete user" });
+    }
+  });
+
   app.get('/api/users/:id/locations', requireAdmin, async (req, res) => {
     try {
       const userId = parseInt(req.params.id);

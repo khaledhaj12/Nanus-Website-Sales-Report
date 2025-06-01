@@ -40,34 +40,42 @@ export default function UserModal({ isOpen, onClose, editingUser }: UserModalPro
     enabled: !!editingUser?.id && isOpen,
   });
 
-  // Initialize form when modal opens
+  // Initialize form when modal opens or editing user changes
   useEffect(() => {
-    if (isOpen) {
-      if (editingUser) {
-        setFormData({
-          firstName: editingUser.firstName || "",
-          lastName: editingUser.lastName || "",
-          username: editingUser.username || "",
-          password: "",
-          email: editingUser.email || "",
-          phoneNumber: editingUser.phoneNumber || "",
-          role: editingUser.role || "user",
-          locationIds: Array.isArray(userLocations) ? userLocations : [],
-        });
-      } else {
-        setFormData({
-          firstName: "",
-          lastName: "",
-          username: "",
-          password: "",
-          email: "",
-          phoneNumber: "",
-          role: "user",
-          locationIds: [],
-        });
-      }
+    if (isOpen && editingUser) {
+      setFormData({
+        firstName: editingUser.firstName || "",
+        lastName: editingUser.lastName || "",
+        username: editingUser.username || "",
+        password: "",
+        email: editingUser.email || "",
+        phoneNumber: editingUser.phoneNumber || "",
+        role: editingUser.role || "user",
+        locationIds: Array.isArray(userLocations) ? userLocations : [],
+      });
+    } else if (isOpen && !editingUser) {
+      setFormData({
+        firstName: "",
+        lastName: "",
+        username: "",
+        password: "",
+        email: "",
+        phoneNumber: "",
+        role: "user",
+        locationIds: [],
+      });
     }
-  }, [isOpen, editingUser, userLocations]);
+  }, [isOpen, editingUser?.id]);
+
+  // Update location IDs when they're loaded
+  useEffect(() => {
+    if (editingUser && Array.isArray(userLocations) && userLocations.length > 0) {
+      setFormData(prev => ({
+        ...prev,
+        locationIds: userLocations
+      }));
+    }
+  }, [userLocations, editingUser?.id]);
 
   const createUserMutation = useMutation({
     mutationFn: async (userData: typeof formData) => {
