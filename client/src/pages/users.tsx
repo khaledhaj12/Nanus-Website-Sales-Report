@@ -5,7 +5,40 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import Header from "@/components/layout/header";
 import UserModal from "@/components/modals/user-modal";
-import { Edit, Plus } from "lucide-react";
+import { Edit, Plus, MapPin } from "lucide-react";
+
+interface UserLocationAccessProps {
+  userId: number;
+  locations: any[];
+}
+
+function UserLocationAccess({ userId, locations }: UserLocationAccessProps) {
+  const { data: userAccess = [] } = useQuery({
+    queryKey: ["/api/users", userId, "locations"],
+  });
+
+  const accessibleLocations = locations.filter((loc: any) => 
+    (userAccess as number[]).includes(loc.id)
+  );
+
+  return (
+    <div className="mt-2">
+      <p className="text-xs text-gray-500 mb-1">Location Access:</p>
+      {accessibleLocations.length === 0 ? (
+        <span className="text-xs text-gray-400">No locations assigned</span>
+      ) : (
+        <div className="flex flex-wrap gap-1">
+          {accessibleLocations.map((location: any) => (
+            <Badge key={location.id} variant="outline" className="text-xs">
+              <MapPin className="mr-1 h-3 w-3" />
+              {location.name}
+            </Badge>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
 
 interface UsersProps {
   onMenuClick: () => void;
@@ -13,9 +46,14 @@ interface UsersProps {
 
 export default function Users({ onMenuClick }: UsersProps) {
   const [isUserModalOpen, setIsUserModalOpen] = useState(false);
+  const [editingUser, setEditingUser] = useState<any>(null);
   
   const { data: users = [], isLoading } = useQuery({
     queryKey: ["/api/users"],
+  });
+
+  const { data: locations = [] } = useQuery({
+    queryKey: ["/api/locations"],
   });
 
   if (isLoading) {
@@ -79,9 +117,7 @@ export default function Users({ onMenuClick }: UsersProps) {
                         {user.email || `${user.username}@company.com`} • {getRoleLabel(user.role)}
                       </p>
                       {user.role !== 'admin' && (
-                        <p className="text-sm text-gray-500">
-                          Location access will be shown here
-                        </p>
+                        <UserLocationAccess userId={user.id} locations={locations as any[]} />
                       )}
                     </div>
                     <div className="flex items-center space-x-2">

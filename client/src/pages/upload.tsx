@@ -17,6 +17,7 @@ interface UploadProps {
 
 export default function Upload({ onMenuClick }: UploadProps) {
   const [dragActive, setDragActive] = useState(false);
+  const [selectedFiles, setSelectedFiles] = useState<number[]>([]);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { toast } = useToast();
   const queryClient = useQueryClient();
@@ -55,6 +56,27 @@ export default function Upload({ onMenuClick }: UploadProps) {
     onError: (error) => {
       toast({
         title: "Upload Failed",
+        description: error.message,
+        variant: "destructive",
+      });
+    },
+  });
+
+  const deleteFilesMutation = useMutation({
+    mutationFn: async (ids: number[]) => {
+      await apiRequest("DELETE", "/api/uploads", { ids });
+    },
+    onSuccess: () => {
+      toast({
+        title: "Success",
+        description: "Files deleted successfully",
+      });
+      setSelectedFiles([]);
+      queryClient.invalidateQueries({ queryKey: ["/api/uploads/recent"] });
+    },
+    onError: (error) => {
+      toast({
+        title: "Delete Failed",
         description: error.message,
         variant: "destructive",
       });
@@ -171,7 +193,21 @@ export default function Upload({ onMenuClick }: UploadProps) {
 
             {/* Recent Uploads */}
             <div className="mt-6">
-              <h4 className="font-medium text-gray-900 mb-3">Recent Uploads</h4>
+              <div className="flex items-center justify-between mb-3">
+                <h4 className="font-medium text-gray-900">Recent Uploads</h4>
+                {selectedFiles.length > 0 && (
+                  <Button
+                    variant="destructive"
+                    size="sm"
+                    onClick={() => deleteFilesMutation.mutate(selectedFiles)}
+                    disabled={deleteFilesMutation.isPending}
+                  >
+                    <Trash2 className="mr-2 h-4 w-4" />
+                    Delete {selectedFiles.length} file{selectedFiles.length > 1 ? 's' : ''}
+                  </Button>
+                )}
+              </div>
+              
               {isLoading ? (
                 <div className="space-y-3">
                   {[1, 2, 3].map(i => (
@@ -180,31 +216,74 @@ export default function Upload({ onMenuClick }: UploadProps) {
                     </div>
                   ))}
                 </div>
-              ) : recentUploads.length === 0 ? (
+              ) : (recentUploads as any[]).length === 0 ? (
                 <div className="text-center py-8">
                   <FileText className="mx-auto h-12 w-12 text-gray-400 mb-2" />
                   <p className="text-gray-500">No files uploaded yet</p>
                 </div>
               ) : (
-                <div className="space-y-3">
-                  {recentUploads.map((upload: any) => (
-                    <div key={upload.id} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
-                      <div className="flex items-center">
-                        <i className={`${getFileIcon(upload.fileName)} text-green-600 mr-3 text-xl`} />
-                        <div>
-                          <p className="font-medium text-gray-900">{upload.fileName}</p>
-                          <p className="text-sm text-gray-600">
-                            Uploaded {new Date(upload.createdAt).toLocaleDateString()} • 
-                            {formatFileSize(upload.fileSize)} • 
-                            {upload.recordsProcessed} records processed
-                          </p>
-                        </div>
-                      </div>
-                      <Badge className={getStatusBadgeStyle(upload.status)}>
-                        {upload.status.charAt(0).toUpperCase() + upload.status.slice(1)}
-                      </Badge>
-                    </div>
-                  ))}
+                <div className="border rounded-lg overflow-hidden">
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead className="w-12">
+                          <Checkbox
+                            checked={(recentUploads as any[]).length > 0 && selectedFiles.length === (recentUploads as any[]).length}
+                            onCheckedChange={(checked) => {
+                              if (checked) {
+                                setSelectedFiles((recentUploads as any[]).map((upload: any) => upload.id));
+                              } else {
+                                setSelectedFiles([]);
+                              }
+                            }}
+                          />
+                        </TableHead>
+                        <TableHead>File Name</TableHead>
+                        <TableHead>Upload Date</TableHead>
+                        <TableHead>Size</TableHead>
+                        <TableHead>Records</TableHead>
+                        <TableHead>Status</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {(recentUploads as any[]).map((upload: any) => (
+                        <TableRow key={upload.id}>
+                          <TableCell>
+                            <Checkbox
+                              checked={selectedFiles.includes(upload.id)}
+                              onCheckedChange={(checked) => {
+                                if (checked) {
+                                  setSelectedFiles([...selectedFiles, upload.id]);
+                                } else {
+                                  setSelectedFiles(selectedFiles.filter(id => id !== upload.id));
+                                }
+                              }}
+                            />
+                          </TableCell>
+                          <TableCell>
+                            <div className="flex items-center">
+                              <i className={`${getFileIcon(upload.fileName)} text-green-600 mr-3 text-xl`} />
+                              <span className="font-medium">{upload.fileName}</span>
+                            </div>
+                          </TableCell>
+                          <TableCell>
+                            {new Date(upload.createdAt).toLocaleDateString()}
+                          </TableCell>
+                          <TableCell>
+                            {formatFileSize(upload.fileSize)}
+                          </TableCell>
+                          <TableCell>
+                            {upload.recordsProcessed}
+                          </TableCell>
+                          <TableCell>
+                            <Badge className={getStatusBadgeStyle(upload.status)}>
+                              {upload.status.charAt(0).toUpperCase() + upload.status.slice(1)}
+                            </Badge>
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
                 </div>
               )}
             </div>
