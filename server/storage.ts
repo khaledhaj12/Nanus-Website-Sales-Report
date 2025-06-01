@@ -266,6 +266,17 @@ export class DatabaseStorage implements IStorage {
   }
 
   async deleteLocations(ids: number[]): Promise<void> {
+    // Check if any locations have associated orders
+    const locationsWithOrders = await db
+      .select({ locationId: orders.locationId })
+      .from(orders)
+      .where(inArray(orders.locationId, ids));
+
+    if (locationsWithOrders.length > 0) {
+      const usedLocationIds = locationsWithOrders.map(o => o.locationId);
+      throw new Error(`Cannot delete locations with existing orders. Location IDs: ${usedLocationIds.join(', ')}`);
+    }
+
     await db.delete(locations).where(inArray(locations.id, ids));
   }
 
@@ -367,47 +378,36 @@ export class DatabaseStorage implements IStorage {
     netAmount: number;
     orders: Order[];
   }>> {
-    // Get distinct year-month combinations from actual data
+    // Get all orders and group by month in JavaScript to avoid SQL ORDER BY conflict
     let whereConditions: any[] = [];
     if (locationId) {
       whereConditions.push(eq(orders.locationId, locationId));
     }
 
-    const distinctMonths = await db
-      .selectDistinct({
-        yearMonth: sql<string>`DATE_TRUNC('month', ${orders.orderDate}::date)::text`
-      })
+    const allOrders = await db
+      .select()
       .from(orders)
       .where(whereConditions.length > 0 ? and(...whereConditions) : undefined)
-      .orderBy(sql<string>`DATE_TRUNC('month', ${orders.orderDate}::date) DESC`);
+      .orderBy(desc(orders.orderDate));
 
-    const months = [];
+    // Group orders by month
+    const monthGroups = new Map<string, Order[]>();
     
-    for (const { yearMonth } of distinctMonths) {
-      const monthDate = new Date(yearMonth);
-      const year = monthDate.getFullYear();
-      const month = monthDate.getMonth() + 1;
-      const monthStr = month.toString().padStart(2, '0');
+    for (const order of allOrders) {
+      const orderDate = new Date(order.orderDate);
+      const year = orderDate.getFullYear();
+      const month = orderDate.getMonth() + 1;
+      const monthKey = `${year}-${month.toString().padStart(2, '0')}`;
       
-      const startDate = `${year}-${monthStr}-01`;
-      const lastDay = new Date(year, month, 0).getDate();
-      const endDate = `${year}-${monthStr}-${lastDay.toString().padStart(2, '0')}`;
-      
-      let monthWhereConditions = [
-        gte(orders.orderDate, startDate),
-        lte(orders.orderDate, endDate)
-      ];
-      
-      if (locationId) {
-        monthWhereConditions.push(eq(orders.locationId, locationId));
+      if (!monthGroups.has(monthKey)) {
+        monthGroups.set(monthKey, []);
       }
+      monthGroups.get(monthKey)!.push(order);
+    }
 
-      const monthOrders = await db
-        .select()
-        .from(orders)
-        .where(and(...monthWhereConditions))
-        .orderBy(desc(orders.orderDate));
-
+    // Convert to result format
+    const months = [];
+    for (const [monthKey, monthOrders] of monthGroups.entries()) {
       const completedOrders = monthOrders.filter(order => order.status !== 'refunded');
       const refundedOrders = monthOrders.filter(order => order.status === 'refunded');
 
@@ -416,7 +416,7 @@ export class DatabaseStorage implements IStorage {
       const netAmount = completedOrders.reduce((sum, order) => sum + parseFloat(order.netAmount), 0);
 
       months.push({
-        month: `${year}-${monthStr}`,
+        month: monthKey,
         totalSales,
         totalOrders: completedOrders.length,
         totalRefunds,
@@ -424,6 +424,9 @@ export class DatabaseStorage implements IStorage {
         orders: monthOrders,
       });
     }
+    
+    // Sort by month descending
+    months.sort((a, b) => b.month.localeCompare(a.month));
     
     return months;
   }
