@@ -67,6 +67,7 @@ export const orders = pgTable("orders", {
   customerEmail: varchar("customer_email", { length: 255 }),
   cardLast4: varchar("card_last4", { length: 4 }),
   paymentMethod: varchar("payment_method", { length: 100 }),
+  refundAmount: decimal("refund_amount", { precision: 10, scale: 2 }).default("0"),
   amount: decimal("amount", { precision: 10, scale: 2 }).notNull(),
   tax: decimal("tax", { precision: 10, scale: 2 }).default("0"),
   total: decimal("total", { precision: 10, scale: 2 }),

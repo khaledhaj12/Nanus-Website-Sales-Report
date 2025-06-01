@@ -161,6 +161,7 @@ export default function MonthlyBreakdown({ data, isLoading }: MonthlyBreakdownPr
                               <TableHead>Order ID</TableHead>
                               <TableHead>Date</TableHead>
                               <TableHead>Customer</TableHead>
+                              <TableHead>Refund</TableHead>
                               <TableHead>Amount</TableHead>
                               <TableHead>Status</TableHead>
                             </TableRow>

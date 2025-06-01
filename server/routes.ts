@@ -105,10 +105,36 @@ async function processXLSXFile(buffer: Buffer, uploadId: number, userId: number)
 async function processOrderData(data: any[], uploadId: number, userId: number): Promise<void> {
   let processedCount = 0;
   
+  // Group orders by Order ID to handle duplicates (refunds)
+  const orderGroups = new Map<string, any[]>();
+  
   for (const row of data) {
+    const orderId = row['Order ID'] || row.order_id || row.OrderId || `ORD-${Date.now()}-${processedCount}`;
+    if (!orderGroups.has(orderId)) {
+      orderGroups.set(orderId, []);
+    }
+    orderGroups.get(orderId)!.push(row);
+  }
+  
+  for (const [orderId, rows] of orderGroups.entries()) {
     try {
+      // For duplicate Order IDs, use the record with amount = 0 (refund record)
+      let orderRow = rows[0];
+      let refundAmount = 0;
+      
+      if (rows.length > 1) {
+        // Find the refund record (amount = 0) and the original order
+        const refundRecord = rows.find(r => parseFloat(r['Total (- Refund)'] || r.amount || '0') === 0);
+        const originalRecord = rows.find(r => parseFloat(r['Total (- Refund)'] || r.amount || '0') > 0);
+        
+        if (refundRecord && originalRecord) {
+          orderRow = refundRecord; // Use refund record as main record
+          refundAmount = parseFloat(originalRecord['Refund Amount'] || originalRecord.refund_amount || '0');
+        }
+      }
+
       // Extract location name and ensure location exists
-      const locationName = row.location || row.Location || 'Unknown Location';
+      const locationName = orderRow.location || orderRow.Location || 'Unknown Location';
       let location = await storage.getLocationByName(locationName);
       
       if (!location) {
@@ -119,33 +145,37 @@ async function processOrderData(data: any[], uploadId: number, userId: number): 
         });
       }
 
-      // Calculate fees
-      const amount = parseFloat(row.amount || row.Amount || '0');
+      // Map fields according to specification:
+      // Amount = Total (- Refund)
+      // Order ID = Order ID  
+      // Date = Paid Date
+      // Customer = First Name
+      // Status = Status
+      // Refund = Refund Amount
+      
+      const amount = parseFloat(orderRow['Total (- Refund)'] || orderRow.total || orderRow.amount || '0');
       const platformFee = calculatePlatformFee(amount);
       const stripeFee = calculateStripeFee(amount);
       const netAmount = calculateNetAmount(amount);
 
-      // Create order
-      const total = parseFloat(row.total || row.Total || row['Total (-Refund)'] || row.amount || row.Amount || '0');
-      const tax = parseFloat(row.tax || row.Tax || '0');
-      
       const orderData = {
-        orderId: row.order_id || row.OrderId || row['Order ID'] || `ORD-${Date.now()}-${processedCount}`,
+        orderId: orderId,
         locationId: location.id,
-        customerName: row.customer_name || row.CustomerName || row['Customer Name'] || '',
-        firstName: row.first_name || row.FirstName || row['First Name'] || '',
-        customerEmail: row.customer_email || row.CustomerEmail || row['Customer Email'] || '',
-        cardLast4: row.card_last4 || row.CardLast4 || row['Card Last 4'] || '',
-        paymentMethod: row.payment || row.Payment || row['Payment Method'] || '',
+        customerName: orderRow['First Name'] || orderRow.firstName || orderRow.customer_name || '',
+        firstName: orderRow['First Name'] || orderRow.firstName || '',
+        customerEmail: orderRow.customer_email || orderRow.CustomerEmail || orderRow['Customer Email'] || '',
+        cardLast4: orderRow.card_last4 || orderRow.CardLast4 || orderRow['Card Last 4'] || '',
+        paymentMethod: orderRow.payment || orderRow.Payment || orderRow['Payment Method'] || '',
+        refundAmount: refundAmount.toString(),
         amount: amount.toString(),
-        tax: tax.toString(),
-        total: total.toString(),
-        status: (row.status || row.Status || 'completed').toLowerCase(),
+        tax: parseFloat(orderRow.tax || orderRow.Tax || '0').toString(),
+        total: amount.toString(), // Use amount as total since amount = Total (- Refund)
+        status: (orderRow.Status || orderRow.status || 'completed').toLowerCase(),
         platformFee: platformFee.toString(),
         stripeFee: stripeFee.toString(),
         netAmount: netAmount.toString(),
-        orderNotes: row.notes || row.Notes || row['Order Notes'] || '',
-        orderDate: new Date(row.order_date || row.OrderDate || row['Order Date'] || new Date()).toISOString().split('T')[0],
+        orderNotes: orderRow.notes || orderRow.Notes || orderRow['Order Notes'] || '',
+        orderDate: new Date(orderRow['Paid Date'] || orderRow.paid_date || orderRow.order_date || new Date()).toISOString().split('T')[0],
       };
 
       // Check if order already exists
