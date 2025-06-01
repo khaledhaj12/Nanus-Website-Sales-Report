@@ -13,6 +13,7 @@ import {
   LogOut,
   Menu,
   X,
+  StickyNote,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 

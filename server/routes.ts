@@ -527,6 +527,95 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Notes routes (admin only)
+  app.get('/api/notes', requireAdmin, async (req: any, res) => {
+    try {
+      const userId = req.session.user.id;
+      const notes = await storage.getNotes(userId);
+      res.json(notes);
+    } catch (error) {
+      console.error("Get notes error:", error);
+      res.status(500).json({ message: "Failed to fetch notes" });
+    }
+  });
+
+  app.get('/api/notes/:id', requireAdmin, async (req: any, res) => {
+    try {
+      const noteId = parseInt(req.params.id);
+      const userId = req.session.user.id;
+      const note = await storage.getNote(noteId, userId);
+      
+      if (!note) {
+        return res.status(404).json({ message: "Note not found" });
+      }
+      
+      res.json(note);
+    } catch (error) {
+      console.error("Get note error:", error);
+      res.status(500).json({ message: "Failed to fetch note" });
+    }
+  });
+
+  app.post('/api/notes', requireAdmin, async (req: any, res) => {
+    try {
+      const userId = req.session.user.id;
+      const { title, content } = req.body;
+      
+      if (!title || !content) {
+        return res.status(400).json({ message: "Title and content are required" });
+      }
+
+      const noteData = {
+        title,
+        content,
+        createdBy: userId,
+      };
+
+      const note = await storage.createNote(noteData);
+      res.json(note);
+    } catch (error) {
+      console.error("Create note error:", error);
+      res.status(500).json({ message: "Failed to create note" });
+    }
+  });
+
+  app.put('/api/notes/:id', requireAdmin, async (req: any, res) => {
+    try {
+      const noteId = parseInt(req.params.id);
+      const userId = req.session.user.id;
+      const { title, content } = req.body;
+
+      if (!title || !content) {
+        return res.status(400).json({ message: "Title and content are required" });
+      }
+
+      const noteData = { title, content };
+      const note = await storage.updateNote(noteId, noteData, userId);
+      
+      if (!note) {
+        return res.status(404).json({ message: "Note not found" });
+      }
+      
+      res.json(note);
+    } catch (error) {
+      console.error("Update note error:", error);
+      res.status(500).json({ message: "Failed to update note" });
+    }
+  });
+
+  app.delete('/api/notes/:id', requireAdmin, async (req: any, res) => {
+    try {
+      const noteId = parseInt(req.params.id);
+      const userId = req.session.user.id;
+      
+      await storage.deleteNote(noteId, userId);
+      res.json({ message: "Note deleted successfully" });
+    } catch (error) {
+      console.error("Delete note error:", error);
+      res.status(500).json({ message: "Failed to delete note" });
+    }
+  });
+
   const httpServer = createServer(app);
   return httpServer;
 }

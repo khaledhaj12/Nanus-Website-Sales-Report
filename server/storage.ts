@@ -4,6 +4,7 @@ import {
   orders,
   fileUploads,
   userLocationAccess,
+  notes,
   type User,
   type InsertUser,
   type Location,
@@ -12,6 +13,8 @@ import {
   type InsertOrder,
   type FileUpload,
   type InsertFileUpload,
+  type Note,
+  type InsertNote,
   type UserLocationAccess,
 } from "@shared/schema";
 import { db } from "./db";
@@ -74,6 +77,13 @@ export interface IStorage {
     netAmount: number;
     orders: Order[];
   }>>;
+  
+  // Notes operations (admin only)
+  getNotes(userId: number): Promise<Note[]>;
+  getNote(id: number, userId: number): Promise<Note | undefined>;
+  createNote(note: InsertNote): Promise<Note>;
+  updateNote(id: number, note: Partial<InsertNote>, userId: number): Promise<Note>;
+  deleteNote(id: number, userId: number): Promise<void>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -416,6 +426,46 @@ export class DatabaseStorage implements IStorage {
     }
     
     return months;
+  }
+
+  // Notes operations (admin only)
+  async getNotes(userId: number): Promise<Note[]> {
+    return await db
+      .select()
+      .from(notes)
+      .where(eq(notes.createdBy, userId))
+      .orderBy(desc(notes.updatedAt));
+  }
+
+  async getNote(id: number, userId: number): Promise<Note | undefined> {
+    const [note] = await db
+      .select()
+      .from(notes)
+      .where(and(eq(notes.id, id), eq(notes.createdBy, userId)));
+    return note;
+  }
+
+  async createNote(insertNote: InsertNote): Promise<Note> {
+    const [note] = await db
+      .insert(notes)
+      .values(insertNote)
+      .returning();
+    return note;
+  }
+
+  async updateNote(id: number, insertNote: Partial<InsertNote>, userId: number): Promise<Note> {
+    const [note] = await db
+      .update(notes)
+      .set({ ...insertNote, updatedAt: new Date() })
+      .where(and(eq(notes.id, id), eq(notes.createdBy, userId)))
+      .returning();
+    return note;
+  }
+
+  async deleteNote(id: number, userId: number): Promise<void> {
+    await db
+      .delete(notes)
+      .where(and(eq(notes.id, id), eq(notes.createdBy, userId)));
   }
 }
 
