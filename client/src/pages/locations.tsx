@@ -16,6 +16,7 @@ interface LocationsProps {
 
 export default function Locations({ onMenuClick }: LocationsProps) {
   const [selectedLocations, setSelectedLocations] = useState<number[]>([]);
+  const [editingLocation, setEditingLocation] = useState<any>(null);
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
@@ -163,7 +164,6 @@ export default function Locations({ onMenuClick }: LocationsProps) {
                         />
                       </TableHead>
                       <TableHead>Location Name</TableHead>
-                      <TableHead>Code</TableHead>
                       <TableHead>Created Date</TableHead>
                       <TableHead>Status</TableHead>
                       <TableHead>Actions</TableHead>
@@ -191,11 +191,6 @@ export default function Locations({ onMenuClick }: LocationsProps) {
                           </div>
                         </TableCell>
                         <TableCell>
-                          <code className="text-sm bg-gray-100 px-2 py-1 rounded">
-                            {location.code || 'N/A'}
-                          </code>
-                        </TableCell>
-                        <TableCell>
                           {new Date(location.createdAt).toLocaleDateString()}
                         </TableCell>
                         <TableCell>
@@ -204,7 +199,11 @@ export default function Locations({ onMenuClick }: LocationsProps) {
                           </Badge>
                         </TableCell>
                         <TableCell>
-                          <Button variant="ghost" size="sm">
+                          <Button 
+                            variant="ghost" 
+                            size="sm"
+                            onClick={() => setEditingLocation(location)}
+                          >
                             <Edit className="h-4 w-4" />
                           </Button>
                         </TableCell>
