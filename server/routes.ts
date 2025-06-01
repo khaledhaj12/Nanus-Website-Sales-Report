@@ -500,9 +500,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       await storage.deleteLocations(ids);
       res.json({ message: "Locations deleted successfully" });
-    } catch (error) {
+    } catch (error: any) {
       console.error("Delete locations error:", error);
-      res.status(500).json({ message: "Failed to delete locations" });
+      if (error.message && error.message.includes("Cannot delete locations with existing orders")) {
+        res.status(400).json({ message: error.message });
+      } else {
+        res.status(500).json({ message: "Failed to delete locations" });
+      }
     }
   });
 

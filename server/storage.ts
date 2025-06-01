@@ -268,12 +268,12 @@ export class DatabaseStorage implements IStorage {
   async deleteLocations(ids: number[]): Promise<void> {
     // Check if any locations have associated orders
     const locationsWithOrders = await db
-      .select({ locationId: orders.locationId })
+      .selectDistinct({ locationId: orders.locationId })
       .from(orders)
       .where(inArray(orders.locationId, ids));
 
     if (locationsWithOrders.length > 0) {
-      const usedLocationIds = locationsWithOrders.map(o => o.locationId);
+      const usedLocationIds = Array.from(new Set(locationsWithOrders.map(o => o.locationId)));
       throw new Error(`Cannot delete locations with existing orders. Location IDs: ${usedLocationIds.join(', ')}`);
     }
 
