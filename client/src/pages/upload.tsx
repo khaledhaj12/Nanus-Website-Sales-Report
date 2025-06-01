@@ -28,6 +28,12 @@ export default function Upload({ onMenuClick }: UploadProps) {
 
   const uploadMutation = useMutation({
     mutationFn: async (file: File) => {
+      // Show upload starting notification
+      toast({
+        title: "Upload Started",
+        description: `Uploading ${file.name}...`,
+      });
+
       const formData = new FormData();
       formData.append('file', file);
       
@@ -44,19 +50,25 @@ export default function Upload({ onMenuClick }: UploadProps) {
       
       return response.json();
     },
-    onSuccess: () => {
+    onSuccess: (data, file) => {
       toast({
-        title: "Success",
-        description: "File uploaded and processed successfully",
+        title: "Upload Completed",
+        description: `${file.name} has been processed successfully`,
       });
+      // Refresh the data
       queryClient.invalidateQueries({ queryKey: ["/api/uploads/recent"] });
       queryClient.invalidateQueries({ queryKey: ["/api/dashboard/summary"] });
       queryClient.invalidateQueries({ queryKey: ["/api/locations"] });
+      
+      // Reset file input
+      if (fileInputRef.current) {
+        fileInputRef.current.value = '';
+      }
     },
-    onError: (error) => {
+    onError: (error, file) => {
       toast({
         title: "Upload Failed",
-        description: error.message,
+        description: `Failed to upload ${file.name}: ${error.message}`,
         variant: "destructive",
       });
     },
@@ -160,34 +172,51 @@ export default function Upload({ onMenuClick }: UploadProps) {
             {/* Drop Zone */}
             <div
               className={`border-2 border-dashed rounded-lg p-8 text-center transition-colors ${
-                dragActive 
-                  ? "border-blue-400 bg-blue-50" 
-                  : "border-gray-300 hover:border-gray-400"
+                uploadMutation.isPending
+                  ? "border-blue-400 bg-blue-50 opacity-75"
+                  : dragActive 
+                    ? "border-blue-400 bg-blue-50" 
+                    : "border-gray-300 hover:border-gray-400"
               }`}
               onDragEnter={handleDrag}
               onDragLeave={handleDrag}
               onDragOver={handleDrag}
               onDrop={handleDrop}
             >
-              <CloudUpload className="mx-auto h-16 w-16 text-gray-400 mb-4" />
-              <h4 className="text-lg font-medium text-gray-900 mb-2">
-                Drop files here or click to browse
-              </h4>
-              <p className="text-gray-600 mb-4">
-                Supports CSV and XLSX files up to 10MB
-              </p>
+              {uploadMutation.isPending ? (
+                <>
+                  <div className="animate-spin rounded-full h-16 w-16 border-b-2 border-blue-600 mx-auto mb-4"></div>
+                  <h4 className="text-lg font-medium text-gray-900 mb-2">
+                    Processing your file...
+                  </h4>
+                  <p className="text-gray-600 mb-4">
+                    Please wait while we process and import your data
+                  </p>
+                </>
+              ) : (
+                <>
+                  <CloudUpload className="mx-auto h-16 w-16 text-gray-400 mb-4" />
+                  <h4 className="text-lg font-medium text-gray-900 mb-2">
+                    Drop files here or click to browse
+                  </h4>
+                  <p className="text-gray-600 mb-4">
+                    Supports CSV and XLSX files up to 10MB
+                  </p>
+                </>
+              )}
               <input
                 ref={fileInputRef}
                 type="file"
                 accept=".csv,.xlsx,.xls"
                 onChange={handleFileInput}
                 className="hidden"
+                disabled={uploadMutation.isPending}
               />
               <Button
                 onClick={() => fileInputRef.current?.click()}
                 disabled={uploadMutation.isPending}
               >
-                {uploadMutation.isPending ? "Uploading..." : "Select Files"}
+                {uploadMutation.isPending ? "Processing..." : "Select Files"}
               </Button>
             </div>
 
