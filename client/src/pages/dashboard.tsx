@@ -3,6 +3,7 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import Header from "@/components/layout/header";
 import SummaryCards from "@/components/dashboard/summary-cards";
 import MonthlyBreakdown from "@/components/dashboard/monthly-breakdown";
+import { MonthYearPicker } from "@/components/ui/month-year-picker";
 import { useAuth } from "@/hooks/useAuth";
 
 interface DashboardProps {
