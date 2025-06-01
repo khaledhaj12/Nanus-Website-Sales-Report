@@ -13,6 +13,7 @@ interface Order {
   customerName: string;
   customerEmail: string;
   cardLast4: string;
+  refundAmount: string;
   amount: string;
   status: string;
   orderDate: string;
@@ -184,6 +185,9 @@ export default function MonthlyBreakdown({ data, isLoading }: MonthlyBreakdownPr
                                       </div>
                                     )}
                                   </div>
+                                </TableCell>
+                                <TableCell className="text-red-600 font-medium">
+                                  {order.refundAmount ? formatCurrency(parseFloat(order.refundAmount)) : '-'}
                                 </TableCell>
                                 <TableCell className="font-semibold">
                                   {formatCurrency(parseFloat(order.amount))}

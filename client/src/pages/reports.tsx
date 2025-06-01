@@ -347,7 +347,11 @@ export default function Reports({ onMenuClick }: ReportsProps) {
                         <div className="flex-1">
                           <div className="font-medium">{order.orderId}</div>
                           <div className="text-sm text-gray-600">
-                            {order.customerName} • {formatCurrency(parseFloat(order.amount))} • {order.orderDate}
+                            {order.customerName} • 
+                            {order.refundAmount && parseFloat(order.refundAmount) > 0 && (
+                              <span className="text-red-600 font-medium"> Refund: {formatCurrency(parseFloat(order.refundAmount))} • </span>
+                            )}
+                            Amount: {formatCurrency(parseFloat(order.amount))} • {order.orderDate}
                           </div>
                           <div className="text-xs text-gray-500 mt-1">
                             Location: {locations.find((loc: any) => loc.id === order.locationId)?.name || 'Unknown'}
