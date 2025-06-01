@@ -291,7 +291,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       const breakdown = await storage.getMonthlyBreakdown(
-        parseInt(year as string) || new Date().getFullYear(),
+        undefined,
         locationId
       );
       res.json(breakdown);

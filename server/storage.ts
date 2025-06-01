@@ -297,8 +297,26 @@ export class DatabaseStorage implements IStorage {
       whereConditions.push(eq(orders.locationId, locationId));
     }
     
-    if (month) {
-      const [year, monthNum] = month.split('-');
+    // If no month is specified, get the latest month from the data
+    let targetMonth = month;
+    if (!targetMonth) {
+      const latestOrder = await db
+        .select({ orderDate: orders.orderDate })
+        .from(orders)
+        .where(whereConditions.length > 0 ? and(...whereConditions) : undefined)
+        .orderBy(desc(orders.orderDate))
+        .limit(1);
+      
+      if (latestOrder.length > 0) {
+        const latestDate = new Date(latestOrder[0].orderDate);
+        const year = latestDate.getFullYear();
+        const monthNum = latestDate.getMonth() + 1;
+        targetMonth = `${year}-${monthNum.toString().padStart(2, '0')}`;
+      }
+    }
+    
+    if (targetMonth) {
+      const [year, monthNum] = targetMonth.split('-');
       const startDate = `${year}-${monthNum}-01`;
       // Get the last day of the month properly
       const lastDay = new Date(parseInt(year), parseInt(monthNum), 0).getDate();
@@ -331,7 +349,7 @@ export class DatabaseStorage implements IStorage {
     };
   }
 
-  async getMonthlyBreakdown(year: number, locationId?: number): Promise<Array<{
+  async getMonthlyBreakdown(year?: number, locationId?: number): Promise<Array<{
     month: string;
     totalSales: number;
     totalOrders: number;
@@ -339,27 +357,45 @@ export class DatabaseStorage implements IStorage {
     netAmount: number;
     orders: Order[];
   }>> {
+    // Get distinct year-month combinations from actual data
+    let whereConditions: any[] = [];
+    if (locationId) {
+      whereConditions.push(eq(orders.locationId, locationId));
+    }
+
+    const distinctMonths = await db
+      .selectDistinct({
+        yearMonth: sql<string>`DATE_TRUNC('month', ${orders.orderDate}::date)::text`
+      })
+      .from(orders)
+      .where(whereConditions.length > 0 ? and(...whereConditions) : undefined)
+      .orderBy(sql`DATE_TRUNC('month', ${orders.orderDate}::date) DESC`);
+
     const months = [];
-    for (let month = 1; month <= 12; month++) {
+    
+    for (const { yearMonth } of distinctMonths) {
+      const monthDate = new Date(yearMonth);
+      const year = monthDate.getFullYear();
+      const month = monthDate.getMonth() + 1;
       const monthStr = month.toString().padStart(2, '0');
+      
       const startDate = `${year}-${monthStr}-01`;
-      // Get the last day of the month properly
       const lastDay = new Date(year, month, 0).getDate();
       const endDate = `${year}-${monthStr}-${lastDay.toString().padStart(2, '0')}`;
       
-      let whereConditions = [
+      let monthWhereConditions = [
         gte(orders.orderDate, startDate),
         lte(orders.orderDate, endDate)
       ];
       
       if (locationId) {
-        whereConditions.push(eq(orders.locationId, locationId));
+        monthWhereConditions.push(eq(orders.locationId, locationId));
       }
 
       const monthOrders = await db
         .select()
         .from(orders)
-        .where(and(...whereConditions))
+        .where(and(...monthWhereConditions))
         .orderBy(desc(orders.orderDate));
 
       const completedOrders = monthOrders.filter(order => order.status !== 'refunded');
@@ -369,16 +405,14 @@ export class DatabaseStorage implements IStorage {
       const totalRefunds = refundedOrders.reduce((sum, order) => sum + parseFloat(order.amount), 0);
       const netAmount = completedOrders.reduce((sum, order) => sum + parseFloat(order.netAmount), 0);
 
-      if (monthOrders.length > 0) {
-        months.push({
-          month: `${year}-${monthStr}`,
-          totalSales,
-          totalOrders: completedOrders.length,
-          totalRefunds,
-          netAmount,
-          orders: monthOrders,
-        });
-      }
+      months.push({
+        month: `${year}-${monthStr}`,
+        totalSales,
+        totalOrders: completedOrders.length,
+        totalRefunds,
+        netAmount,
+        orders: monthOrders,
+      });
     }
     
     return months;
