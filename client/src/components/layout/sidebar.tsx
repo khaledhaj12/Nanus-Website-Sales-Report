@@ -1,0 +1,146 @@
+import { useAuth } from "@/hooks/useAuth";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useLocation } from "wouter";
+import { apiRequest } from "@/lib/queryClient";
+import { useToast } from "@/hooks/use-toast";
+import { Button } from "@/components/ui/button";
+import {
+  BarChart3,
+  MapPin,
+  Upload,
+  Users,
+  PieChart,
+  LogOut,
+  Menu,
+  X,
+} from "lucide-react";
+import { cn } from "@/lib/utils";
+
+interface SidebarProps {
+  activeSection: string;
+  onSectionChange: (section: string) => void;
+  isOpen: boolean;
+  onToggle: () => void;
+}
+
+const navigationItems = [
+  { id: "dashboard", label: "Dashboard", icon: PieChart },
+  { id: "reports", label: "Reports", icon: BarChart3 },
+  { id: "locations", label: "Locations", icon: MapPin },
+  { id: "users", label: "User Access", icon: Users, adminOnly: true },
+  { id: "upload", label: "Upload Data", icon: Upload, adminOnly: true },
+];
+
+export default function Sidebar({ activeSection, onSectionChange, isOpen, onToggle }: SidebarProps) {
+  const { user, isAdmin } = useAuth();
+  const [, setLocation] = useLocation();
+  const { toast } = useToast();
+  const queryClient = useQueryClient();
+
+  const logoutMutation = useMutation({
+    mutationFn: async () => {
+      await apiRequest("POST", "/api/auth/logout");
+    },
+    onSuccess: () => {
+      queryClient.clear();
+      setLocation("/login");
+      toast({
+        title: "Success",
+        description: "Logged out successfully",
+      });
+    },
+    onError: () => {
+      toast({
+        title: "Error",
+        description: "Failed to logout",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const handleSectionChange = (section: string) => {
+    onSectionChange(section);
+    if (window.innerWidth < 768) {
+      onToggle(); // Close sidebar on mobile after selection
+    }
+  };
+
+  const filteredItems = navigationItems.filter(item => 
+    !item.adminOnly || isAdmin
+  );
+
+  return (
+    <>
+      {/* Mobile overlay */}
+      {isOpen && (
+        <div 
+          className="fixed inset-0 bg-black bg-opacity-50 z-40 md:hidden"
+          onClick={onToggle}
+        />
+      )}
+      
+      {/* Sidebar */}
+      <div className={cn(
+        "bg-white w-64 shadow-lg flex flex-col transition-transform duration-300 ease-in-out fixed md:relative z-50 h-full",
+        isOpen ? "translate-x-0" : "-translate-x-full md:translate-x-0"
+      )}>
+        {/* Header */}
+        <div className="p-6 border-b border-gray-200">
+          <div className="flex items-center justify-between">
+            <div>
+              <h1 className="text-xl font-bold text-gray-900">Import Website Sales</h1>
+              <p className="text-sm text-gray-600 mt-1">
+                {user?.role === 'admin' ? 'Administrator' : 'User'}
+              </p>
+            </div>
+            <Button
+              variant="ghost"
+              size="sm"
+              className="md:hidden"
+              onClick={onToggle}
+            >
+              <X className="h-5 w-5" />
+            </Button>
+          </div>
+        </div>
+        
+        {/* Navigation */}
+        <nav className="flex-1 p-4 space-y-2">
+          {filteredItems.map((item) => {
+            const Icon = item.icon;
+            const isActive = activeSection === item.id;
+            
+            return (
+              <button
+                key={item.id}
+                onClick={() => handleSectionChange(item.id)}
+                className={cn(
+                  "w-full flex items-center px-4 py-3 rounded-lg text-left transition-colors",
+                  isActive
+                    ? "text-blue-600 bg-blue-50"
+                    : "text-gray-700 hover:bg-gray-50"
+                )}
+              >
+                <Icon className="mr-3 h-5 w-5" />
+                {item.label}
+              </button>
+            );
+          })}
+        </nav>
+        
+        {/* Footer */}
+        <div className="p-4 border-t border-gray-200">
+          <Button
+            variant="ghost"
+            onClick={() => logoutMutation.mutate()}
+            disabled={logoutMutation.isPending}
+            className="w-full justify-start"
+          >
+            <LogOut className="mr-3 h-5 w-5" />
+            {logoutMutation.isPending ? "Signing Out..." : "Sign Out"}
+          </Button>
+        </div>
+      </div>
+    </>
+  );
+}
