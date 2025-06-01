@@ -458,12 +458,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Bulk delete orders (admin only)
   app.delete('/api/orders/bulk-delete', requireAdmin, async (req, res) => {
     try {
-      const { ids } = req.body;
-      if (!Array.isArray(ids) || ids.length === 0) {
+      const { orderIds } = req.body;
+      if (!Array.isArray(orderIds) || orderIds.length === 0) {
         return res.status(400).json({ message: "Invalid order IDs" });
       }
       
-      await storage.deleteOrders(ids);
+      // Ensure all IDs are valid integers
+      const validIds = orderIds.filter(id => !isNaN(parseInt(id))).map(id => parseInt(id));
+      if (validIds.length === 0) {
+        return res.status(400).json({ message: "No valid order IDs provided" });
+      }
+      
+      await storage.deleteOrders(validIds);
       res.json({ message: "Orders deleted successfully" });
     } catch (error: any) {
       console.error("Delete orders error:", error);
