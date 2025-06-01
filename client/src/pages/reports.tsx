@@ -322,28 +322,7 @@ export default function Reports({ onMenuClick }: ReportsProps) {
                 </div>
               </CardHeader>
               <CardContent>
-                {orders && orders.length > 0 && (
-                  <div className="flex items-center space-x-2 mb-4 p-3 bg-gray-50 rounded">
-                    <Checkbox
-                      checked={orders.length > 0 && selectedOrders.length === orders.length}
-                      onCheckedChange={(checked) => {
-                        if (checked) {
-                          setSelectedOrders(orders.map((order: any) => order.id));
-                        } else {
-                          setSelectedOrders([]);
-                        }
-                      }}
-                    />
-                    <span className="text-sm font-medium">
-                      Select All ({orders.length} orders)
-                    </span>
-                    {selectedOrders.length > 0 && (
-                      <span className="text-sm text-gray-600">
-                        - {selectedOrders.length} selected
-                      </span>
-                    )}
-                  </div>
-                )}
+
                 
                 <div className="overflow-x-auto">
                   <Table>
