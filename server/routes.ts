@@ -306,7 +306,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const userId = req.session.user.id;
       const userRole = req.session.user.role;
-      const { location } = req.query;
+      const { location, search, month } = req.query;
       
       let locationId: number | undefined;
       
@@ -320,15 +320,46 @@ export async function registerRoutes(app: Express): Promise<Server> {
           const allOrders = await Promise.all(
             userLocations.map(locId => storage.getOrdersByLocation(locId))
           );
-          return res.json(allOrders.flat());
+          let orders = allOrders.flat();
+          
+          // Apply search filter
+          if (search) {
+            orders = orders.filter(order => 
+              order.orderId.toLowerCase().includes(search.toLowerCase()) ||
+              order.customerName?.toLowerCase().includes(search.toLowerCase()) ||
+              order.customerEmail?.toLowerCase().includes(search.toLowerCase())
+            );
+          }
+          
+          // Apply month filter
+          if (month && month !== 'all') {
+            orders = orders.filter(order => order.orderDate.startsWith(month));
+          }
+          
+          return res.json(orders);
         }
       } else if (location && location !== 'all') {
         locationId = parseInt(location as string);
       }
 
-      const orders = locationId 
+      let orders = locationId 
         ? await storage.getOrdersByLocation(locationId)
         : await storage.getAllOrders();
+      
+      // Apply search filter
+      if (search) {
+        orders = orders.filter(order => 
+          order.orderId.toLowerCase().includes(search.toLowerCase()) ||
+          order.customerName?.toLowerCase().includes(search.toLowerCase()) ||
+          order.customerEmail?.toLowerCase().includes(search.toLowerCase())
+        );
+      }
+      
+      // Apply month filter
+      if (month && month !== 'all') {
+        orders = orders.filter(order => order.orderDate.startsWith(month));
+      }
+      
       res.json(orders);
     } catch (error) {
       console.error("Get orders error:", error);

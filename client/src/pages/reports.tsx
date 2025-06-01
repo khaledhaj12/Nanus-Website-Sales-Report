@@ -5,12 +5,13 @@ import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Input } from "@/components/ui/input";
 import Header from "@/components/layout/header";
 import { formatCurrency } from "@/lib/feeCalculations";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
-import { Trash2 } from "lucide-react";
+import { Trash2, Search } from "lucide-react";
 
 interface ReportsProps {
   onMenuClick: () => void;
@@ -22,16 +23,41 @@ export default function Reports({ onMenuClick }: ReportsProps) {
   const [selectedLocation, setSelectedLocation] = useState(isAdmin ? "all" : "");
   const [reportType, setReportType] = useState("summary");
   const [selectedOrders, setSelectedOrders] = useState<number[]>([]);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [orderLocationFilter, setOrderLocationFilter] = useState("all");
+  const [orderMonthFilter, setOrderMonthFilter] = useState("all");
   const { toast } = useToast();
 
   const { data: locations = [] } = useQuery({
     queryKey: ["/api/locations"],
   });
 
-  // Query for orders
+  // Query for orders with filters
   const { data: orders = [] } = useQuery({
-    queryKey: ["/api/orders"],
+    queryKey: ["/api/orders", orderLocationFilter, orderMonthFilter, searchQuery],
     enabled: reportType === "orders",
+    queryFn: async () => {
+      const params = new URLSearchParams();
+      if (orderLocationFilter && orderLocationFilter !== "all") {
+        params.append("location", orderLocationFilter);
+      }
+      if (searchQuery) {
+        params.append("search", searchQuery);
+      }
+      if (orderMonthFilter && orderMonthFilter !== "all") {
+        params.append("month", orderMonthFilter);
+      }
+      
+      const response = await fetch(`/api/orders?${params}`, {
+        credentials: "include",
+      });
+      
+      if (!response.ok) {
+        throw new Error("Failed to fetch orders");
+      }
+      
+      return response.json();
+    },
   });
 
   // Delete orders mutation
@@ -222,12 +248,92 @@ export default function Reports({ onMenuClick }: ReportsProps) {
                     </Button>
                   )}
                 </div>
+                
+                {/* Filters */}
+                <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mt-4">
+                  <div className="relative">
+                    <Search className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
+                    <Input
+                      placeholder="Search orders..."
+                      value={searchQuery}
+                      onChange={(e) => setSearchQuery(e.target.value)}
+                      className="pl-10"
+                    />
+                  </div>
+                  
+                  <Select value={orderLocationFilter} onValueChange={setOrderLocationFilter}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Filter by location" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">All Locations</SelectItem>
+                      {Array.isArray(locations) && locations.map((location: any) => (
+                        <SelectItem key={location.id} value={location.id.toString()}>
+                          {location.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  
+                  <Select value={orderMonthFilter} onValueChange={setOrderMonthFilter}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Filter by month" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">All Months</SelectItem>
+                      <SelectItem value="2025-06">June 2025</SelectItem>
+                      <SelectItem value="2025-05">May 2025</SelectItem>
+                      <SelectItem value="2025-04">April 2025</SelectItem>
+                      <SelectItem value="2025-03">March 2025</SelectItem>
+                      <SelectItem value="2025-02">February 2025</SelectItem>
+                      <SelectItem value="2025-01">January 2025</SelectItem>
+                      <SelectItem value="2024-12">December 2024</SelectItem>
+                      <SelectItem value="2024-11">November 2024</SelectItem>
+                      <SelectItem value="2024-10">October 2024</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  
+                  <Button 
+                    variant="outline" 
+                    onClick={() => {
+                      setSearchQuery("");
+                      setOrderLocationFilter("all");
+                      setOrderMonthFilter("all");
+                      setSelectedOrders([]);
+                    }}
+                  >
+                    Clear Filters
+                  </Button>
+                </div>
               </CardHeader>
               <CardContent>
+                {orders && orders.length > 0 && (
+                  <div className="flex items-center space-x-2 mb-4 p-3 bg-gray-50 rounded">
+                    <Checkbox
+                      checked={orders.length > 0 && selectedOrders.length === orders.length}
+                      onCheckedChange={(checked) => {
+                        if (checked) {
+                          setSelectedOrders(orders.map((order: any) => order.id));
+                        } else {
+                          setSelectedOrders([]);
+                        }
+                      }}
+                    />
+                    <span className="text-sm font-medium">
+                      Select All ({orders.length} orders)
+                    </span>
+                    {selectedOrders.length > 0 && (
+                      <span className="text-sm text-gray-600">
+                        - {selectedOrders.length} selected
+                      </span>
+                    )}
+                  </div>
+                )}
+                
                 <div className="space-y-4">
                   {orders && orders.length > 0 ? (
                     orders.map((order: any) => (
-                      <div key={order.id} className="flex items-center space-x-3 p-3 border rounded">
+                      <div key={order.id} className="flex items-center space-x-3 p-3 border rounded hover:bg-gray-50">
                         <Checkbox
                           checked={selectedOrders.includes(order.id)}
                           onCheckedChange={(checked) => {
@@ -242,6 +348,9 @@ export default function Reports({ onMenuClick }: ReportsProps) {
                           <div className="font-medium">{order.orderId}</div>
                           <div className="text-sm text-gray-600">
                             {order.customerName} • {formatCurrency(parseFloat(order.amount))} • {order.orderDate}
+                          </div>
+                          <div className="text-xs text-gray-500 mt-1">
+                            Location: {locations.find((loc: any) => loc.id === order.locationId)?.name || 'Unknown'}
                           </div>
                         </div>
                         <div className="text-sm">
