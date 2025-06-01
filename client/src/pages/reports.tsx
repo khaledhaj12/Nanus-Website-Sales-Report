@@ -30,7 +30,7 @@ export default function Reports({ onMenuClick }: ReportsProps) {
 
   // Query for orders
   const { data: orders = [] } = useQuery({
-    queryKey: ["/api/orders", selectedLocation, dateRange],
+    queryKey: ["/api/orders"],
     enabled: reportType === "orders",
   });
 
@@ -142,136 +142,68 @@ export default function Reports({ onMenuClick }: ReportsProps) {
           </TabsList>
 
           <TabsContent value="summary">
-            {/* Report Filters */}
             <Card className="mb-6">
               <CardHeader>
                 <CardTitle>Historical Reports</CardTitle>
               </CardHeader>
               <CardContent>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Date Range
-                </label>
-                <Select value={dateRange} onValueChange={setDateRange}>
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="last30days">Last 30 days</SelectItem>
-                    <SelectItem value="last3months">Last 3 months</SelectItem>
-                    <SelectItem value="last6months">Last 6 months</SelectItem>
-                    <SelectItem value="lastyear">Last year</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-              
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Location
-                </label>
-                <Select value={selectedLocation} onValueChange={setSelectedLocation}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select location" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {isAdmin && (
-                      <SelectItem value="all">All Locations</SelectItem>
-                    )}
-                    {locations.map((location: any) => (
-                      <SelectItem key={location.id} value={location.id.toString()}>
-                        {location.name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-              
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Report Type
-                </label>
-                <Select value={reportType} onValueChange={setReportType}>
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="summary">Summary Report</SelectItem>
-                    <SelectItem value="detailed">Detailed Transactions</SelectItem>
-                    <SelectItem value="fees">Fee Breakdown</SelectItem>
-                    <SelectItem value="refunds">Refund Analysis</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-            </div>
-            
-            <Button className="bg-blue-600 text-white hover:bg-blue-700">
-              Generate Report
-            </Button>
-          </CardContent>
-        </Card>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Date Range
+                    </label>
+                    <Select value={dateRange} onValueChange={setDateRange}>
+                      <SelectTrigger>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="last30days">Last 30 Days</SelectItem>
+                        <SelectItem value="last3months">Last 3 Months</SelectItem>
+                        <SelectItem value="last6months">Last 6 Months</SelectItem>
+                        <SelectItem value="lastyear">Last Year</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
 
-        {/* Report Results */}
-        {isLoading ? (
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-            {[1, 2, 3].map(i => (
-              <Card key={i} className="animate-pulse">
-                <CardContent className="p-6">
-                  <div className="h-20 bg-gray-200 rounded"></div>
-                </CardContent>
-              </Card>
-            ))}
-          </div>
-        ) : (
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-            {reportCards.map((card, index) => (
-              <Card key={index}>
-                <CardContent className="p-6">
-                  <h4 className="font-semibold text-gray-900 mb-4">{card.title}</h4>
-                  <p className={`text-2xl font-bold ${card.color} mb-2`}>
-                    {card.value}
-                  </p>
-                  <p className="text-sm text-gray-600">{card.subtitle}</p>
-                </CardContent>
-              </Card>
-            ))}
-          </div>
-        )}
+                  {isAdmin && (
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        Location
+                      </label>
+                      <Select value={selectedLocation} onValueChange={setSelectedLocation}>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Select location" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="all">All Locations</SelectItem>
+                          {Array.isArray(locations) && locations.map((location: any) => (
+                            <SelectItem key={location.id} value={location.id.toString()}>
+                              {location.name}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  )}
+                </div>
 
-        {/* Additional Statistics */}
-        <Card className="mt-6">
-          <CardHeader>
-            <CardTitle>Period Summary</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-              <div className="text-center">
-                <p className="text-2xl font-bold text-gray-900">
-                  {formatCurrency(reportData?.totalSales || 0)}
-                </p>
-                <p className="text-sm text-gray-600">Total Sales</p>
-              </div>
-              <div className="text-center">
-                <p className="text-2xl font-bold text-gray-900">
-                  {(reportData?.totalOrders || 0).toLocaleString()}
-                </p>
-                <p className="text-sm text-gray-600">Total Orders</p>
-              </div>
-              <div className="text-center">
-                <p className="text-2xl font-bold text-red-600">
-                  {formatCurrency(reportData?.totalRefunds || 0)}
-                </p>
-                <p className="text-sm text-gray-600">Total Refunds</p>
-              </div>
-              <div className="text-center">
-                <p className="text-2xl font-bold text-green-600">
-                  {formatCurrency(reportData?.netDeposit || 0)}
-                </p>
-                <p className="text-sm text-gray-600">Net Deposit</p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  {reportCards.map((card, index) => (
+                    <Card key={index}>
+                      <CardContent className="p-6">
+                        <div className="flex flex-col">
+                          <p className={`text-2xl font-bold ${card.color}`}>
+                            {isLoading ? "Loading..." : card.value}
+                          </p>
+                          <p className="text-sm text-gray-500 mt-1">{card.subtitle}</p>
+                          <p className="text-sm text-gray-600">{card.title}</p>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  ))}
+                </div>
+              </CardContent>
+            </Card>
           </TabsContent>
 
           <TabsContent value="orders">

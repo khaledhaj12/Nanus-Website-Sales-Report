@@ -45,6 +45,8 @@ export interface IStorage {
   createOrder(order: InsertOrder): Promise<Order>;
   updateOrder(id: number, order: Partial<InsertOrder>): Promise<Order>;
   deleteOrder(id: number): Promise<void>;
+  deleteOrders(ids: number[]): Promise<void>;
+  getAllOrders(locationId?: number): Promise<Order[]>;
   getOrdersByLocation(locationId: number): Promise<Order[]>;
   getOrdersByDateRange(startDate: string, endDate: string, locationId?: number): Promise<Order[]>;
   searchOrders(searchTerm: string, locationId?: number): Promise<Order[]>;
@@ -183,6 +185,17 @@ export class DatabaseStorage implements IStorage {
 
   async deleteOrder(id: number): Promise<void> {
     await db.delete(orders).where(eq(orders.id, id));
+  }
+
+  async deleteOrders(ids: number[]): Promise<void> {
+    await db.delete(orders).where(inArray(orders.id, ids));
+  }
+
+  async getAllOrders(locationId?: number): Promise<Order[]> {
+    if (locationId) {
+      return await db.select().from(orders).where(eq(orders.locationId, locationId)).orderBy(desc(orders.orderDate));
+    }
+    return await db.select().from(orders).orderBy(desc(orders.orderDate));
   }
 
   async getOrdersByLocation(locationId: number): Promise<Order[]> {

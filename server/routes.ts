@@ -302,6 +302,40 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Orders routes
+  app.get('/api/orders', requireAuth, async (req: any, res) => {
+    try {
+      const userId = req.session.user.id;
+      const userRole = req.session.user.role;
+      const { location } = req.query;
+      
+      let locationId: number | undefined;
+      
+      // For non-admin users, restrict to their assigned locations
+      if (userRole !== 'admin') {
+        const userLocations = await storage.getUserLocationAccess(userId);
+        if (location && userLocations.includes(parseInt(location as string))) {
+          locationId = parseInt(location as string);
+        } else if (!location && userLocations.length > 0) {
+          // If no location specified, get orders from all user's locations
+          const allOrders = await Promise.all(
+            userLocations.map(locId => storage.getOrdersByLocation(locId))
+          );
+          return res.json(allOrders.flat());
+        }
+      } else if (location && location !== 'all') {
+        locationId = parseInt(location as string);
+      }
+
+      const orders = locationId 
+        ? await storage.getOrdersByLocation(locationId)
+        : await storage.getAllOrders();
+      res.json(orders);
+    } catch (error) {
+      console.error("Get orders error:", error);
+      res.status(500).json({ message: "Failed to fetch orders" });
+    }
+  });
+
   app.get('/api/orders/search', requireAuth, async (req: any, res) => {
     try {
       const { q, location } = req.query;
@@ -357,6 +391,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Delete order error:", error);
       res.status(500).json({ message: "Failed to delete order" });
+    }
+  });
+
+  // Bulk delete orders (admin only)
+  app.delete('/api/orders/bulk-delete', requireAdmin, async (req, res) => {
+    try {
+      const { ids } = req.body;
+      if (!Array.isArray(ids) || ids.length === 0) {
+        return res.status(400).json({ message: "Invalid order IDs" });
+      }
+      
+      await storage.deleteOrders(ids);
+      res.json({ message: "Orders deleted successfully" });
+    } catch (error: any) {
+      console.error("Delete orders error:", error);
+      res.status(500).json({ message: "Failed to delete orders" });
     }
   });
 
