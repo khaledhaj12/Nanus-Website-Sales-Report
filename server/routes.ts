@@ -542,13 +542,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.put('/api/users/:id', requireAdmin, async (req, res) => {
     try {
       const userId = parseInt(req.params.id);
+      if (isNaN(userId)) {
+        return res.status(400).json({ message: "Invalid user ID" });
+      }
+
       const updateData = insertUserSchema.partial().parse(req.body);
       
       const user = await storage.updateUser(userId, updateData);
       
       // Set location access if provided
       if (req.body.locationIds && Array.isArray(req.body.locationIds)) {
-        await storage.setUserLocationAccess(userId, req.body.locationIds);
+        const locationIds = req.body.locationIds.map((id: any) => parseInt(id)).filter((id: number) => !isNaN(id));
+        await storage.setUserLocationAccess(userId, locationIds);
       }
       
       const { password, ...safeUser } = user;
