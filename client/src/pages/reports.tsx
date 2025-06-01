@@ -327,29 +327,38 @@ export default function Reports({ onMenuClick }: ReportsProps) {
                   <CardTitle>Monthly Breakdown</CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <div className="overflow-x-auto">
-                    <Table>
-                      <TableHeader>
-                        <TableRow>
-                          <TableHead>Month</TableHead>
-                          <TableHead>Orders</TableHead>
-                          <TableHead>Sales</TableHead>
-                          <TableHead>Refunds</TableHead>
-                          <TableHead>Net Amount</TableHead>
-                        </TableRow>
-                      </TableHeader>
-                      <TableBody>
-                        {monthlyBreakdown.map((month: any) => (
-                          <TableRow key={month.month}>
-                            <TableCell className="font-medium">{month.month}</TableCell>
-                            <TableCell>{month.totalOrders}</TableCell>
-                            <TableCell>{formatCurrency(month.totalSales)}</TableCell>
-                            <TableCell className="text-red-600">{formatCurrency(month.totalRefunds)}</TableCell>
-                            <TableCell className="font-medium">{formatCurrency(month.netAmount)}</TableCell>
-                          </TableRow>
-                        ))}
-                      </TableBody>
-                    </Table>
+                  <div className="space-y-4">
+                    {monthlyBreakdown.map((month: any) => (
+                      <div key={month.month} className="border rounded-lg p-4">
+                        <h3 className="font-medium text-lg mb-3">{month.month}</h3>
+                        <div className="grid grid-cols-2 md:grid-cols-6 gap-4">
+                          <div className="text-center">
+                            <div className="text-sm text-gray-500 mb-1">Sales</div>
+                            <div className="text-lg font-semibold">{formatCurrency(month.totalSales)}</div>
+                          </div>
+                          <div className="text-center">
+                            <div className="text-sm text-gray-500 mb-1">Orders</div>
+                            <div className="text-lg font-semibold">{month.totalOrders}</div>
+                          </div>
+                          <div className="text-center">
+                            <div className="text-sm text-gray-500 mb-1">Platform</div>
+                            <div className="text-lg font-semibold text-yellow-600">{formatCurrency(month.totalSales * 0.07)}</div>
+                          </div>
+                          <div className="text-center">
+                            <div className="text-sm text-gray-500 mb-1">Stripe</div>
+                            <div className="text-lg font-semibold text-blue-600">{formatCurrency((month.totalSales * 0.029) + (month.totalOrders * 0.30))}</div>
+                          </div>
+                          <div className="text-center">
+                            <div className="text-sm text-gray-500 mb-1">Refunds</div>
+                            <div className="text-lg font-semibold text-red-600">{formatCurrency(month.totalRefunds)}</div>
+                          </div>
+                          <div className="text-center">
+                            <div className="text-sm text-gray-500 mb-1">Net</div>
+                            <div className="text-lg font-semibold text-green-600">{formatCurrency(month.netAmount)}</div>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
                   </div>
                 </CardContent>
               </Card>
