@@ -369,7 +369,7 @@ export class DatabaseStorage implements IStorage {
       })
       .from(orders)
       .where(whereConditions.length > 0 ? and(...whereConditions) : undefined)
-      .orderBy(sql`DATE_TRUNC('month', ${orders.orderDate}::date) DESC`);
+      .orderBy(sql<string>`DATE_TRUNC('month', ${orders.orderDate}::date) DESC`);
 
     const months = [];
     
