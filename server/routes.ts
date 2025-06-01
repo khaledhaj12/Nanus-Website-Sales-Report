@@ -444,18 +444,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.delete('/api/orders/:id', requireAdmin, async (req, res) => {
-    try {
-      const orderId = parseInt(req.params.id);
-      await storage.deleteOrder(orderId);
-      res.json({ message: "Order deleted successfully" });
-    } catch (error) {
-      console.error("Delete order error:", error);
-      res.status(500).json({ message: "Failed to delete order" });
-    }
-  });
-
-  // Bulk delete orders (admin only)
+  // Bulk delete orders (admin only) - MUST come before single delete route
   app.delete('/api/orders/bulk-delete', requireAdmin, async (req, res) => {
     try {
       const { orderIds } = req.body;
@@ -481,6 +470,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error: any) {
       console.error("Delete orders error:", error);
       res.status(500).json({ message: "Failed to delete orders" });
+    }
+  });
+
+  app.delete('/api/orders/:id', requireAdmin, async (req, res) => {
+    try {
+      const orderId = parseInt(req.params.id);
+      await storage.deleteOrder(orderId);
+      res.json({ message: "Order deleted successfully" });
+    } catch (error) {
+      console.error("Delete order error:", error);
+      res.status(500).json({ message: "Failed to delete order" });
     }
   });
 
