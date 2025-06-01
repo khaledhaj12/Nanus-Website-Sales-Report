@@ -49,6 +49,8 @@ interface UsersProps {
 export default function Users({ onMenuClick }: UsersProps) {
   const [isUserModalOpen, setIsUserModalOpen] = useState(false);
   const [editingUser, setEditingUser] = useState<any>(null);
+  const { toast } = useToast();
+  const queryClient = useQueryClient();
   
   const { data: users = [], isLoading } = useQuery({
     queryKey: ["/api/users"],
@@ -57,6 +59,32 @@ export default function Users({ onMenuClick }: UsersProps) {
   const { data: locations = [] } = useQuery({
     queryKey: ["/api/locations"],
   });
+
+  const deleteUserMutation = useMutation({
+    mutationFn: async (userId: number) => {
+      await apiRequest("DELETE", `/api/users/${userId}`);
+    },
+    onSuccess: () => {
+      toast({
+        title: "Success",
+        description: "User deleted successfully",
+      });
+      queryClient.invalidateQueries({ queryKey: ["/api/users"] });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Error", 
+        description: error.message || "Failed to delete user",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const handleDeleteUser = (user: any) => {
+    if (confirm(`Are you sure you want to delete user "${user.username}"? This action cannot be undone.`)) {
+      deleteUserMutation.mutate(user.id);
+    }
+  };
 
   if (isLoading) {
     return (
@@ -135,6 +163,15 @@ export default function Users({ onMenuClick }: UsersProps) {
                         }}
                       >
                         <Edit className="h-4 w-4" />
+                      </Button>
+                      <Button 
+                        variant="ghost" 
+                        size="sm"
+                        onClick={() => handleDeleteUser(user)}
+                        disabled={deleteUserMutation.isPending}
+                        className="text-red-600 hover:text-red-700 hover:bg-red-50"
+                      >
+                        <Trash2 className="h-4 w-4" />
                       </Button>
                     </div>
                   </div>
