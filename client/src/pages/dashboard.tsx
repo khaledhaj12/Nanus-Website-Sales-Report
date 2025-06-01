@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import Header from "@/components/layout/header";
 import SummaryCards from "@/components/dashboard/summary-cards";
 import MonthlyBreakdown from "@/components/dashboard/monthly-breakdown";
@@ -11,11 +11,14 @@ interface DashboardProps {
 
 export default function Dashboard({ onMenuClick }: DashboardProps) {
   const { isAdmin } = useAuth();
+  const queryClient = useQueryClient();
   const currentDate = new Date();
   const currentMonth = `${currentDate.getFullYear()}-${(currentDate.getMonth() + 1).toString().padStart(2, '0')}`;
   
   const [selectedMonth, setSelectedMonth] = useState(currentMonth);
   const [selectedLocation, setSelectedLocation] = useState(isAdmin ? "all" : "");
+
+
 
   // Fetch dashboard summary
   const { data: summary, isLoading: summaryLoading } = useQuery({
