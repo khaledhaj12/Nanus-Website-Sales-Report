@@ -459,12 +459,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.delete('/api/orders/bulk-delete', requireAdmin, async (req, res) => {
     try {
       const { orderIds } = req.body;
+      console.log("Received orderIds:", orderIds);
+      
       if (!Array.isArray(orderIds) || orderIds.length === 0) {
         return res.status(400).json({ message: "Invalid order IDs" });
       }
       
       // Ensure all IDs are valid integers
-      const validIds = orderIds.filter(id => !isNaN(parseInt(id))).map(id => parseInt(id));
+      const validIds = orderIds
+        .filter(id => id !== null && id !== undefined && !isNaN(Number(id)))
+        .map(id => Number(id));
+      
+      console.log("Valid IDs:", validIds);
+      
       if (validIds.length === 0) {
         return res.status(400).json({ message: "No valid order IDs provided" });
       }

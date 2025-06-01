@@ -184,10 +184,26 @@ export class DatabaseStorage implements IStorage {
   }
 
   async deleteOrder(id: number): Promise<void> {
+    console.log("Deleting single order with ID:", id, "Type:", typeof id);
+    if (isNaN(id) || id === null || id === undefined) {
+      throw new Error(`Invalid order ID: ${id}`);
+    }
     await db.delete(orders).where(eq(orders.id, id));
   }
 
   async deleteOrders(ids: number[]): Promise<void> {
+    console.log("Deleting multiple orders with IDs:", ids);
+    if (!Array.isArray(ids) || ids.length === 0) {
+      throw new Error("Invalid IDs array");
+    }
+    
+    // Validate all IDs
+    for (const id of ids) {
+      if (isNaN(id) || id === null || id === undefined) {
+        throw new Error(`Invalid order ID in array: ${id}`);
+      }
+    }
+    
     await db.delete(orders).where(inArray(orders.id, ids));
   }
 
