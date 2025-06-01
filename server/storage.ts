@@ -306,6 +306,10 @@ export class DatabaseStorage implements IStorage {
       throw new Error(`Cannot delete locations with existing orders. Location IDs: ${usedLocationIds.join(', ')}`);
     }
 
+    // First delete user location access records for these locations
+    await db.delete(userLocationAccess).where(inArray(userLocationAccess.locationId, ids));
+    
+    // Then delete the locations
     await db.delete(locations).where(inArray(locations.id, ids));
   }
 
