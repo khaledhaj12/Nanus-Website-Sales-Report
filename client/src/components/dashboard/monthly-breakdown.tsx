@@ -142,30 +142,30 @@ export default function MonthlyBreakdown({ data, isLoading }: MonthlyBreakdownPr
                       </div>
                     </div>
                     
-                    <div className="grid grid-cols-6 gap-3 text-right text-sm flex-shrink-0 ml-4">
+                    <div className="grid grid-cols-6 gap-6 text-center text-sm flex-shrink-0 ml-6">
                       <div>
+                        <p className="text-xs text-gray-500 mb-1">Sales</p>
                         <p className="font-semibold text-gray-900">{formatCurrency(monthData.totalSales)}</p>
-                        <p className="text-xs text-gray-500">Sales</p>
                       </div>
                       <div>
+                        <p className="text-xs text-gray-500 mb-1">Orders</p>
                         <p className="font-medium text-gray-700">{monthData.totalOrders}</p>
-                        <p className="text-xs text-gray-500">Orders</p>
                       </div>
                       <div>
+                        <p className="text-xs text-gray-500 mb-1">Platform</p>
                         <p className="font-medium text-yellow-600">{formatCurrency(monthData.totalSales * 0.07)}</p>
-                        <p className="text-xs text-gray-500">Platform</p>
                       </div>
                       <div>
+                        <p className="text-xs text-gray-500 mb-1">Stripe</p>
                         <p className="font-medium text-blue-600">{formatCurrency((monthData.totalSales * 0.029) + (monthData.totalOrders * 0.30))}</p>
-                        <p className="text-xs text-gray-500">Stripe</p>
                       </div>
                       <div>
+                        <p className="text-xs text-gray-500 mb-1">Refunds</p>
                         <p className="font-medium text-red-600">{formatCurrency(monthData.totalRefunds)}</p>
-                        <p className="text-xs text-gray-500">Refunds</p>
                       </div>
                       <div>
+                        <p className="text-xs text-gray-500 mb-1">Net</p>
                         <p className="font-semibold text-green-600">{formatCurrency(monthData.netAmount)}</p>
-                        <p className="text-xs text-gray-500">Net</p>
                       </div>
                     </div>
                   </div>
