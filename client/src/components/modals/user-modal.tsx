@@ -40,23 +40,34 @@ export default function UserModal({ isOpen, onClose, editingUser }: UserModalPro
     enabled: !!editingUser?.id && isOpen,
   });
 
-  // Initialize form data when editing user changes
+  // Initialize form when modal opens
   useEffect(() => {
-    if (editingUser) {
-      setFormData({
-        firstName: editingUser.firstName || "",
-        lastName: editingUser.lastName || "",
-        username: editingUser.username || "",
-        password: "",
-        email: editingUser.email || "",
-        phoneNumber: editingUser.phoneNumber || "",
-        role: editingUser.role || "user",
-        locationIds: Array.isArray(userLocations) ? userLocations : [],
-      });
-    } else {
-      resetForm();
+    if (isOpen) {
+      if (editingUser) {
+        setFormData({
+          firstName: editingUser.firstName || "",
+          lastName: editingUser.lastName || "",
+          username: editingUser.username || "",
+          password: "",
+          email: editingUser.email || "",
+          phoneNumber: editingUser.phoneNumber || "",
+          role: editingUser.role || "user",
+          locationIds: Array.isArray(userLocations) ? userLocations : [],
+        });
+      } else {
+        setFormData({
+          firstName: "",
+          lastName: "",
+          username: "",
+          password: "",
+          email: "",
+          phoneNumber: "",
+          role: "user",
+          locationIds: [],
+        });
+      }
     }
-  }, [editingUser, userLocations]);
+  }, [isOpen, editingUser, userLocations]);
 
   const createUserMutation = useMutation({
     mutationFn: async (userData: typeof formData) => {
@@ -70,7 +81,6 @@ export default function UserModal({ isOpen, onClose, editingUser }: UserModalPro
       });
       queryClient.invalidateQueries({ queryKey: ["/api/users"] });
       onClose();
-      resetForm();
     },
     onError: (error) => {
       toast({
@@ -82,7 +92,7 @@ export default function UserModal({ isOpen, onClose, editingUser }: UserModalPro
   });
 
   const updateUserMutation = useMutation({
-    mutationFn: async (userData: typeof formData) => {
+    mutationFn: async (userData: any) => {
       const response = await apiRequest("PUT", `/api/users/${editingUser.id}`, userData);
       return response.json();
     },
@@ -93,7 +103,6 @@ export default function UserModal({ isOpen, onClose, editingUser }: UserModalPro
       });
       queryClient.invalidateQueries({ queryKey: ["/api/users"] });
       onClose();
-      resetForm();
     },
     onError: (error) => {
       toast({
@@ -103,19 +112,6 @@ export default function UserModal({ isOpen, onClose, editingUser }: UserModalPro
       });
     },
   });
-
-  const resetForm = () => {
-    setFormData({
-      firstName: "",
-      lastName: "",
-      username: "",
-      password: "",
-      email: "",
-      phoneNumber: "",
-      role: "user",
-      locationIds: [],
-    });
-  };
 
   const handleLocationChange = (locationId: number, checked: boolean) => {
     setFormData(prev => ({
@@ -141,24 +137,20 @@ export default function UserModal({ isOpen, onClose, editingUser }: UserModalPro
     }
 
     if (editingUser) {
-      // Don't send password if it's empty (no change)
       const updateData = { ...formData };
       if (!updateData.password) {
-        delete updateData.password;
+        const { password, ...dataWithoutPassword } = updateData;
+        updateUserMutation.mutate(dataWithoutPassword);
+      } else {
+        updateUserMutation.mutate(updateData);
       }
-      updateUserMutation.mutate(updateData);
     } else {
       createUserMutation.mutate(formData);
     }
   };
 
-  const handleClose = () => {
-    onClose();
-    resetForm();
-  };
-
   return (
-    <Dialog open={isOpen} onOpenChange={handleClose}>
+    <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent className="w-full max-w-lg mx-4">
         <DialogHeader>
           <DialogTitle>{editingUser ? "Edit User" : "Add New User"}</DialogTitle>
@@ -207,23 +199,46 @@ export default function UserModal({ isOpen, onClose, editingUser }: UserModalPro
               placeholder="Email address"
             />
           </div>
+
+          <div>
+            <Label htmlFor="phoneNumber">Phone Number</Label>
+            <Input
+              id="phoneNumber"
+              value={formData.phoneNumber}
+              onChange={(e) => setFormData(prev => ({ ...prev, phoneNumber: e.target.value }))}
+              placeholder="Phone number"
+            />
+          </div>
           
           <div>
-            <Label htmlFor="password">Password *</Label>
+            <Label htmlFor="password">Password {editingUser ? "(leave blank to keep current)" : "*"}</Label>
             <Input
               id="password"
               type="password"
               value={formData.password}
               onChange={(e) => setFormData(prev => ({ ...prev, password: e.target.value }))}
               placeholder="Password"
-              required
+              required={!editingUser}
             />
+          </div>
+
+          <div>
+            <Label htmlFor="role">Role</Label>
+            <Select value={formData.role} onValueChange={(value) => setFormData(prev => ({ ...prev, role: value }))}>
+              <SelectTrigger>
+                <SelectValue placeholder="Select role" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="user">User</SelectItem>
+                <SelectItem value="admin">Admin</SelectItem>
+              </SelectContent>
+            </Select>
           </div>
           
           <div>
             <Label>Location Access</Label>
-            <div className="space-y-2 mt-2">
-              {locations.map((location: any) => (
+            <div className="space-y-2 mt-2 max-h-32 overflow-y-auto">
+              {Array.isArray(locations) && locations.map((location: any) => (
                 <div key={location.id} className="flex items-center space-x-2">
                   <Checkbox
                     id={`location-${location.id}`}
@@ -240,6 +255,9 @@ export default function UserModal({ isOpen, onClose, editingUser }: UserModalPro
                   </Label>
                 </div>
               ))}
+              {(!Array.isArray(locations) || locations.length === 0) && (
+                <p className="text-sm text-gray-500">No locations available</p>
+              )}
             </div>
           </div>
           
@@ -247,17 +265,19 @@ export default function UserModal({ isOpen, onClose, editingUser }: UserModalPro
             <Button
               type="button"
               variant="outline"
-              onClick={handleClose}
+              onClick={onClose}
               className="flex-1"
             >
               Cancel
             </Button>
             <Button
               type="submit"
-              disabled={createUserMutation.isPending}
+              disabled={createUserMutation.isPending || updateUserMutation.isPending}
               className="flex-1"
             >
-              {createUserMutation.isPending ? "Creating..." : "Add User"}
+              {createUserMutation.isPending || updateUserMutation.isPending 
+                ? (editingUser ? "Updating..." : "Creating...") 
+                : (editingUser ? "Update User" : "Add User")}
             </Button>
           </div>
         </form>

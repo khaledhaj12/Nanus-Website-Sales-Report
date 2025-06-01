@@ -124,7 +124,14 @@ export default function Users({ onMenuClick }: UsersProps) {
                       <Badge className={getRoleBadgeStyle(user.role)}>
                         {getRoleLabel(user.role)}
                       </Badge>
-                      <Button variant="ghost" size="sm">
+                      <Button 
+                        variant="ghost" 
+                        size="sm"
+                        onClick={() => {
+                          setEditingUser(user);
+                          setIsUserModalOpen(true);
+                        }}
+                      >
                         <Edit className="h-4 w-4" />
                       </Button>
                     </div>
@@ -138,7 +145,11 @@ export default function Users({ onMenuClick }: UsersProps) {
 
       <UserModal 
         isOpen={isUserModalOpen}
-        onClose={() => setIsUserModalOpen(false)}
+        onClose={() => {
+          setIsUserModalOpen(false);
+          setEditingUser(null);
+        }}
+        editingUser={editingUser}
       />
     </div>
   );
