@@ -6,6 +6,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Checkbox } from "@/components/ui/checkbox";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Input } from "@/components/ui/input";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Badge } from "@/components/ui/badge";
 import Header from "@/components/layout/header";
 import { formatCurrency } from "@/lib/feeCalculations";
 import { useAuth } from "@/hooks/useAuth";
@@ -63,7 +65,20 @@ export default function Reports({ onMenuClick }: ReportsProps) {
   // Delete orders mutation
   const deleteOrdersMutation = useMutation({
     mutationFn: async (orderIds: number[]) => {
-      await apiRequest(`/api/orders/bulk-delete`, "DELETE", { ids: orderIds });
+      const response = await fetch(`/api/orders/bulk-delete`, {
+        method: "DELETE",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        credentials: "include",
+        body: JSON.stringify({ orderIds }),
+      });
+      
+      if (!response.ok) {
+        throw new Error("Failed to delete orders");
+      }
+      
+      return response.json();
     },
     onSuccess: () => {
       toast({
@@ -330,45 +345,88 @@ export default function Reports({ onMenuClick }: ReportsProps) {
                   </div>
                 )}
                 
-                <div className="space-y-4">
-                  {orders && orders.length > 0 ? (
-                    orders.map((order: any) => (
-                      <div key={order.id} className="flex items-center space-x-3 p-3 border rounded hover:bg-gray-50">
-                        <Checkbox
-                          checked={selectedOrders.includes(order.id)}
-                          onCheckedChange={(checked) => {
-                            if (checked) {
-                              setSelectedOrders([...selectedOrders, order.id]);
-                            } else {
-                              setSelectedOrders(selectedOrders.filter(id => id !== order.id));
-                            }
-                          }}
-                        />
-                        <div className="flex-1">
-                          <div className="font-medium">{order.orderId}</div>
-                          <div className="text-sm text-gray-600">
-                            {order.customerName} • 
-                            {order.refundAmount && parseFloat(order.refundAmount) > 0 && (
-                              <span className="text-red-600 font-medium"> Refund: {formatCurrency(parseFloat(order.refundAmount))} • </span>
-                            )}
-                            Amount: {formatCurrency(parseFloat(order.amount))} • {order.orderDate}
-                          </div>
-                          <div className="text-xs text-gray-500 mt-1">
-                            Location: {locations.find((loc: any) => loc.id === order.locationId)?.name || 'Unknown'}
-                          </div>
-                        </div>
-                        <div className="text-sm">
-                          <span className={`px-2 py-1 rounded text-xs ${
-                            order.status === 'completed' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
-                          }`}>
-                            {order.status}
-                          </span>
-                        </div>
-                      </div>
-                    ))
-                  ) : (
-                    <p className="text-gray-500 text-center py-8">No orders found</p>
-                  )}
+                <div className="overflow-x-auto">
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead className="w-12">
+                          <Checkbox
+                            checked={orders.length > 0 && selectedOrders.length === orders.length}
+                            onCheckedChange={(checked) => {
+                              if (checked) {
+                                setSelectedOrders(orders.map((order: any) => order.id));
+                              } else {
+                                setSelectedOrders([]);
+                              }
+                            }}
+                          />
+                        </TableHead>
+                        <TableHead>Order ID</TableHead>
+                        <TableHead>Date</TableHead>
+                        <TableHead>Customer</TableHead>
+                        <TableHead>Refund</TableHead>
+                        <TableHead>Amount</TableHead>
+                        <TableHead>Location</TableHead>
+                        <TableHead>Status</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {orders && orders.length > 0 ? (
+                        orders.map((order: any) => (
+                          <TableRow key={order.id}>
+                            <TableCell>
+                              <Checkbox
+                                checked={selectedOrders.includes(order.id)}
+                                onCheckedChange={(checked) => {
+                                  if (checked) {
+                                    setSelectedOrders([...selectedOrders, order.id]);
+                                  } else {
+                                    setSelectedOrders(selectedOrders.filter(id => id !== order.id));
+                                  }
+                                }}
+                              />
+                            </TableCell>
+                            <TableCell className="font-mono text-blue-600">
+                              {order.orderId}
+                            </TableCell>
+                            <TableCell>
+                              {new Date(order.orderDate).toLocaleDateString()}
+                            </TableCell>
+                            <TableCell>
+                              <div>
+                                <div>{order.customerName || 'N/A'}</div>
+                                {order.cardLast4 && (
+                                  <div className="text-sm text-gray-500">
+                                    **{order.cardLast4}
+                                  </div>
+                                )}
+                              </div>
+                            </TableCell>
+                            <TableCell className="text-red-600 font-medium">
+                              {order.refundAmount ? formatCurrency(parseFloat(order.refundAmount)) : '-'}
+                            </TableCell>
+                            <TableCell className="font-semibold">
+                              {formatCurrency(parseFloat(order.amount))}
+                            </TableCell>
+                            <TableCell className="text-sm">
+                              {Array.isArray(locations) ? locations.find((loc: any) => loc.id === order.locationId)?.name || 'Unknown' : 'Unknown'}
+                            </TableCell>
+                            <TableCell>
+                              <Badge className={order.status === 'completed' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}>
+                                {order.status.charAt(0).toUpperCase() + order.status.slice(1)}
+                              </Badge>
+                            </TableCell>
+                          </TableRow>
+                        ))
+                      ) : (
+                        <TableRow>
+                          <TableCell colSpan={8} className="text-center text-gray-500 py-8">
+                            No orders found
+                          </TableCell>
+                        </TableRow>
+                      )}
+                    </TableBody>
+                  </Table>
                 </div>
               </CardContent>
             </Card>
