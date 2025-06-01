@@ -11,15 +11,18 @@ import { apiRequest } from "@/lib/queryClient";
 interface UserModalProps {
   isOpen: boolean;
   onClose: () => void;
+  editingUser?: any;
 }
 
-export default function UserModal({ isOpen, onClose }: UserModalProps) {
+export default function UserModal({ isOpen, onClose, editingUser }: UserModalProps) {
   const [formData, setFormData] = useState({
     firstName: "",
     lastName: "",
     username: "",
     password: "",
     email: "",
+    phoneNumber: "",
+    role: "user",
     locationIds: [] as number[],
   });
 
@@ -30,6 +33,29 @@ export default function UserModal({ isOpen, onClose }: UserModalProps) {
     queryKey: ["/api/locations"],
     enabled: isOpen,
   });
+
+  const { data: userLocations = [] } = useQuery({
+    queryKey: ["/api/users", editingUser?.id, "locations"],
+    enabled: !!editingUser?.id && isOpen,
+  });
+
+  // Initialize form data when editing user changes
+  React.useEffect(() => {
+    if (editingUser) {
+      setFormData({
+        firstName: editingUser.firstName || "",
+        lastName: editingUser.lastName || "",
+        username: editingUser.username || "",
+        password: "",
+        email: editingUser.email || "",
+        phoneNumber: editingUser.phoneNumber || "",
+        role: editingUser.role || "user",
+        locationIds: userLocations || [],
+      });
+    } else {
+      resetForm();
+    }
+  }, [editingUser, userLocations]);
 
   const createUserMutation = useMutation({
     mutationFn: async (userData: typeof formData) => {
@@ -49,6 +75,29 @@ export default function UserModal({ isOpen, onClose }: UserModalProps) {
       toast({
         title: "Error",
         description: error.message || "Failed to create user",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const updateUserMutation = useMutation({
+    mutationFn: async (userData: typeof formData) => {
+      const response = await apiRequest("PUT", `/api/users/${editingUser.id}`, userData);
+      return response.json();
+    },
+    onSuccess: () => {
+      toast({
+        title: "Success",
+        description: "User updated successfully",
+      });
+      queryClient.invalidateQueries({ queryKey: ["/api/users"] });
+      onClose();
+      resetForm();
+    },
+    onError: (error) => {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to update user",
         variant: "destructive",
       });
     },

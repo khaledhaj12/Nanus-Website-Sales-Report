@@ -539,6 +539,26 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  app.put('/api/users/:id', requireAdmin, async (req, res) => {
+    try {
+      const userId = parseInt(req.params.id);
+      const updateData = insertUserSchema.partial().parse(req.body);
+      
+      const user = await storage.updateUser(userId, updateData);
+      
+      // Set location access if provided
+      if (req.body.locationIds && Array.isArray(req.body.locationIds)) {
+        await storage.setUserLocationAccess(userId, req.body.locationIds);
+      }
+      
+      const { password, ...safeUser } = user;
+      res.json(safeUser);
+    } catch (error) {
+      console.error("Update user error:", error);
+      res.status(500).json({ message: "Failed to update user" });
+    }
+  });
+
   app.get('/api/users/:id/locations', requireAdmin, async (req, res) => {
     try {
       const userId = parseInt(req.params.id);
