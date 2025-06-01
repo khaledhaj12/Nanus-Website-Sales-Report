@@ -1,10 +1,11 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
 
@@ -40,7 +41,7 @@ export default function UserModal({ isOpen, onClose, editingUser }: UserModalPro
   });
 
   // Initialize form data when editing user changes
-  React.useEffect(() => {
+  useEffect(() => {
     if (editingUser) {
       setFormData({
         firstName: editingUser.firstName || "",
@@ -50,7 +51,7 @@ export default function UserModal({ isOpen, onClose, editingUser }: UserModalPro
         email: editingUser.email || "",
         phoneNumber: editingUser.phoneNumber || "",
         role: editingUser.role || "user",
-        locationIds: userLocations || [],
+        locationIds: Array.isArray(userLocations) ? userLocations : [],
       });
     } else {
       resetForm();
@@ -110,6 +111,8 @@ export default function UserModal({ isOpen, onClose, editingUser }: UserModalPro
       username: "",
       password: "",
       email: "",
+      phoneNumber: "",
+      role: "user",
       locationIds: [],
     });
   };
@@ -126,16 +129,27 @@ export default function UserModal({ isOpen, onClose, editingUser }: UserModalPro
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (!formData.username || !formData.password) {
+    if (!formData.username || (!editingUser && !formData.password)) {
       toast({
         title: "Error",
-        description: "Username and password are required",
+        description: editingUser 
+          ? "Username is required" 
+          : "Username and password are required",
         variant: "destructive",
       });
       return;
     }
 
-    createUserMutation.mutate(formData);
+    if (editingUser) {
+      // Don't send password if it's empty (no change)
+      const updateData = { ...formData };
+      if (!updateData.password) {
+        delete updateData.password;
+      }
+      updateUserMutation.mutate(updateData);
+    } else {
+      createUserMutation.mutate(formData);
+    }
   };
 
   const handleClose = () => {
@@ -147,7 +161,7 @@ export default function UserModal({ isOpen, onClose, editingUser }: UserModalPro
     <Dialog open={isOpen} onOpenChange={handleClose}>
       <DialogContent className="w-full max-w-lg mx-4">
         <DialogHeader>
-          <DialogTitle>Add New User</DialogTitle>
+          <DialogTitle>{editingUser ? "Edit User" : "Add New User"}</DialogTitle>
         </DialogHeader>
         
         <form onSubmit={handleSubmit} className="space-y-4">
