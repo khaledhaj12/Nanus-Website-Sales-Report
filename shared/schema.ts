@@ -139,6 +139,21 @@ export const webhookSettings = pgTable("webhook_settings", {
   updatedAt: timestamp("updated_at").defaultNow(),
 });
 
+// Webhook request logs table
+export const webhookLogs = pgTable("webhook_logs", {
+  id: serial("id").primaryKey(),
+  platform: varchar("platform", { length: 50 }).notNull(),
+  status: varchar("status", { length: 20 }).notNull(), // 'success', 'error', 'unauthorized'
+  orderId: varchar("order_id", { length: 100 }),
+  orderTotal: varchar("order_total", { length: 50 }),
+  customerName: varchar("customer_name", { length: 255 }),
+  location: varchar("location", { length: 255 }),
+  errorMessage: text("error_message"),
+  payload: jsonb("payload").notNull(),
+  headers: jsonb("headers"),
+  receivedAt: timestamp("received_at").defaultNow(),
+});
+
 // Relations
 export const usersRelations = relations(users, ({ many }) => ({
   locationAccess: many(userLocationAccess),
@@ -232,6 +247,11 @@ export const insertWebhookSettingsSchema = createInsertSchema(webhookSettings).o
   updatedAt: true,
 });
 
+export const insertWebhookLogSchema = createInsertSchema(webhookLogs).omit({
+  id: true,
+  receivedAt: true,
+});
+
 // Types
 export type User = typeof users.$inferSelect;
 export type InsertUser = z.infer<typeof insertUserSchema>;
@@ -247,4 +267,6 @@ export type WooOrder = typeof wooOrders.$inferSelect;
 export type InsertWooOrder = z.infer<typeof insertWooOrderSchema>;
 export type WebhookSettings = typeof webhookSettings.$inferSelect;
 export type InsertWebhookSettings = z.infer<typeof insertWebhookSettingsSchema>;
+export type WebhookLog = typeof webhookLogs.$inferSelect;
+export type InsertWebhookLog = z.infer<typeof insertWebhookLogSchema>;
 export type UserLocationAccess = typeof userLocationAccess.$inferSelect;

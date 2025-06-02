@@ -34,7 +34,7 @@ export default function Settings({ onMenuClick }: SettingsProps) {
       setSecretKey(webhookSettings.secretKey || "");
       setIsActive(webhookSettings.isActive !== false);
     }
-  }, [webhookSettings]);
+  });
 
   // Save webhook settings mutation
   const saveSettingsMutation = useMutation({

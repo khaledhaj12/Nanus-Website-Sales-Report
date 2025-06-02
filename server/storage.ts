@@ -111,6 +111,10 @@ export interface IStorage {
   // Webhook settings operations
   getWebhookSettings(platform: string): Promise<WebhookSettings | undefined>;
   upsertWebhookSettings(settings: InsertWebhookSettings): Promise<WebhookSettings>;
+  
+  // Webhook logs operations
+  createWebhookLog(log: InsertWebhookLog): Promise<WebhookLog>;
+  getRecentWebhookLogs(platform?: string, limit?: number): Promise<WebhookLog[]>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -655,6 +659,24 @@ export class DatabaseStorage implements IStorage {
       })
       .returning();
     return webhookSetting;
+  }
+
+  async createWebhookLog(insertWebhookLog: InsertWebhookLog): Promise<WebhookLog> {
+    const [webhookLog] = await db
+      .insert(webhookLogs)
+      .values(insertWebhookLog)
+      .returning();
+    return webhookLog;
+  }
+
+  async getRecentWebhookLogs(platform = 'woocommerce', limit = 20): Promise<WebhookLog[]> {
+    const logs = await db
+      .select()
+      .from(webhookLogs)
+      .where(eq(webhookLogs.platform, platform))
+      .orderBy(desc(webhookLogs.receivedAt))
+      .limit(limit);
+    return logs;
   }
 }
 
