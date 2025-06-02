@@ -170,6 +170,18 @@ export const syncSettings = pgTable("sync_settings", {
   updatedAt: timestamp("updated_at").defaultNow(),
 });
 
+// Store connections table
+export const storeConnections = pgTable("store_connections", {
+  id: serial("id").primaryKey(),
+  name: varchar("name", { length: 255 }).notNull(),
+  domain: varchar("domain", { length: 255 }),
+  platform: varchar("platform", { length: 50 }).notNull(),
+  connectionId: varchar("connection_id", { length: 100 }).notNull().unique(),
+  isDefault: boolean("is_default").default(false),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
 // REST API settings table
 export const restApiSettings = pgTable("rest_api_settings", {
   id: serial("id").primaryKey(),
@@ -260,6 +272,12 @@ export const insertSyncSettingsSchema = createInsertSchema(syncSettings).omit({
   updatedAt: true,
 });
 
+export const insertStoreConnectionSchema = createInsertSchema(storeConnections).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
 export const insertRestApiSettingsSchema = createInsertSchema(restApiSettings).omit({
   id: true,
   createdAt: true,
@@ -278,6 +296,8 @@ export type WooOrder = typeof wooOrders.$inferSelect;
 export type InsertWooOrder = z.infer<typeof insertWooOrderSchema>;
 export type SyncSettings = typeof syncSettings.$inferSelect;
 export type InsertSyncSettings = z.infer<typeof insertSyncSettingsSchema>;
+export type StoreConnection = typeof storeConnections.$inferSelect;
+export type InsertStoreConnection = z.infer<typeof insertStoreConnectionSchema>;
 export type RestApiSettings = typeof restApiSettings.$inferSelect;
 export type InsertRestApiSettings = z.infer<typeof insertRestApiSettingsSchema>;
 export type UserLocationAccess = typeof userLocationAccess.$inferSelect;

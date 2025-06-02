@@ -6,6 +6,7 @@ import {
   wooOrders,
   syncSettings,
   restApiSettings,
+  storeConnections,
   type User,
   type InsertUser,
   type Location,
@@ -18,6 +19,8 @@ import {
   type InsertSyncSettings,
   type RestApiSettings,
   type InsertRestApiSettings,
+  type StoreConnection,
+  type InsertStoreConnection,
   type UserLocationAccess,
 } from "@shared/schema";
 import { db } from "./db";
@@ -105,6 +108,12 @@ export interface IStorage {
   // REST API settings operations
   getRestApiSettings(platform: string): Promise<RestApiSettings | undefined>;
   upsertRestApiSettings(settings: InsertRestApiSettings): Promise<RestApiSettings>;
+  
+  // Store connections operations
+  getAllStoreConnections(): Promise<StoreConnection[]>;
+  getStoreConnection(connectionId: string): Promise<StoreConnection | undefined>;
+  createStoreConnection(connection: InsertStoreConnection): Promise<StoreConnection>;
+  deleteStoreConnection(connectionId: string): Promise<void>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -691,6 +700,31 @@ export class DatabaseStorage implements IStorage {
       })
       .returning();
     return restApiSetting;
+  }
+
+  async getAllStoreConnections(): Promise<StoreConnection[]> {
+    const connections = await db.select().from(storeConnections).orderBy(asc(storeConnections.createdAt));
+    return connections;
+  }
+
+  async getStoreConnection(connectionId: string): Promise<StoreConnection | undefined> {
+    const [connection] = await db
+      .select()
+      .from(storeConnections)
+      .where(eq(storeConnections.connectionId, connectionId));
+    return connection;
+  }
+
+  async createStoreConnection(connection: InsertStoreConnection): Promise<StoreConnection> {
+    const [newConnection] = await db
+      .insert(storeConnections)
+      .values(connection)
+      .returning();
+    return newConnection;
+  }
+
+  async deleteStoreConnection(connectionId: string): Promise<void> {
+    await db.delete(storeConnections).where(eq(storeConnections.connectionId, connectionId));
   }
 }
 
