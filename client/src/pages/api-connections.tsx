@@ -9,9 +9,10 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
-import { Clock, RefreshCw, AlertCircle, CheckCircle, Settings2, Zap, Globe, Shield, Info, Download, Plus, X } from "lucide-react";
+import { Clock, RefreshCw, AlertCircle, CheckCircle, Settings2, Zap, Globe, Shield, Info, Download, Plus, X, Trash2 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Alert, AlertDescription } from "@/components/ui/alert";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import SyncStatus from "@/components/sync-status";
 
 interface SyncSettings {
@@ -727,17 +728,37 @@ export default function ApiConnections() {
                 {connection.domain || connection.name}
               </TabsTrigger>
               {connection.connectionId !== 'woocommerce' && (
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  className="absolute -top-2 -right-2 h-5 w-5 p-0 rounded-full bg-red-500 hover:bg-red-600 text-white"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    removeConnection(connection.connectionId);
-                  }}
-                >
-                  <X className="h-3 w-3" />
-                </Button>
+                <AlertDialog>
+                  <AlertDialogTrigger asChild>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="absolute -top-2 -right-2 h-5 w-5 p-0 rounded-full bg-red-500 hover:bg-red-600 text-white"
+                      onClick={(e) => e.stopPropagation()}
+                    >
+                      <X className="h-3 w-3" />
+                    </Button>
+                  </AlertDialogTrigger>
+                  <AlertDialogContent>
+                    <AlertDialogHeader>
+                      <AlertDialogTitle>Delete Store Connection</AlertDialogTitle>
+                      <AlertDialogDescription>
+                        Are you sure you want to delete the connection for <strong>{connection.domain || connection.name}</strong>? 
+                        This will remove all sync settings and API configurations for this store. This action cannot be undone.
+                      </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                      <AlertDialogCancel>Cancel</AlertDialogCancel>
+                      <AlertDialogAction
+                        className="bg-red-600 hover:bg-red-700 focus:ring-red-600"
+                        onClick={() => removeConnection(connection.connectionId)}
+                      >
+                        <Trash2 className="h-4 w-4 mr-2" />
+                        Delete Connection
+                      </AlertDialogAction>
+                    </AlertDialogFooter>
+                  </AlertDialogContent>
+                </AlertDialog>
               )}
             </div>
           ))}
