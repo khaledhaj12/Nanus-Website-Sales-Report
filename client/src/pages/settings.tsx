@@ -99,7 +99,7 @@ export default function Settings() {
   // Update sync settings mutation
   const updateSyncMutation = useMutation({
     mutationFn: async (settings: Partial<SyncSettings>) => {
-      return await apiRequest('/api/sync-settings', 'POST', settings);
+      return await apiRequest('POST', '/api/sync-settings', settings);
     },
     onSuccess: () => {
       toast({
@@ -121,7 +121,7 @@ export default function Settings() {
   // Update API settings mutation
   const updateApiMutation = useMutation({
     mutationFn: async (settings: RestApiSettings) => {
-      return await apiRequest('/api/rest-api-settings', 'POST', settings);
+      return await apiRequest('POST', '/api/rest-api-settings', settings);
     },
     onSuccess: () => {
       toast({

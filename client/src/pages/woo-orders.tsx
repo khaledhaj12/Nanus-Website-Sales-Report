@@ -155,7 +155,7 @@ export default function WooOrders() {
   // Import mutation
   const importMutation = useMutation({
     mutationFn: async (data: ImportFormData) => {
-      return await apiRequest('/api/import-woo-orders', 'POST', data);
+      return await apiRequest('POST', '/api/import-woo-orders', data);
     },
     onSuccess: (response: any) => {
       toast({
