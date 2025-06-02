@@ -20,7 +20,7 @@ export default function Recaptcha() {
 
   // Fetch current reCAPTCHA settings
   const { data: settings, isLoading } = useQuery({
-    queryKey: ['/api/recaptcha-settings'],
+    queryKey: ['/api/recaptcha-settings/admin'],
   });
 
   // Update form data when settings are loaded
@@ -44,7 +44,7 @@ export default function Recaptcha() {
         title: "Success",
         description: "reCAPTCHA settings updated successfully",
       });
-      queryClient.invalidateQueries({ queryKey: ['/api/recaptcha-settings'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/recaptcha-settings/admin'] });
     },
     onError: (error: any) => {
       toast({

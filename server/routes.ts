@@ -329,6 +329,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Full reCAPTCHA settings endpoint (authenticated, returns secret key for settings page)
+  app.get('/api/recaptcha-settings/admin', isAuthenticated, async (req, res) => {
+    try {
+      const settings = await storage.getRecaptchaSettings();
+      res.json(settings || { siteKey: '', secretKey: '', isActive: false });
+    } catch (error) {
+      console.error("Get reCAPTCHA admin settings error:", error);
+      res.status(500).json({ message: "Failed to get reCAPTCHA settings" });
+    }
+  });
+
   app.post('/api/recaptcha-settings', isAuthenticated, async (req, res) => {
     try {
       const settings = await storage.upsertRecaptchaSettings(req.body);
