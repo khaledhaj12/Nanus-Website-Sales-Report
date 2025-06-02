@@ -17,6 +17,7 @@ interface Order {
   amount: string;
   status: string;
   orderDate: string;
+  locationName?: string;
 }
 
 interface MonthData {
@@ -195,6 +196,7 @@ export default function MonthlyBreakdown({
                               <TableHead>Order ID</TableHead>
                               <TableHead>Date</TableHead>
                               <TableHead>Customer</TableHead>
+                              <TableHead>Location</TableHead>
                               <TableHead>Refund</TableHead>
                               <TableHead>Amount</TableHead>
                               <TableHead>Status</TableHead>
@@ -218,6 +220,9 @@ export default function MonthlyBreakdown({
                                       </div>
                                     )}
                                   </div>
+                                </TableCell>
+                                <TableCell className="text-sm text-gray-600">
+                                  {order.locationName || 'N/A'}
                                 </TableCell>
                                 <TableCell className="text-red-600 font-medium">
                                   {order.refundAmount ? formatCurrency(parseFloat(order.refundAmount)) : '-'}
@@ -257,6 +262,10 @@ export default function MonthlyBreakdown({
                               <div className="flex justify-between">
                                 <span className="text-gray-500">Customer:</span>
                                 <span>{order.customerName || 'N/A'}</span>
+                              </div>
+                              <div className="flex justify-between">
+                                <span className="text-gray-500">Location:</span>
+                                <span>{order.locationName || 'N/A'}</span>
                               </div>
                               {order.cardLast4 && (
                                 <div className="flex justify-between">
