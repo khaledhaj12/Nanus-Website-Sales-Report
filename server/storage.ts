@@ -184,6 +184,11 @@ export class DatabaseStorage implements IStorage {
   }
 
   async deleteLocations(ids: number[]): Promise<void> {
+    // First delete all orders that reference these locations
+    const idsString = ids.join(', ');
+    await db.execute(sql.raw(`DELETE FROM woo_orders WHERE location_id IN (${idsString})`));
+    
+    // Then delete the locations
     await db.delete(locations).where(inArray(locations.id, ids));
   }
 
