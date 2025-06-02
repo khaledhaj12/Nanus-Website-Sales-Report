@@ -1085,6 +1085,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post('/api/import-woocommerce-orders', requireAdmin, async (req, res) => {
     try {
       const { startDate, endDate } = req.body;
+      console.log(`Import request received - startDate: ${startDate}, endDate: ${endDate}`);
       const settings = await storage.getRestApiSettings('woocommerce');
       
       if (!settings || !settings.consumerKey || !settings.consumerSecret || !settings.storeUrl) {
