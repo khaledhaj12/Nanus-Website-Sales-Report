@@ -627,7 +627,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       // Handle status filtering - properly parse multiple status parameters
       if (statuses) {
-        console.log("Dashboard summary - Raw statuses received:", statuses);
         let statusFilter: string[] = [];
         if (Array.isArray(statuses)) {
           statusFilter = statuses.filter(s => typeof s === 'string') as string[];
@@ -636,13 +635,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
           statusFilter = [statuses as string];
         }
         
-        console.log("Dashboard summary - Parsed statusFilter:", statusFilter);
-        
         if (statusFilter.length > 0) {
           const statusPlaceholders = statusFilter.map((_, index) => `$${params.length + index + 1}`).join(', ');
           whereClause += ` AND status IN (${statusPlaceholders})`;
           params.push(...statusFilter);
-          console.log("Dashboard summary - Applied WHERE clause:", whereClause);
         }
       }
       
