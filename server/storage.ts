@@ -8,6 +8,7 @@ import {
   storeConnections,
   restApiSettings,
   recaptchaSettings,
+  footerSettings,
   type User,
   type InsertUser,
   type Location,
@@ -22,6 +23,8 @@ import {
   type InsertRestApiSettings,
   type RecaptchaSettings,
   type InsertRecaptchaSettings,
+  type FooterSettings,
+  type InsertFooterSettings,
   type UserLocationAccess,
   type UserStatusAccess,
 } from "@shared/schema";
@@ -448,6 +451,34 @@ export class DatabaseStorage implements IStorage {
 
   async deleteStoreConnection(connectionId: string): Promise<void> {
     await db.delete(storeConnections).where(eq(storeConnections.connectionId, connectionId));
+  }
+
+  // Footer settings operations
+  async getFooterSettings(): Promise<any> {
+    const [settings] = await db.select().from(footerSettings).limit(1);
+    return settings || { customCode: '', isEnabled: true };
+  }
+
+  async upsertFooterSettings(settings: any): Promise<any> {
+    const existingSettings = await this.getFooterSettings();
+    
+    if (existingSettings.id) {
+      const [updated] = await db
+        .update(footerSettings)
+        .set({
+          ...settings,
+          updatedAt: new Date(),
+        })
+        .where(eq(footerSettings.id, existingSettings.id))
+        .returning();
+      return updated;
+    } else {
+      const [created] = await db
+        .insert(footerSettings)
+        .values(settings)
+        .returning();
+      return created;
+    }
   }
 }
 
