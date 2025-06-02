@@ -21,7 +21,7 @@ export default function Reports({ onMenuClick }: ReportsProps) {
   const [startMonth, setStartMonth] = useState(currentMonth);
   const [endMonth, setEndMonth] = useState(currentMonth);
   const [selectedLocation, setSelectedLocation] = useState("all");
-  const [selectedStatuses, setSelectedStatuses] = useState([]);
+  const [selectedStatuses, setSelectedStatuses] = useState(["processing", "completed", "refunded"]);
 
   const { data: locations = [] } = useQuery({
     queryKey: ["/api/locations"],
