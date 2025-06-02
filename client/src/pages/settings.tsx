@@ -10,7 +10,8 @@ import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/component
 import Header from "@/components/layout/header";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
-import { Copy, Settings as SettingsIcon, Webhook, Info, ExternalLink, Save, ChevronDown, ChevronRight, CheckCircle, XCircle, AlertCircle, Clock } from "lucide-react";
+import { Copy, Settings as SettingsIcon, Webhook, Info, ExternalLink, Save, ChevronDown, ChevronRight, CheckCircle, XCircle, AlertCircle, Clock, Link, Database } from "lucide-react";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 interface SettingsProps {
   onMenuClick: () => void;
@@ -18,8 +19,16 @@ interface SettingsProps {
 
 export default function Settings({ onMenuClick }: SettingsProps) {
   const { toast } = useToast();
+  
+  // Webhook settings state
   const [secretKey, setSecretKey] = useState("");
   const [isActive, setIsActive] = useState(true);
+  
+  // REST API settings state
+  const [consumerKey, setConsumerKey] = useState("");
+  const [consumerSecret, setConsumerSecret] = useState("");
+  const [storeUrl, setStoreUrl] = useState("");
+  const [apiIsActive, setApiIsActive] = useState(true);
   
   // Get the current domain for webhook URL
   const webhookUrl = `${window.location.origin}/api/webhook/woocommerce`;
@@ -27,6 +36,11 @@ export default function Settings({ onMenuClick }: SettingsProps) {
   // Load current webhook settings
   const { data: webhookSettings, isLoading } = useQuery({
     queryKey: ["/api/webhook-settings/woocommerce"],
+  });
+
+  // Load current REST API settings
+  const { data: restApiSettings, isLoading: apiLoading } = useQuery({
+    queryKey: ["/api/rest-api-settings/woocommerce"],
   });
 
   // Load recent webhook logs
@@ -41,6 +55,15 @@ export default function Settings({ onMenuClick }: SettingsProps) {
       setIsActive(webhookSettings.isActive !== false);
     }
   }, [webhookSettings]);
+
+  useEffect(() => {
+    if (restApiSettings) {
+      setConsumerKey(restApiSettings.consumerKey || "");
+      setConsumerSecret(restApiSettings.consumerSecret || "");
+      setStoreUrl(restApiSettings.storeUrl || "");
+      setApiIsActive(restApiSettings.isActive !== false);
+    }
+  }, [restApiSettings]);
 
   // Save webhook settings mutation
   const saveSettingsMutation = useMutation({
@@ -62,6 +85,33 @@ export default function Settings({ onMenuClick }: SettingsProps) {
       toast({
         title: "Error",
         description: "Failed to save webhook settings",
+        variant: "destructive",
+      });
+    },
+  });
+
+  // Save REST API settings mutation
+  const saveApiSettingsMutation = useMutation({
+    mutationFn: async () => {
+      await apiRequest("POST", "/api/rest-api-settings", {
+        platform: "woocommerce",
+        consumerKey,
+        consumerSecret,
+        storeUrl,
+        isActive: apiIsActive,
+      });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/rest-api-settings/woocommerce"] });
+      toast({
+        title: "Settings Saved",
+        description: "WooCommerce REST API settings have been updated",
+      });
+    },
+    onError: () => {
+      toast({
+        title: "Error",
+        description: "Failed to save REST API settings",
         variant: "destructive",
       });
     },

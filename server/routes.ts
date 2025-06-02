@@ -1014,6 +1014,29 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // REST API settings endpoints
+  app.get('/api/rest-api-settings/:platform', requireAdmin, async (req, res) => {
+    try {
+      const { platform } = req.params;
+      const settings = await storage.getRestApiSettings(platform);
+      res.json(settings || { platform, consumerKey: '', consumerSecret: '', storeUrl: '', isActive: false });
+    } catch (error) {
+      console.error("Get REST API settings error:", error);
+      res.status(500).json({ message: "Failed to get REST API settings" });
+    }
+  });
+
+  app.post('/api/rest-api-settings', requireAdmin, async (req, res) => {
+    try {
+      const restApiData = req.body;
+      const settings = await storage.upsertRestApiSettings(restApiData);
+      res.json(settings);
+    } catch (error) {
+      console.error("Upsert REST API settings error:", error);
+      res.status(500).json({ message: "Failed to save REST API settings" });
+    }
+  });
+
   // WooCommerce webhook endpoint
   app.post('/api/webhook/woocommerce', async (req, res) => {
     try {
