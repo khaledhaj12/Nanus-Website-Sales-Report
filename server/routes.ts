@@ -1,6 +1,6 @@
 import type { Express } from "express";
 import { createServer, type Server } from "http";
-import { storage } from "./storage";
+import { storage } from "./storage-old";
 import { startAutoSync, stopAutoSync, restartAutoSync, getSyncStatus } from "./syncManager";
 import session from "express-session";
 import { z } from "zod";
@@ -504,6 +504,38 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Monthly breakdown error:", error);
       res.status(500).json({ message: "Failed to get monthly breakdown" });
+    }
+  });
+
+  // Store connections endpoints
+  app.get('/api/store-connections', isAuthenticated, async (req, res) => {
+    try {
+      const connections = await storage.getAllStoreConnections();
+      res.json(connections);
+    } catch (error) {
+      console.error("Get store connections error:", error);
+      res.status(500).json({ message: "Failed to get store connections" });
+    }
+  });
+
+  app.post('/api/store-connections', isAuthenticated, async (req, res) => {
+    try {
+      const connection = await storage.createStoreConnection(req.body);
+      res.json({ success: true, connection });
+    } catch (error) {
+      console.error("Create store connection error:", error);
+      res.status(500).json({ message: "Failed to create store connection" });
+    }
+  });
+
+  app.delete('/api/store-connections/:connectionId', isAuthenticated, async (req, res) => {
+    try {
+      const { connectionId } = req.params;
+      await storage.deleteStoreConnection(connectionId);
+      res.json({ success: true });
+    } catch (error) {
+      console.error("Delete store connection error:", error);
+      res.status(500).json({ message: "Failed to delete store connection" });
     }
   });
 

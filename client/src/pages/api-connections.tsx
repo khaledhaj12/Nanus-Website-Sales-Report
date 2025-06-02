@@ -43,10 +43,12 @@ interface ImportFormData {
 }
 
 interface Connection {
-  id: string;
+  id?: string;
+  connectionId: string;
   name: string;
   domain: string;
   platform: string;
+  isDefault?: boolean;
 }
 
 interface ConnectionSettingsProps {
@@ -584,18 +586,75 @@ function ConnectionSettings({ connectionId, platform }: ConnectionSettingsProps)
 
 export default function ApiConnections() {
   const { toast } = useToast();
-  const [connections, setConnections] = useState<Connection[]>([
+  const queryClient = useQueryClient();
+  
+  // Load store connections from database
+  const { data: dbConnections = [], isLoading: connectionsLoading } = useQuery({
+    queryKey: ["/api/store-connections"],
+  });
+
+  // Add default main store connection to the list
+  const connections = [
     {
-      id: 'default',
+      connectionId: 'woocommerce',
       name: 'Main Store',
       domain: '',
-      platform: 'woocommerce'
-    }
-  ]);
+      platform: 'woocommerce',
+      isDefault: true
+    },
+    ...dbConnections
+  ];
   
-  const [activeConnectionId, setActiveConnectionId] = useState('default');
+  const [activeConnectionId, setActiveConnectionId] = useState('woocommerce');
   const [newConnectionName, setNewConnectionName] = useState('');
   const [showAddConnection, setShowAddConnection] = useState(false);
+
+  // Mutation to create store connection
+  const createConnectionMutation = useMutation({
+    mutationFn: async (connection: any) => {
+      return await apiRequest(`/api/store-connections`, {
+        method: "POST",
+        body: connection,
+      });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/store-connections"] });
+      toast({
+        title: "Success",
+        description: "Store connection saved successfully",
+      });
+    },
+    onError: (error) => {
+      toast({
+        title: "Error",
+        description: "Failed to save store connection",
+        variant: "destructive",
+      });
+    },
+  });
+
+  // Mutation to delete store connection
+  const deleteConnectionMutation = useMutation({
+    mutationFn: async (connectionId: string) => {
+      return await apiRequest(`/api/store-connections/${connectionId}`, {
+        method: "DELETE",
+      });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/store-connections"] });
+      toast({
+        title: "Success",
+        description: "Store connection deleted successfully",
+      });
+    },
+    onError: (error) => {
+      toast({
+        title: "Error",
+        description: "Failed to delete store connection",
+        variant: "destructive",
+      });
+    },
+  });
 
   const extractDomainFromUrl = (url: string): string => {
     try {
