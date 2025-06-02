@@ -309,6 +309,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       // Import orders for the specified date range
+      console.log(`Starting import with: URL=${apiSettings.storeUrl}, StartDate=${startDate}, EndDate=${endDate}`);
       const result = await storage.importWooOrders(
         apiSettings.storeUrl,
         apiSettings.consumerKey,
@@ -316,6 +317,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         startDate,
         endDate
       );
+      console.log(`Import result: ${JSON.stringify(result)}`);
 
       res.json({ 
         success: true, 
