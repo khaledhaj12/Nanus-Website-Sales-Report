@@ -388,12 +388,12 @@ export class DatabaseStorage implements IStorage {
 
     const result = await db
       .select({
-        totalSales: sql<number>`COALESCE(SUM(CASE WHEN ${orders.status} != 'refunded' THEN ${orders.amount} ELSE 0 END), 0)`,
-        totalRefunds: sql<number>`COALESCE(SUM(CASE WHEN ${orders.status} = 'refunded' THEN ${orders.amount} ELSE 0 END), 0)`,
+        totalSales: sql<number>`COALESCE(SUM(CASE WHEN ${orders.status} != 'refunded' THEN CAST(${orders.amount} AS DECIMAL) ELSE 0 END), 0)`,
+        totalRefunds: sql<number>`COALESCE(SUM(CASE WHEN ${orders.status} = 'refunded' THEN CAST(${orders.amount} AS DECIMAL) ELSE 0 END), 0)`,
         totalOrders: sql<number>`COUNT(CASE WHEN ${orders.status} != 'refunded' THEN 1 END)`,
-        platformFees: sql<number>`COALESCE(SUM(CASE WHEN ${orders.status} != 'refunded' THEN ${orders.platformFee} ELSE 0 END), 0)`,
-        stripeFees: sql<number>`COALESCE(SUM(CASE WHEN ${orders.status} != 'refunded' THEN ${orders.stripeFee} ELSE 0 END), 0)`,
-        netDeposit: sql<number>`COALESCE(SUM(CASE WHEN ${orders.status} != 'refunded' THEN ${orders.netAmount} ELSE 0 END), 0)`,
+        platformFees: sql<number>`COALESCE(SUM(CASE WHEN ${orders.status} != 'refunded' THEN CAST(${orders.platformFee} AS DECIMAL) ELSE 0 END), 0)`,
+        stripeFees: sql<number>`COALESCE(SUM(CASE WHEN ${orders.status} != 'refunded' THEN CAST(${orders.stripeFee} AS DECIMAL) ELSE 0 END), 0)`,
+        netDeposit: sql<number>`COALESCE(SUM(CASE WHEN ${orders.status} != 'refunded' THEN CAST(${orders.netAmount} AS DECIMAL) ELSE 0 END), 0)`,
       })
       .from(orders)
       .where(whereClause);
