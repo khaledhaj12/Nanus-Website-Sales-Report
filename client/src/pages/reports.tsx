@@ -95,10 +95,10 @@ export default function Reports({ onMenuClick }: ReportsProps) {
             <div>
               <label className="text-sm font-medium text-gray-700 mb-2 block">Date Range</label>
               <MonthRangePicker
-                startMonth={startMonth}
-                endMonth={endMonth}
-                onStartMonthChange={setStartMonth}
-                onEndMonthChange={setEndMonth}
+                startValue={startMonth}
+                endValue={endMonth}
+                onStartChange={setStartMonth}
+                onEndChange={setEndMonth}
               />
             </div>
 
@@ -144,7 +144,15 @@ export default function Reports({ onMenuClick }: ReportsProps) {
         </div>
 
         {/* Summary Cards */}
-        <SummaryCards data={summaryData} isLoading={isSummaryLoading} />
+        <SummaryCards 
+          totalSales={summaryData?.totalSales || 0}
+          totalOrders={summaryData?.totalOrders || 0}
+          platformFees={summaryData?.platformFees || 0}
+          stripeFees={summaryData?.stripeFees || 0}
+          netDeposit={summaryData?.netDeposit || 0}
+          totalRefunds={summaryData?.totalRefunds || 0}
+          isLoading={isSummaryLoading}
+        />
 
         {/* Monthly Breakdown */}
         <MonthlyBreakdown 

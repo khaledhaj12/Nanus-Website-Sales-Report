@@ -33,7 +33,7 @@ export default function SummaryCards({
     },
     {
       title: "Total Orders",
-      value: totalOrders.toLocaleString(),
+      value: (totalOrders || 0).toLocaleString(),
       icon: ShoppingCart,
       bgColor: "bg-green-50",
       iconColor: "text-green-600",
