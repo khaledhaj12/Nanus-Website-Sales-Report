@@ -267,9 +267,13 @@ function ConnectionSettings({ connectionId, platform }: ConnectionSettingsProps)
     onSuccess: (data) => {
       toast({
         title: "Success",
-        description: `Import started. ${data.imported || 0} orders imported.`,
+        description: `Import completed. ${data.imported || 0} orders imported.`,
       });
+      // Invalidate all related queries to refresh dashboard
       queryClient.invalidateQueries({ queryKey: ["/api/woo-orders"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/dashboard/summary"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/dashboard/monthly-breakdown"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/locations"] });
     },
     onError: (error) => {
       toast({
