@@ -114,7 +114,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const userId = parseInt(req.params.id);
       const { locationIds } = req.body;
-      await storage.setUserLocationAccess(userId, locationIds || []);
+      console.log("Location update request - userId:", userId, "body:", req.body, "locationIds:", locationIds);
+      
+      // Ensure locationIds is an array of numbers
+      const validLocationIds = Array.isArray(locationIds) 
+        ? locationIds.filter(id => typeof id === 'number' || (typeof id === 'string' && !isNaN(Number(id)))).map(id => Number(id))
+        : [];
+        
+      await storage.setUserLocationAccess(userId, validLocationIds);
       res.json({ message: "User location access updated successfully" });
     } catch (error) {
       console.error("Update user locations error:", error);
