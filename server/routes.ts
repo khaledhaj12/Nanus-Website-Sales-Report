@@ -1053,20 +1053,27 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const baseUrl = settings.storeUrl.replace(/\/$/, '');
       const testUrl = `${baseUrl}/wp-json/wc/v3/orders?per_page=1&consumer_key=${encodeURIComponent(settings.consumerKey)}&consumer_secret=${encodeURIComponent(settings.consumerSecret)}`;
       
+      console.log(`Testing connection to: ${testUrl}`);
+      
       const response = await fetch(testUrl, {
         headers: {
           'Content-Type': 'application/json',
         }
       });
 
+      console.log(`Test response status: ${response.status}`);
+
       if (response.ok) {
         const data = await response.json();
+        console.log(`Test response data:`, data);
         res.json({ 
           success: true, 
           message: "Connection successful", 
           orderCount: response.headers.get('x-wp-total') || 'Unknown'
         });
       } else {
+        const errorData = await response.text();
+        console.log(`Test connection failed:`, errorData);
         res.json({ 
           success: false, 
           message: `Connection failed: ${response.status} ${response.statusText}` 
