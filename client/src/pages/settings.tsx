@@ -138,6 +138,18 @@ export default function Settings({ onMenuClick }: SettingsProps) {
     saveSettingsMutation.mutate();
   };
 
+  const handleApiSave = () => {
+    if (!consumerKey.trim() || !consumerSecret.trim() || !storeUrl.trim()) {
+      toast({
+        title: "Error",
+        description: "All REST API fields are required",
+        variant: "destructive",
+      });
+      return;
+    }
+    saveApiSettingsMutation.mutate();
+  };
+
   return (
     <div className="min-h-screen bg-gray-50">
       <Header 
@@ -147,9 +159,21 @@ export default function Settings({ onMenuClick }: SettingsProps) {
       />
       
       <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <div className="space-y-6">
-          {/* Webhook Request Monitor */}
-          <Card>
+        <Tabs defaultValue="webhook" className="space-y-6">
+          <TabsList className="grid w-full grid-cols-2">
+            <TabsTrigger value="webhook" className="flex items-center gap-2">
+              <Webhook className="h-4 w-4" />
+              Webhook
+            </TabsTrigger>
+            <TabsTrigger value="rest-api" className="flex items-center gap-2">
+              <Database className="h-4 w-4" />
+              REST API
+            </TabsTrigger>
+          </TabsList>
+
+          <TabsContent value="webhook" className="space-y-6">
+            {/* Webhook Request Monitor */}
+            <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <Clock className="h-5 w-5" />
@@ -456,7 +480,97 @@ export default function Settings({ onMenuClick }: SettingsProps) {
               </div>
             </CardContent>
           </Card>
-        </div>
+          </TabsContent>
+
+          <TabsContent value="rest-api" className="space-y-6">
+            {/* REST API Settings */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Database className="h-5 w-5" />
+                  WooCommerce REST API Configuration
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-6">
+                <div className="grid gap-6">
+                  <div className="grid gap-4">
+                    <div className="grid gap-2">
+                      <Label htmlFor="storeUrl">Store URL</Label>
+                      <Input
+                        id="storeUrl"
+                        type="url"
+                        placeholder="https://your-store.com"
+                        value={storeUrl}
+                        onChange={(e) => setStoreUrl(e.target.value)}
+                      />
+                    </div>
+
+                    <div className="grid gap-2">
+                      <Label htmlFor="consumerKey">Consumer Key</Label>
+                      <Input
+                        id="consumerKey"
+                        type="text"
+                        placeholder="ck_xxxxxxxxxxxxxxxxxxxx"
+                        value={consumerKey}
+                        onChange={(e) => setConsumerKey(e.target.value)}
+                      />
+                    </div>
+
+                    <div className="grid gap-2">
+                      <Label htmlFor="consumerSecret">Consumer Secret</Label>
+                      <Input
+                        id="consumerSecret"
+                        type="password"
+                        placeholder="cs_xxxxxxxxxxxxxxxxxxxx"
+                        value={consumerSecret}
+                        onChange={(e) => setConsumerSecret(e.target.value)}
+                      />
+                    </div>
+
+                    <div className="flex items-center space-x-2">
+                      <Switch
+                        id="apiActive"
+                        checked={apiIsActive}
+                        onCheckedChange={setApiIsActive}
+                      />
+                      <Label htmlFor="apiActive">Enable REST API Integration</Label>
+                    </div>
+                  </div>
+
+                  <div className="flex justify-end">
+                    <Button 
+                      onClick={handleApiSave} 
+                      disabled={saveApiSettingsMutation.isPending}
+                      className="flex items-center gap-2"
+                    >
+                      {saveApiSettingsMutation.isPending ? (
+                        <>
+                          <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                          Saving...
+                        </>
+                      ) : (
+                        <>
+                          <Save className="h-4 w-4" />
+                          Save REST API Settings
+                        </>
+                      )}
+                    </Button>
+                  </div>
+                </div>
+
+                <div className="bg-gray-50 rounded-lg p-4">
+                  <h4 className="font-medium text-gray-900 mb-3">How to Generate REST API Keys</h4>
+                  <div className="text-sm text-gray-600 space-y-2">
+                    <p>1. Go to your WordPress admin: <strong>WooCommerce → Settings → Advanced → REST API</strong></p>
+                    <p>2. Click <strong>"Add Key"</strong></p>
+                    <p>3. Set permissions to <strong>"Read"</strong> (we only need to fetch orders)</p>
+                    <p>4. Copy the Consumer Key and Consumer Secret to the fields above</p>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          </TabsContent>
+        </Tabs>
       </div>
     </div>
   );
