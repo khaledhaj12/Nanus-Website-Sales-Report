@@ -649,13 +649,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         ${whereClause}
       `;
 
-      console.log("Dashboard summary query:", query);
-      console.log("Dashboard summary params:", params);
-
       const result = await pool.query(query, params);
       const row = result.rows[0] as any;
-
-      console.log("Dashboard summary raw result:", row);
 
       const summary = {
         totalSales: parseFloat(row.total_sales || '0'),
@@ -770,7 +765,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
                      COALESCE(w.customer_email, '')
                    ) as "customerName", 
                    w.customer_email as "customerEmail",
-                   w.amount, w.status, w.billing_address_1 as "cardLast4", w.amount as "refundAmount",
+                   w.amount, w.status, w.billing_address_1 as "cardLast4", 
+                   CASE WHEN w.status = 'refunded' THEN w.amount ELSE 0 END as "refundAmount",
                    l.name as "locationName"
             FROM woo_orders w
             LEFT JOIN locations l ON w.location_id = l.id
@@ -815,8 +811,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const { locationId, location, statuses } = req.query;
       const { pool } = await import('./db');
       
-      console.log("Reports summary query params:", { locationId, location, statuses });
-      
       let whereClause = "WHERE 1=1";
       const params: any[] = [];
       
@@ -851,9 +845,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
         ${whereClause}
       `;
       
-      console.log("Reports summary query:", query);
-      console.log("Reports summary params:", params);
-      
       const result = await pool.query(query, params);
       const row = result.rows[0];
       
@@ -866,8 +857,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
         stripeFees: parseFloat(row.stripe_fees) || 0,
         netDeposit: parseFloat(row.net_deposit) || 0
       };
-      
-      console.log("Reports summary result:", summary);
       
       res.json(summary);
     } catch (error) {
