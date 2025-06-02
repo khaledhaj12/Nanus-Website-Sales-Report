@@ -3,9 +3,13 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { ChevronRight, ChevronDown, ChevronUp, Search } from "lucide-react";
+import { ChevronRight, ChevronDown, ChevronUp, Search, Trash2 } from "lucide-react";
 import { formatCurrency } from "@/lib/feeCalculations";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useToast } from "@/hooks/use-toast";
+import { apiRequest } from "@/lib/queryClient";
 
 interface Order {
   id: number;
@@ -55,6 +59,35 @@ export default function MonthlyBreakdown({
   const [searchTerm, setSearchTerm] = useState("");
   const [sortField, setSortField] = useState<string>("");
   const [sortDirection, setSortDirection] = useState<"asc" | "desc">("desc");
+  const [selectedOrders, setSelectedOrders] = useState<number[]>([]);
+
+  const { toast } = useToast();
+  const queryClient = useQueryClient();
+
+  // Delete orders mutation
+  const deleteOrdersMutation = useMutation({
+    mutationFn: async (orderIds: number[]) => {
+      return await apiRequest("DELETE", "/api/orders/bulk-delete", { orderIds });
+    },
+    onSuccess: () => {
+      toast({
+        title: "Success",
+        description: "Orders deleted successfully",
+      });
+      setSelectedOrders([]);
+      queryClient.invalidateQueries({ queryKey: ["/api/dashboard/summary"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/dashboard/monthly-breakdown"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/orders"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/locations"] });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Delete Failed",
+        description: error.message || "Failed to delete orders",
+        variant: "destructive",
+      });
+    },
+  });
 
   const handleSort = (field: string) => {
     if (sortField === field) {
@@ -155,6 +188,16 @@ export default function MonthlyBreakdown({
         <div className="flex flex-col md:flex-row md:items-center justify-between">
           <CardTitle>Monthly Breakdown</CardTitle>
           <div className="mt-4 md:mt-0 flex space-x-3">
+            {selectedOrders.length > 0 && (
+              <Button
+                variant="destructive"
+                onClick={() => deleteOrdersMutation.mutate(selectedOrders)}
+                disabled={deleteOrdersMutation.isPending}
+              >
+                <Trash2 className="h-4 w-4 mr-2" />
+                Delete Selected ({selectedOrders.length})
+              </Button>
+            )}
             <div className="relative">
               <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
               <Input

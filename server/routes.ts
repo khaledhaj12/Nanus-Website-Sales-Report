@@ -216,7 +216,32 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-
+  // Order management endpoints
+  // Bulk delete orders (admin only)
+  app.delete('/api/orders/bulk-delete', isAuthenticated, async (req, res) => {
+    try {
+      const { orderIds } = req.body;
+      
+      if (!Array.isArray(orderIds) || orderIds.length === 0) {
+        return res.status(400).json({ message: "Invalid order IDs" });
+      }
+      
+      // Ensure all IDs are valid integers
+      const validIds = orderIds
+        .filter(id => id !== null && id !== undefined && !isNaN(Number(id)))
+        .map(id => Number(id));
+      
+      if (validIds.length === 0) {
+        return res.status(400).json({ message: "No valid order IDs provided" });
+      }
+      
+      await storage.deleteOrders(validIds);
+      res.json({ message: "Orders deleted successfully" });
+    } catch (error: any) {
+      console.error("Delete orders error:", error);
+      res.status(500).json({ message: "Failed to delete orders" });
+    }
+  });
 
   // Auto sync settings endpoints
   app.get('/api/sync-settings/:platform', isAuthenticated, async (req, res) => {
