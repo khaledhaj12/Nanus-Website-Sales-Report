@@ -407,6 +407,16 @@ export default function MonthlyBreakdown({
 
                       {/* Mobile Card View */}
                       <div className="md:hidden space-y-3">
+                        {/* Mobile Select All Button */}
+                        <div className="flex items-center justify-between bg-gray-50 p-3 rounded-lg">
+                          <div className="flex items-center space-x-3">
+                            <Checkbox
+                              checked={monthData.orders.length > 0 && monthData.orders.every(order => selectedOrders.includes(order.id))}
+                              onCheckedChange={(checked) => handleSelectAll(monthData.orders, checked === true)}
+                            />
+                            <span className="font-medium text-sm">Select All ({monthData.orders.length} orders)</span>
+                          </div>
+                        </div>
                         {monthData.orders.map((order) => (
                           <div key={order.id} className="bg-white border rounded-lg p-4">
                             <div className="flex justify-between items-start mb-2">
