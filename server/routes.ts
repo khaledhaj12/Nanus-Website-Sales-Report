@@ -223,8 +223,8 @@ async function processOrderData(data: any[], uploadId: number, userId: number): 
       
       console.log(`Processed ${processedCount}/${totalRecords} records (${Math.round((processedCount / totalRecords) * 100)}%)`);
       
-      // Add delay to make progress visible (1000ms per record for demo)
-      await new Promise(resolve => setTimeout(resolve, 1000));
+      // Add delay to make progress visible (100ms per record)
+      await new Promise(resolve => setTimeout(resolve, 100));
     } catch (error) {
       console.error('Error processing row:', error);
     }

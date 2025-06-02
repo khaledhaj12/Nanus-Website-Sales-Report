@@ -179,6 +179,7 @@ export default function Reports({ onMenuClick }: ReportsProps) {
       await apiRequest("DELETE", "/api/orders", { ids: orderIds });
     },
     onSuccess: () => {
+      // Invalidate all orders queries with any parameters
       queryClient.invalidateQueries({ queryKey: ["/api/orders"] });
       queryClient.invalidateQueries({ queryKey: ["/api/dashboard/summary"] });
       queryClient.invalidateQueries({ queryKey: ["/api/dashboard/monthly-breakdown"] });
