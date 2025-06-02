@@ -159,47 +159,51 @@ export default function ReportsMonthlyBreakdown({
             return (
               <div key={monthData.month} className="border rounded-lg">
                 <div
-                  className="flex items-center justify-between p-4 cursor-pointer hover:bg-gray-50"
+                  className="p-4 cursor-pointer hover:bg-gray-50"
                   onClick={() => toggleMonth(monthData.month)}
                 >
-                  <div className="flex items-center space-x-3">
-                    {isExpanded ? (
-                      <ChevronDown className="h-5 w-5 text-gray-400" />
-                    ) : (
-                      <ChevronRight className="h-5 w-5 text-gray-400" />
-                    )}
-                    <h3 className="text-lg font-semibold">
-                      {new Date(monthData.month + '-01').toLocaleDateString('en-US', { 
-                        year: 'numeric', 
-                        month: 'long' 
-                      })}
-                    </h3>
-                  </div>
-                  
-                  <div className="flex space-x-6 text-sm">
-                    <div className="text-center">
-                      <p className="text-xs text-gray-500 mb-1">Sales</p>
-                      <p className="font-semibold text-green-600">{formatCurrency(monthData.totalSales)}</p>
+                  <div className="flex items-center">
+                    <div className="flex items-center space-x-3 min-w-0 flex-1">
+                      {isExpanded ? (
+                        <ChevronDown className="h-5 w-5 text-gray-400 flex-shrink-0" />
+                      ) : (
+                        <ChevronRight className="h-5 w-5 text-gray-400 flex-shrink-0" />
+                      )}
+                      <div className="min-w-0">
+                        <h3 className="text-lg font-semibold truncate">
+                          {new Date(monthData.month + '-01').toLocaleDateString('en-US', { 
+                            year: 'numeric', 
+                            month: 'long' 
+                          })}
+                        </h3>
+                      </div>
                     </div>
-                    <div className="text-center">
-                      <p className="text-xs text-gray-500 mb-1">Orders</p>
-                      <p className="font-semibold text-blue-600">{monthData.totalOrders}</p>
-                    </div>
-                    <div className="text-center">
-                      <p className="text-xs text-gray-500 mb-1">Platform</p>
-                      <p className="font-medium text-yellow-600">{formatCurrency(monthData.totalSales * 0.07)}</p>
-                    </div>
-                    <div className="text-center">
-                      <p className="text-xs text-gray-500 mb-1">Stripe</p>
-                      <p className="font-medium text-blue-600">{formatCurrency((monthData.totalSales * 0.029) + (monthData.totalOrders * 0.30))}</p>
-                    </div>
-                    <div className="text-center">
-                      <p className="text-xs text-gray-500 mb-1">Refunds</p>
-                      <p className="font-medium text-red-600">{formatCurrency(monthData.totalRefunds)}</p>
-                    </div>
-                    <div className="text-center">
-                      <p className="text-xs text-gray-500 mb-1">Net</p>
-                      <p className="font-semibold text-green-600">{formatCurrency(monthData.netAmount)}</p>
+                    
+                    <div className="grid grid-cols-2 md:grid-cols-6 gap-4 md:gap-6 text-center text-sm flex-shrink-0 ml-0 md:ml-6 mt-3 md:mt-0">
+                      <div>
+                        <p className="text-xs text-gray-500 mb-1">Sales</p>
+                        <p className="font-semibold text-gray-900">{formatCurrency(monthData.totalSales)}</p>
+                      </div>
+                      <div>
+                        <p className="text-xs text-gray-500 mb-1">Orders</p>
+                        <p className="font-medium text-gray-700">{monthData.totalOrders}</p>
+                      </div>
+                      <div>
+                        <p className="text-xs text-gray-500 mb-1">Platform</p>
+                        <p className="font-medium text-yellow-600">{formatCurrency(monthData.totalSales * 0.07)}</p>
+                      </div>
+                      <div>
+                        <p className="text-xs text-gray-500 mb-1">Stripe</p>
+                        <p className="font-medium text-blue-600">{formatCurrency((monthData.totalSales * 0.029) + (monthData.totalOrders * 0.30))}</p>
+                      </div>
+                      <div>
+                        <p className="text-xs text-gray-500 mb-1">Refunds</p>
+                        <p className="font-medium text-red-600">{formatCurrency(monthData.totalRefunds)}</p>
+                      </div>
+                      <div>
+                        <p className="text-xs text-gray-500 mb-1">Net</p>
+                        <p className="font-semibold text-green-600">{formatCurrency(monthData.netAmount)}</p>
+                      </div>
                     </div>
                   </div>
                 </div>
