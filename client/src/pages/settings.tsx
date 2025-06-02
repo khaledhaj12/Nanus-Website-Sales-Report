@@ -249,8 +249,8 @@ export default function Settings() {
             </CardContent>
           </Card>
 
-          {/* Two Column Layout for Settings */}
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 lg:gap-8">
+          {/* Settings Cards - Full Width Layout */}
+          <div className="grid grid-cols-1 xl:grid-cols-2 gap-6 lg:gap-8 xl:col-span-3">
             {/* Automated Sync Settings */}
             <Card className="border-0 shadow-xl bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm">
               <CardHeader className="pb-4">
