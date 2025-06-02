@@ -1110,6 +1110,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
           url += `&before=${encodeURIComponent(endDate + 'T23:59:59')}`;
         }
 
+        console.log(`Fetching orders from: ${url}`);
+        
         const response = await fetch(url, {
           headers: {
             'Content-Type': 'application/json',
@@ -1117,10 +1119,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
 
         if (!response.ok) {
+          const errorText = await response.text();
+          console.log(`API request failed: ${response.status} ${response.statusText}`, errorText);
           throw new Error(`API request failed: ${response.status} ${response.statusText}`);
         }
 
         const orders = await response.json();
+        console.log(`Received ${orders.length} orders on page ${page}`);
         
         if (!orders.length) {
           break; // No more orders
@@ -1222,6 +1227,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         page++;
       }
 
+      console.log(`Import summary: ${totalImported} imported, ${totalSkipped} skipped`);
+      
       res.json({ 
         success: true, 
         message: `Import completed: ${totalImported} orders imported, ${totalSkipped} skipped (already exist)`,
