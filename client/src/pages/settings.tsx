@@ -6,9 +6,10 @@ import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Switch } from "@/components/ui/switch";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
-import { Clock, RefreshCw, AlertCircle, CheckCircle, Settings2, Zap, Globe, Shield, Info, Download } from "lucide-react";
+import { Clock, RefreshCw, AlertCircle, CheckCircle, Settings2, Zap, Globe, Shield, Info, Download, Plus, X } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 
@@ -41,16 +42,40 @@ interface ImportFormData {
   endDate: string;
 }
 
-export default function Settings() {
+interface Connection {
+  id: string;
+  name: string;
+  domain: string;
+  syncSettings: SyncSettings;
+  restApiSettings: RestApiSettings;
+}
+
+export default function ApiConnections() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
   
-  // Sync settings state
-  const [syncSettings, setSyncSettings] = useState<SyncSettings>({
-    platform: 'woocommerce',
-    isActive: false,
-    intervalMinutes: 5
-  });
+  // Connections state
+  const [connections, setConnections] = useState<Connection[]>([
+    {
+      id: 'default',
+      name: 'Main Store',
+      domain: '',
+      syncSettings: {
+        platform: 'woocommerce',
+        isActive: false,
+        intervalMinutes: 5
+      },
+      restApiSettings: {
+        platform: 'woocommerce',
+        consumerKey: '',
+        consumerSecret: '',
+        storeUrl: '',
+        isActive: true
+      }
+    }
+  ]);
+
+  const [activeConnectionId, setActiveConnectionId] = useState('default');
   
   // API settings state
   const [apiSettings, setApiSettings] = useState<RestApiSettings>({

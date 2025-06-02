@@ -15,7 +15,7 @@ import WooOrders from "@/pages/woo-orders";
 import Locations from "@/pages/locations";
 import Users from "@/pages/users";
 
-import Settings from "@/pages/settings";
+import ApiConnections from "@/pages/api-connections";
 import NotFound from "@/pages/not-found";
 
 // Layout
@@ -85,8 +85,8 @@ function AppRouter() {
         return <Locations {...commonProps} />;
       case "users":
         return isAdmin ? <Users {...commonProps} /> : <Dashboard {...commonProps} />;
-      case "settings":
-        return isAdmin ? <Settings {...commonProps} /> : <Dashboard {...commonProps} />;
+      case "api-connections":
+        return isAdmin ? <ApiConnections /> : <Dashboard {...commonProps} />;
       default:
         return <Dashboard {...commonProps} />;
     }
