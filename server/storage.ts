@@ -337,8 +337,9 @@ export class DatabaseStorage implements IStorage {
         ${whereClause}
       `;
 
-      // Use the underlying database connection directly
-      const result = await db.execute(sql.raw(query, params));
+      // Use the pool directly to bypass Drizzle completely
+      const { pool } = await import('./db');
+      const result = await pool.query(query, params);
       const row = result.rows[0] as any;
 
       return {
