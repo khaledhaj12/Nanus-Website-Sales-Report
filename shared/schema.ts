@@ -154,6 +154,18 @@ export const webhookLogs = pgTable("webhook_logs", {
   receivedAt: timestamp("received_at").defaultNow(),
 });
 
+// REST API settings table
+export const restApiSettings = pgTable("rest_api_settings", {
+  id: serial("id").primaryKey(),
+  platform: varchar("platform", { length: 50 }).notNull().unique(),
+  consumerKey: varchar("consumer_key", { length: 255 }),
+  consumerSecret: varchar("consumer_secret", { length: 255 }),
+  storeUrl: varchar("store_url", { length: 255 }),
+  isActive: boolean("is_active").default(false),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
 // Relations
 export const usersRelations = relations(users, ({ many }) => ({
   locationAccess: many(userLocationAccess),
@@ -252,6 +264,12 @@ export const insertWebhookLogSchema = createInsertSchema(webhookLogs).omit({
   receivedAt: true,
 });
 
+export const insertRestApiSettingsSchema = createInsertSchema(restApiSettings).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
 // Types
 export type User = typeof users.$inferSelect;
 export type InsertUser = z.infer<typeof insertUserSchema>;
@@ -269,4 +287,6 @@ export type WebhookSettings = typeof webhookSettings.$inferSelect;
 export type InsertWebhookSettings = z.infer<typeof insertWebhookSettingsSchema>;
 export type WebhookLog = typeof webhookLogs.$inferSelect;
 export type InsertWebhookLog = z.infer<typeof insertWebhookLogSchema>;
+export type RestApiSettings = typeof restApiSettings.$inferSelect;
+export type InsertRestApiSettings = z.infer<typeof insertRestApiSettingsSchema>;
 export type UserLocationAccess = typeof userLocationAccess.$inferSelect;

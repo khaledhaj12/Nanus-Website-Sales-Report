@@ -8,6 +8,7 @@ import {
   wooOrders,
   webhookSettings,
   webhookLogs,
+  restApiSettings,
   type User,
   type InsertUser,
   type Location,
@@ -24,6 +25,8 @@ import {
   type InsertWebhookSettings,
   type WebhookLog,
   type InsertWebhookLog,
+  type RestApiSettings,
+  type InsertRestApiSettings,
   type UserLocationAccess,
 } from "@shared/schema";
 import { db } from "./db";
@@ -118,6 +121,10 @@ export interface IStorage {
   // Webhook logs operations
   createWebhookLog(log: InsertWebhookLog): Promise<WebhookLog>;
   getRecentWebhookLogs(platform?: string, limit?: number): Promise<WebhookLog[]>;
+  
+  // REST API settings operations
+  getRestApiSettings(platform: string): Promise<RestApiSettings | undefined>;
+  upsertRestApiSettings(settings: InsertRestApiSettings): Promise<RestApiSettings>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -681,6 +688,29 @@ export class DatabaseStorage implements IStorage {
       .orderBy(desc(webhookLogs.receivedAt))
       .limit(limit);
     return logs;
+  }
+
+  async getRestApiSettings(platform: string): Promise<RestApiSettings | undefined> {
+    const [settings] = await db
+      .select()
+      .from(restApiSettings)
+      .where(eq(restApiSettings.platform, platform));
+    return settings;
+  }
+
+  async upsertRestApiSettings(settings: InsertRestApiSettings): Promise<RestApiSettings> {
+    const [restApiSetting] = await db
+      .insert(restApiSettings)
+      .values(settings)
+      .onConflictDoUpdate({
+        target: restApiSettings.platform,
+        set: {
+          ...settings,
+          updatedAt: new Date(),
+        },
+      })
+      .returning();
+    return restApiSetting;
   }
 }
 
