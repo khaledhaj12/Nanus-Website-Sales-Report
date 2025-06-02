@@ -765,8 +765,10 @@ export class DatabaseStorage implements IStorage {
     let skipped = 0;
     let page = 1;
     let hasMore = true;
+    let maxPages = 50; // Limit to prevent infinite loops
 
-    while (hasMore) {
+    while (hasMore && page <= maxPages) {
+      console.log(`Processing page ${page}/${maxPages} - Imported: ${imported}, Skipped: ${skipped}`);
       try {
         let url = `${storeUrl}/wp-json/wc/v3/orders?per_page=100&page=${page}&consumer_key=${consumerKey}&consumer_secret=${consumerSecret}`;
         
