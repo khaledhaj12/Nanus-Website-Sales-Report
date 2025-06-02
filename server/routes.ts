@@ -30,7 +30,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       // Check reCAPTCHA if enabled
       const recaptchaSettings = await storage.getRecaptchaSettings();
-      if (recaptchaSettings && recaptchaSettings.isEnabled) {
+      if (recaptchaSettings && recaptchaSettings.isActive) {
         if (!recaptchaToken) {
           return res.status(400).json({ message: "reCAPTCHA verification required" });
         }
