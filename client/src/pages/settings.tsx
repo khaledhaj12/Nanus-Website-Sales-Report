@@ -36,6 +36,11 @@ interface RestApiSettings {
   isActive: boolean;
 }
 
+interface ImportFormData {
+  startDate: string;
+  endDate: string;
+}
+
 export default function Settings() {
   const { toast } = useToast();
   const queryClient = useQueryClient();

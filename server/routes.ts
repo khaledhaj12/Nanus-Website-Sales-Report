@@ -219,6 +219,42 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Test WooCommerce connection endpoint
+  app.post('/api/test-woo-connection', isAuthenticated, async (req, res) => {
+    try {
+      const { storeUrl, consumerKey, consumerSecret } = req.body;
+      
+      if (!storeUrl || !consumerKey || !consumerSecret) {
+        return res.status(400).json({ message: "Missing required API credentials" });
+      }
+
+      // Test connection by fetching a single order
+      const testUrl = `${storeUrl}/wp-json/wc/v3/orders?per_page=1&consumer_key=${consumerKey}&consumer_secret=${consumerSecret}`;
+      
+      const response = await axios.get(testUrl);
+      
+      if (response.status === 200) {
+        res.json({ 
+          success: true, 
+          message: "Connection successful! Your WooCommerce store is accessible.",
+          ordersCount: Array.isArray(response.data) ? response.data.length : 0
+        });
+      } else {
+        res.status(400).json({ 
+          success: false, 
+          message: "Connection failed. Please check your credentials." 
+        });
+      }
+
+    } catch (error) {
+      console.error("Test connection error:", error);
+      res.status(500).json({ 
+        success: false, 
+        message: `Connection failed: ${error.response?.data?.message || error.message}` 
+      });
+    }
+  });
+
   // Manual import endpoint
   app.post('/api/import-woo-orders', isAuthenticated, async (req, res) => {
     try {

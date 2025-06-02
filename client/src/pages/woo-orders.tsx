@@ -141,9 +141,7 @@ export default function WooOrders() {
     queryKey: ["/api/locations"],
   });
 
-  const { data: apiSettings } = useQuery({
-    queryKey: ['/api/rest-api-settings/woocommerce'],
-  });
+
 
 
 
@@ -214,51 +212,7 @@ export default function WooOrders() {
     );
   };
 
-  const handleTestConnection = () => {
-    // Use saved API settings if available and form fields are empty
-    const finalData = {
-      storeUrl: importData.storeUrl || apiSettings?.storeUrl || '',
-      consumerKey: importData.consumerKey || apiSettings?.consumerKey || '',
-      consumerSecret: importData.consumerSecret || apiSettings?.consumerSecret || '',
-      startDate: importData.startDate,
-      endDate: importData.endDate
-    };
 
-    if (!finalData.storeUrl || !finalData.consumerKey || !finalData.consumerSecret) {
-      toast({
-        title: "Missing Credentials",
-        description: "Please configure your WooCommerce API credentials in Settings first.",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    testMutation.mutate(finalData);
-  };
-
-  const handleImport = (e: React.FormEvent) => {
-    e.preventDefault();
-    
-    // Use saved API settings if available and form fields are empty
-    const finalData = {
-      storeUrl: importData.storeUrl || apiSettings?.storeUrl || '',
-      consumerKey: importData.consumerKey || apiSettings?.consumerKey || '',
-      consumerSecret: importData.consumerSecret || apiSettings?.consumerSecret || '',
-      startDate: importData.startDate,
-      endDate: importData.endDate
-    };
-
-    if (!finalData.storeUrl || !finalData.consumerKey || !finalData.consumerSecret) {
-      toast({
-        title: "Missing Credentials",
-        description: "Please configure your WooCommerce API credentials in Settings first.",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    importMutation.mutate(finalData);
-  };
 
   const getStatusBadge = (status: string) => {
     const statusColors: Record<string, string> = {
@@ -526,94 +480,7 @@ export default function WooOrders() {
           </CardContent>
         </Card>
 
-        {/* Import Form Modal */}
-        {showImportForm && (
-          <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
-            <Card className="w-full max-w-md">
-              <CardHeader>
-                <CardTitle>Import WooCommerce Orders</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <form onSubmit={handleImport} className="space-y-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="store-url">Store URL</Label>
-                    <Input
-                      id="store-url"
-                      type="url"
-                      placeholder={apiSettings?.storeUrl || "https://yourstore.com"}
-                      value={importData.storeUrl}
-                      onChange={(e) => setImportData({...importData, storeUrl: e.target.value})}
-                    />
-                    {apiSettings?.storeUrl && (
-                      <p className="text-xs text-gray-500">Using saved: {apiSettings.storeUrl}</p>
-                    )}
-                  </div>
 
-                  <div className="space-y-2">
-                    <Label htmlFor="consumer-key">Consumer Key</Label>
-                    <Input
-                      id="consumer-key"
-                      type="password"
-                      placeholder={apiSettings?.consumerKey ? "Using saved credentials" : "ck_..."}
-                      value={importData.consumerKey}
-                      onChange={(e) => setImportData({...importData, consumerKey: e.target.value})}
-                    />
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label htmlFor="consumer-secret">Consumer Secret</Label>
-                    <Input
-                      id="consumer-secret"
-                      type="password"
-                      placeholder={apiSettings?.consumerSecret ? "Using saved credentials" : "cs_..."}
-                      value={importData.consumerSecret}
-                      onChange={(e) => setImportData({...importData, consumerSecret: e.target.value})}
-                    />
-                  </div>
-
-                  <div className="grid grid-cols-2 gap-4">
-                    <div className="space-y-2">
-                      <Label htmlFor="start-date">Start Date</Label>
-                      <Input
-                        id="start-date"
-                        type="date"
-                        value={importData.startDate}
-                        onChange={(e) => setImportData({...importData, startDate: e.target.value})}
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="end-date">End Date</Label>
-                      <Input
-                        id="end-date"
-                        type="date"
-                        value={importData.endDate}
-                        onChange={(e) => setImportData({...importData, endDate: e.target.value})}
-                      />
-                    </div>
-                  </div>
-
-                  <div className="flex gap-2 pt-4">
-                    <Button
-                      type="button"
-                      variant="outline"
-                      onClick={() => setShowImportForm(false)}
-                      className="flex-1"
-                    >
-                      Cancel
-                    </Button>
-                    <Button
-                      type="submit"
-                      disabled={importMutation.isPending}
-                      className="flex-1"
-                    >
-                      {importMutation.isPending ? "Importing..." : "Import"}
-                    </Button>
-                  </div>
-                </form>
-              </CardContent>
-            </Card>
-          </div>
-        )}
       </div>
     </div>
   );
