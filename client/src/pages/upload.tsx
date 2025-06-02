@@ -59,8 +59,17 @@ export default function Upload({ onMenuClick }: UploadProps) {
             setProcessingProgress(100);
             setUploadStatus('completed');
             clearInterval(interval);
-            // Refresh upload history to show completed status
+            
+            // Show completion toast
+            toast({
+              title: "Upload Completed",
+              description: `${uploadFileName} has been processed successfully`,
+            });
+            
+            // Refresh all relevant data
             queryClient.invalidateQueries({ queryKey: ["/api/uploads/all"] });
+            queryClient.invalidateQueries({ queryKey: ["/api/dashboard/summary"] });
+            queryClient.invalidateQueries({ queryKey: ["/api/locations"] });
           }
         } catch (error) {
           console.error('Error fetching progress:', error);
@@ -129,15 +138,10 @@ export default function Upload({ onMenuClick }: UploadProps) {
       });
     },
     onSuccess: (data, file) => {
-      setUploadStatus('completed');
-      toast({
-        title: "Upload Completed",
-        description: `${file.name} has been processed successfully`,
-      });
+      setUploadStatus('processing');
+      // Don't show completion toast yet - wait for processing to finish
       // Refresh the data
       queryClient.invalidateQueries({ queryKey: ["/api/uploads/all"] });
-      queryClient.invalidateQueries({ queryKey: ["/api/dashboard/summary"] });
-      queryClient.invalidateQueries({ queryKey: ["/api/locations"] });
       
       // Reset file input
       if (fileInputRef.current) {

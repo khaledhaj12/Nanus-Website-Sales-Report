@@ -1,0 +1,36 @@
+/api/auth/user:1 
+            
+            
+           Failed to load resource: the server responded with a status of 401 (Unauthorized)Understand this error
+upload.tsx:40 Progress polling effect triggered. uploadStatus: idle currentUploadId: null
+upload.tsx:40 Progress polling effect triggered. uploadStatus: uploading currentUploadId: null
+upload.tsx:105 Upload response: Object
+upload.tsx:107 Set currentUploadId to: 25
+upload.tsx:40 Progress polling effect triggered. uploadStatus: completed currentUploadId: 25
+upload.tsx:40 Progress polling effect triggered. uploadStatus: idle currentUploadId: 25
+chunk-RPCDYKBN.js?v=456fe00c:521 Warning: validateDOMNesting(...): <th> cannot appear as a child of <div>.
+    at th
+    at SortableHeader (https://ee4b7f00-6d45-4ffc-a131-b72a4d989a18-00-9t5valsb7bpr.worf.replit.dev/src/components/ui/sortable-header.tsx:19:3)
+    at div
+    at div
+    at div
+    at _c3 (https://ee4b7f00-6d45-4ffc-a131-b72a4d989a18-00-9t5valsb7bpr.worf.replit.dev/src/components/ui/card.tsx:45:12)
+    at div
+    at _c (https://ee4b7f00-6d45-4ffc-a131-b72a4d989a18-00-9t5valsb7bpr.worf.replit.dev/src/components/ui/card.tsx:20:11)
+    at main
+    at div
+    at Users (https://ee4b7f00-6d45-4ffc-a131-b72a4d989a18-00-9t5valsb7bpr.worf.replit.dev/src/pages/users.tsx:75:33)
+    at div
+    at AppRouter (https://ee4b7f00-6d45-4ffc-a131-b72a4d989a18-00-9t5valsb7bpr.worf.replit.dev/src/App.tsx?v=3PS1XS3bUvWBoA6_w6hQd:36:51)
+    at Provider (https://ee4b7f00-6d45-4ffc-a131-b72a4d989a18-00-9t5valsb7bpr.worf.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/chunk-7SUNRGEF.js?v=456fe00c:38:15)
+    at TooltipProvider (https://ee4b7f00-6d45-4ffc-a131-b72a4d989a18-00-9t5valsb7bpr.worf.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/@radix-ui_react-tooltip.js?v=456fe00c:59:5)
+    at QueryClientProvider (https://ee4b7f00-6d45-4ffc-a131-b72a4d989a18-00-9t5valsb7bpr.worf.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/@tanstack_react-query.js?v=456fe00c:2805:3)
+    at App
+printWarning @ chunk-RPCDYKBN.js?v=456fe00c:521Understand this error
+upload.tsx:40 Progress polling effect triggered. uploadStatus: idle currentUploadId: null
+upload.tsx:40 Progress polling effect triggered. uploadStatus: uploading currentUploadId: null
+upload.tsx:105 Upload response: Object
+upload.tsx:107 Set currentUploadId to: 26
+upload.tsx:40 Progress polling effect triggered. uploadStatus: completed currentUploadId: 26
+upload.tsx:40 Progress polling effect triggered. uploadStatus: idle currentUploadId: 26
+upload.tsx:40 Progress polling effect triggered. uploadStatus: idle currentUploadId: null
