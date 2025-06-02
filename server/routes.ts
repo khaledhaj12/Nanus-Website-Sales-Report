@@ -155,6 +155,30 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  app.delete('/api/woo-orders/bulk-delete', isAuthenticated, async (req, res) => {
+    try {
+      const { orderIds } = req.body;
+      
+      if (!Array.isArray(orderIds) || orderIds.length === 0) {
+        return res.status(400).json({ message: "Invalid order IDs" });
+      }
+      
+      const validIds = orderIds
+        .filter(id => id !== null && id !== undefined && !isNaN(Number(id)))
+        .map(id => Number(id));
+      
+      if (validIds.length === 0) {
+        return res.status(400).json({ message: "No valid order IDs provided" });
+      }
+      
+      await storage.deleteWooOrders(validIds);
+      res.json({ message: "WooCommerce orders deleted successfully" });
+    } catch (error: any) {
+      console.error("Delete WooCommerce orders error:", error);
+      res.status(500).json({ message: "Failed to delete WooCommerce orders" });
+    }
+  });
+
   // Auto sync settings endpoints
   app.get('/api/sync-settings/:platform', isAuthenticated, async (req, res) => {
     try {
