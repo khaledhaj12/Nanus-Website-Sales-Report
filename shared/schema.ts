@@ -129,6 +129,16 @@ export const wooOrders = pgTable("woo_orders", {
   updatedAt: timestamp("updated_at").defaultNow(),
 });
 
+// Webhook settings table
+export const webhookSettings = pgTable("webhook_settings", {
+  id: serial("id").primaryKey(),
+  platform: varchar("platform", { length: 50 }).notNull(), // 'woocommerce'
+  secretKey: varchar("secret_key", { length: 255 }).notNull(),
+  isActive: boolean("is_active").default(true),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
 // Relations
 export const usersRelations = relations(users, ({ many }) => ({
   locationAccess: many(userLocationAccess),
@@ -216,6 +226,12 @@ export const insertWooOrderSchema = createInsertSchema(wooOrders).omit({
   updatedAt: true,
 });
 
+export const insertWebhookSettingsSchema = createInsertSchema(webhookSettings).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
 // Types
 export type User = typeof users.$inferSelect;
 export type InsertUser = z.infer<typeof insertUserSchema>;
@@ -229,4 +245,6 @@ export type Note = typeof notes.$inferSelect;
 export type InsertNote = z.infer<typeof insertNoteSchema>;
 export type WooOrder = typeof wooOrders.$inferSelect;
 export type InsertWooOrder = z.infer<typeof insertWooOrderSchema>;
+export type WebhookSettings = typeof webhookSettings.$inferSelect;
+export type InsertWebhookSettings = z.infer<typeof insertWebhookSettingsSchema>;
 export type UserLocationAccess = typeof userLocationAccess.$inferSelect;

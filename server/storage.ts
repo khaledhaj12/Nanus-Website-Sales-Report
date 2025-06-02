@@ -6,6 +6,7 @@ import {
   userLocationAccess,
   notes,
   wooOrders,
+  webhookSettings,
   type User,
   type InsertUser,
   type Location,
@@ -18,6 +19,8 @@ import {
   type InsertNote,
   type WooOrder,
   type InsertWooOrder,
+  type WebhookSettings,
+  type InsertWebhookSettings,
   type UserLocationAccess,
 } from "@shared/schema";
 import { db } from "./db";
@@ -104,6 +107,10 @@ export interface IStorage {
   getWooOrdersByLocation(locationId: number): Promise<WooOrder[]>;
   getWooOrdersByDateRange(startDate: string, endDate: string, locationId?: number): Promise<WooOrder[]>;
   searchWooOrders(searchTerm: string, locationId?: number): Promise<WooOrder[]>;
+  
+  // Webhook settings operations
+  getWebhookSettings(platform: string): Promise<WebhookSettings | undefined>;
+  upsertWebhookSettings(settings: InsertWebhookSettings): Promise<WebhookSettings>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -627,6 +634,27 @@ export class DatabaseStorage implements IStorage {
     }
 
     return await db.select().from(wooOrders).where(searchConditions).orderBy(desc(wooOrders.orderDate));
+  }
+
+  // Webhook settings operations
+  async getWebhookSettings(platform: string): Promise<WebhookSettings | undefined> {
+    const [settings] = await db.select().from(webhookSettings).where(eq(webhookSettings.platform, platform));
+    return settings || undefined;
+  }
+
+  async upsertWebhookSettings(settings: InsertWebhookSettings): Promise<WebhookSettings> {
+    const [webhookSetting] = await db
+      .insert(webhookSettings)
+      .values(settings)
+      .onConflictDoUpdate({
+        target: webhookSettings.platform,
+        set: {
+          ...settings,
+          updatedAt: new Date(),
+        },
+      })
+      .returning();
+    return webhookSetting;
   }
 }
 
