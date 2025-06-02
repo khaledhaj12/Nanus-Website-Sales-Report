@@ -11,6 +11,7 @@ import { useToast } from "@/hooks/use-toast";
 import Login from "@/pages/login";
 import Dashboard from "@/pages/dashboard";
 import Reports from "@/pages/reports";
+import WooOrders from "@/pages/woo-orders";
 import Locations from "@/pages/locations";
 import Users from "@/pages/users";
 import Upload from "@/pages/upload";
@@ -78,6 +79,8 @@ function AppRouter() {
         return <Dashboard {...commonProps} />;
       case "reports":
         return <Reports {...commonProps} />;
+      case "woo-orders":
+        return <WooOrders {...commonProps} />;
       case "locations":
         return <Locations {...commonProps} />;
       case "users":
