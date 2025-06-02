@@ -211,9 +211,58 @@ export class DatabaseStorage implements IStorage {
   }
 
   async createWooOrder(orderData: any): Promise<any> {
-    const columns = Object.keys(orderData);
+    // Convert camelCase field names to snake_case to match database columns
+    const fieldMapping: Record<string, string> = {
+      wooOrderId: 'woo_order_id',
+      orderId: 'order_id',
+      locationId: 'location_id',
+      customerName: 'customer_name',
+      firstName: 'first_name',
+      lastName: 'last_name',
+      customerEmail: 'customer_email',
+      customerPhone: 'customer_phone',
+      customerId: 'customer_id',
+      refundAmount: 'refund_amount',
+      orderDate: 'order_date',
+      wooOrderNumber: 'woo_order_number',
+      paymentMethod: 'payment_method',
+      shippingTotal: 'shipping_total',
+      taxTotal: 'tax_total',
+      discountTotal: 'discount_total',
+      paymentMethodTitle: 'payment_method_title',
+      shippingFirstName: 'shipping_first_name',
+      shippingLastName: 'shipping_last_name',
+      shippingAddress1: 'shipping_address_1',
+      shippingAddress2: 'shipping_address_2',
+      shippingCity: 'shipping_city',
+      shippingState: 'shipping_state',
+      shippingPostcode: 'shipping_postcode',
+      shippingCountry: 'shipping_country',
+      billingFirstName: 'billing_first_name',
+      billingLastName: 'billing_last_name',
+      billingAddress1: 'billing_address_1',
+      billingAddress2: 'billing_address_2',
+      billingCity: 'billing_city',
+      billingState: 'billing_state',
+      billingPostcode: 'billing_postcode',
+      billingCountry: 'billing_country',
+      locationMeta: 'location_meta',
+      orderNotes: 'order_notes',
+      customerNote: 'customer_note',
+      lineItems: 'line_items',
+      metaData: 'meta_data',
+      rawData: 'raw_data'
+    };
+
+    const mappedData: Record<string, any> = {};
+    for (const [camelKey, value] of Object.entries(orderData)) {
+      const snakeKey = fieldMapping[camelKey] || camelKey;
+      mappedData[snakeKey] = value;
+    }
+
+    const columns = Object.keys(mappedData);
     const placeholders = columns.map((_, index) => `$${index + 1}`).join(', ');
-    const values = Object.values(orderData);
+    const values = Object.values(mappedData);
     
     const query = `INSERT INTO woo_orders (${columns.join(', ')}) VALUES (${placeholders}) RETURNING *`;
     const result = await db.execute(sql.raw(query, values));
