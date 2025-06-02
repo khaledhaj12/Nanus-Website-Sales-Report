@@ -794,8 +794,10 @@ export class DatabaseStorage implements IStorage {
             // Create order data
             const orderData = {
               wooOrderId: order.id.toString(),
+              orderId: order.number || order.id.toString(),
               status: order.status,
               currency: order.currency || 'USD',
+              amount: order.total || '0',
               total: order.total || '0',
               totalTax: order.total_tax || '0',
               shippingTotal: order.shipping_total || '0',

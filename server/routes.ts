@@ -270,12 +270,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.get('/api/sync-status', isAuthenticated, async (req, res) => {
     try {
+      const { platform = 'woocommerce' } = req.query;
       const systemStatus = getSyncStatus();
-      const settings = await storage.getSyncSettings('woocommerce');
+      const settings = await storage.getSyncSettings(platform as string);
       
       res.json({
         ...systemStatus,
-        settings: settings || { platform: 'woocommerce', isActive: false, intervalMinutes: 5 },
+        settings: settings || { platform: platform as string, isActive: false, intervalMinutes: 5 },
         nextSyncIn: settings?.nextSyncAt ? Math.max(0, Math.floor((new Date(settings.nextSyncAt).getTime() - Date.now()) / 1000)) : 0
       });
     } catch (error) {
@@ -296,10 +297,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.post('/api/import-historical', isAuthenticated, async (req, res) => {
     try {
-      const { startDate, endDate } = req.body;
+      const { startDate, endDate, platform = 'woocommerce' } = req.body;
       
-      // Get API settings
-      const apiSettings = await storage.getRestApiSettings('woocommerce');
+      // Get API settings for the specific platform
+      const apiSettings = await storage.getRestApiSettings(platform);
       if (!apiSettings || !apiSettings.consumerKey || !apiSettings.consumerSecret || !apiSettings.storeUrl) {
         return res.status(400).json({ 
           success: false, 
