@@ -284,6 +284,24 @@ export class DatabaseStorage implements IStorage {
     }
   }
 
+  async getUserStatusAccess(userId: number): Promise<string[]> {
+    const access = await db.select().from(userStatusAccess)
+      .where(eq(userStatusAccess.userId, userId));
+    return access.map(a => a.status);
+  }
+
+  async setUserStatusAccess(userId: number, statuses: string[]): Promise<void> {
+    // Delete existing access
+    await db.delete(userStatusAccess).where(eq(userStatusAccess.userId, userId));
+    
+    // Insert new access
+    if (statuses.length > 0) {
+      await db.insert(userStatusAccess).values(
+        statuses.map(status => ({ userId, status }))
+      );
+    }
+  }
+
   async getDashboardSummary(locationId?: number, month?: string): Promise<{
     totalSales: number;
     totalOrders: number;
