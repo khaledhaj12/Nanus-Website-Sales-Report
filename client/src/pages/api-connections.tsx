@@ -798,9 +798,9 @@ export default function ApiConnections() {
         </TabsList>
 
         {connections.map((connection) => (
-          <TabsContent key={connection.id} value={connection.id} className="mt-6">
+          <TabsContent key={connection.connectionId} value={connection.connectionId} className="mt-6">
             <ConnectionSettings 
-              connectionId={connection.id}
+              connectionId={connection.connectionId}
               platform={connection.platform}
             />
           </TabsContent>
