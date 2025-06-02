@@ -1104,10 +1104,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
         let url = `${baseUrl}/wp-json/wc/v3/orders?per_page=${perPage}&page=${page}&orderby=date&order=desc&consumer_key=${encodeURIComponent(settings.consumerKey)}&consumer_secret=${encodeURIComponent(settings.consumerSecret)}`;
         
         if (startDate) {
-          url += `&after=${encodeURIComponent(startDate + 'T00:00:00')}`;
+          url += `&after=${startDate}T00:00:00`;
         }
         if (endDate) {
-          url += `&before=${encodeURIComponent(endDate + 'T23:59:59')}`;
+          url += `&before=${endDate}T23:59:59`;
         }
 
         console.log(`Fetching orders from: ${url}`);
