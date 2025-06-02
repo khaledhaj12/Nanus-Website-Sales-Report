@@ -15,6 +15,7 @@ import {
   X,
   StickyNote,
   ShoppingBag,
+  Settings,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -33,6 +34,7 @@ const navigationItems = [
   { id: "users", label: "User Access", icon: Users, adminOnly: true },
   { id: "upload", label: "Upload Data", icon: Upload, adminOnly: true },
   { id: "notes", label: "Notes", icon: StickyNote, adminOnly: true },
+  { id: "settings", label: "Settings", icon: Settings, adminOnly: true },
 ];
 
 export default function Sidebar({ activeSection, onSectionChange, isOpen, onToggle }: SidebarProps) {
