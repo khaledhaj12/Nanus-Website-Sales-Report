@@ -35,7 +35,7 @@ export default function Settings({ onMenuClick }: SettingsProps) {
   });
 
   // Update local state when settings load
-  React.useEffect(() => {
+  useEffect(() => {
     if (webhookSettings) {
       setSecretKey(webhookSettings.secretKey || "");
       setIsActive(webhookSettings.isActive !== false);
@@ -237,12 +237,19 @@ export default function Settings({ onMenuClick }: SettingsProps) {
                 </div>
 
                 <div className="space-y-2">
-                  <label className="text-sm font-medium text-gray-700">Status</label>
-                  <div>
-                    <Badge variant="default" className="bg-green-100 text-green-800">
-                      Active
-                    </Badge>
+                  <div className="flex items-center justify-between">
+                    <Label htmlFor="webhook-active" className="text-sm font-medium text-gray-700">
+                      Webhook Active
+                    </Label>
+                    <Switch
+                      id="webhook-active"
+                      checked={isActive}
+                      onCheckedChange={setIsActive}
+                    />
                   </div>
+                  <p className="text-xs text-gray-500">
+                    Toggle to enable or disable webhook processing
+                  </p>
                 </div>
 
                 <div className="space-y-2">
@@ -258,6 +265,26 @@ export default function Settings({ onMenuClick }: SettingsProps) {
                   <div>
                     <Badge variant="outline">POST</Badge>
                   </div>
+                </div>
+
+                <div className="flex justify-end">
+                  <Button
+                    onClick={handleSave}
+                    disabled={saveSettingsMutation.isPending}
+                    className="flex items-center gap-2"
+                  >
+                    {saveSettingsMutation.isPending ? (
+                      <>
+                        <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                        Saving...
+                      </>
+                    ) : (
+                      <>
+                        <Save className="h-4 w-4" />
+                        Save Settings
+                      </>
+                    )}
+                  </Button>
                 </div>
               </div>
 
