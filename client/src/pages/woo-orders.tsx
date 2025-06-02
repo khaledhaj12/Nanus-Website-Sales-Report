@@ -123,14 +123,7 @@ export default function WooOrders() {
   const [sortBy, setSortBy] = useState<string>('orderDate');
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
   const [visibleColumns, setVisibleColumns] = useState<string[]>(DEFAULT_VISIBLE_COLUMNS);
-  const [showImportForm, setShowImportForm] = useState(false);
-  const [importData, setImportData] = useState<ImportFormData>({
-    storeUrl: '',
-    consumerKey: '',
-    consumerSecret: '',
-    startDate: '',
-    endDate: ''
-  });
+
 
   // Fetch data
   const { data: orders = [], isLoading, refetch } = useQuery({
@@ -152,27 +145,7 @@ export default function WooOrders() {
     queryKey: ['/api/rest-api-settings/woocommerce'],
   });
 
-  // Import mutation
-  const importMutation = useMutation({
-    mutationFn: async (data: ImportFormData) => {
-      return await apiRequest('POST', '/api/import-woo-orders', data);
-    },
-    onSuccess: (response: any) => {
-      toast({
-        title: "Import Successful",
-        description: response.message || `${response.imported || 0} orders imported`,
-      });
-      setShowImportForm(false);
-      refetch();
-    },
-    onError: (error: any) => {
-      toast({
-        title: "Import Failed",
-        description: error.message || "Failed to import orders",
-        variant: "destructive",
-      });
-    },
-  });
+
 
   // Sorting and filtering
   const filteredAndSortedOrders = useMemo(() => {
@@ -239,6 +212,28 @@ export default function WooOrders() {
         ? prev.filter(col => col !== column)
         : [...prev, column]
     );
+  };
+
+  const handleTestConnection = () => {
+    // Use saved API settings if available and form fields are empty
+    const finalData = {
+      storeUrl: importData.storeUrl || apiSettings?.storeUrl || '',
+      consumerKey: importData.consumerKey || apiSettings?.consumerKey || '',
+      consumerSecret: importData.consumerSecret || apiSettings?.consumerSecret || '',
+      startDate: importData.startDate,
+      endDate: importData.endDate
+    };
+
+    if (!finalData.storeUrl || !finalData.consumerKey || !finalData.consumerSecret) {
+      toast({
+        title: "Missing Credentials",
+        description: "Please configure your WooCommerce API credentials in Settings first.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    testMutation.mutate(finalData);
   };
 
   const handleImport = (e: React.FormEvent) => {
@@ -450,14 +445,7 @@ export default function WooOrders() {
                   </PopoverContent>
                 </Popover>
 
-                {/* Import Button */}
-                <Button 
-                  onClick={() => setShowImportForm(true)}
-                  className="bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700"
-                >
-                  <Upload className="h-4 w-4 mr-2" />
-                  Import Orders
-                </Button>
+
               </div>
             </div>
           </CardContent>
