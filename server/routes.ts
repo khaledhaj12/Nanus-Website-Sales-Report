@@ -1038,7 +1038,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Test WooCommerce connection
-  app.post('/api/test-woocommerce-connection', requireAdmin, async (req, res) => {
+  app.post('/api/test-woocommerce-connection', async (req, res) => {
     try {
       const settings = await storage.getRestApiSettings('woocommerce');
       
@@ -1089,7 +1089,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Import orders from WooCommerce
-  app.post('/api/import-woocommerce-orders', requireAdmin, async (req, res) => {
+  app.post('/api/import-woocommerce-orders', async (req, res) => {
     try {
       const { startDate, endDate } = req.body;
       console.log(`Import request received - startDate: ${startDate}, endDate: ${endDate}`);
