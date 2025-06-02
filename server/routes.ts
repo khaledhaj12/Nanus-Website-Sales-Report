@@ -318,7 +318,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (settings) {
         res.json({ 
           siteKey: settings.siteKey, 
-          isEnabled: settings.isActive 
+          isEnabled: settings.isActive || false
         });
       } else {
         res.json({ siteKey: '', isEnabled: false });
