@@ -905,6 +905,98 @@ export async function registerRoutes(app: Express): Promise<Server> {
     res.json(progress);
   });
 
+  // WooCommerce webhook endpoint
+  app.post('/api/webhook/woocommerce', async (req, res) => {
+    try {
+      console.log('WooCommerce webhook received:', JSON.stringify(req.body, null, 2));
+      
+      const orderData = req.body;
+      
+      // Extract order information
+      const wooOrderId = orderData.id?.toString();
+      const orderId = orderData.number?.toString() || orderData.id?.toString();
+      const status = orderData.status;
+      const total = parseFloat(orderData.total || '0');
+      const refundTotal = parseFloat(orderData.refund_total || '0');
+      
+      // Extract customer information
+      const billing = orderData.billing || {};
+      const customerName = `${billing.first_name || ''} ${billing.last_name || ''}`.trim();
+      const firstName = billing.first_name || '';
+      const lastName = billing.last_name || '';
+      const customerEmail = billing.email || '';
+      
+      // Extract location from meta data
+      const metaData = orderData.meta_data || [];
+      let locationMeta = '';
+      let locationName = '';
+      
+      // Look for location in meta data
+      const locationMetaItem = metaData.find((meta: any) => 
+        meta.key?.toLowerCase().includes('location') || 
+        meta.key?.toLowerCase().includes('store') ||
+        meta.key?.toLowerCase().includes('branch')
+      );
+      
+      if (locationMetaItem) {
+        locationMeta = locationMetaItem.value;
+        locationName = locationMetaItem.value;
+      }
+      
+      // If no location found in meta, use billing city or a default
+      if (!locationName) {
+        locationName = billing.city || billing.state || 'Default Location';
+      }
+      
+      // Find or create location
+      let location = await storage.getLocationByName(locationName);
+      if (!location) {
+        console.log(`Creating new location: ${locationName}`);
+        location = await storage.createLocation({ name: locationName });
+      }
+      
+      // Prepare order data
+      const wooOrderData = {
+        wooOrderId,
+        orderId,
+        locationId: location.id,
+        customerName: customerName || 'Unknown',
+        firstName,
+        lastName,
+        customerEmail,
+        amount: total.toString(),
+        refundAmount: refundTotal.toString(),
+        status,
+        orderDate: new Date(orderData.date_created || new Date()),
+        wooOrderNumber: orderData.number?.toString() || '',
+        paymentMethod: orderData.payment_method || '',
+        shippingTotal: orderData.shipping_total || '0',
+        taxTotal: orderData.tax_total || '0',
+        locationMeta,
+        orderNotes: orderData.customer_note || '',
+        rawData: JSON.stringify(orderData),
+      };
+      
+      // Check if order already exists
+      const existingOrder = await storage.getWooOrderByWooOrderId(wooOrderId);
+      
+      if (existingOrder) {
+        // Update existing order
+        console.log(`Updating existing WooCommerce order: ${wooOrderId}`);
+        await storage.updateWooOrder(existingOrder.id, wooOrderData);
+      } else {
+        // Create new order
+        console.log(`Creating new WooCommerce order: ${wooOrderId}`);
+        await storage.createWooOrder(wooOrderData);
+      }
+      
+      res.status(200).json({ success: true, message: 'Order processed successfully' });
+    } catch (error) {
+      console.error('WooCommerce webhook error:', error);
+      res.status(500).json({ error: 'Failed to process webhook' });
+    }
+  });
+
   const httpServer = createServer(app);
   return httpServer;
 }

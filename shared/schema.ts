@@ -104,6 +104,31 @@ export const notes = pgTable("notes", {
   updatedAt: timestamp("updated_at").defaultNow(),
 });
 
+// WooCommerce orders table
+export const wooOrders = pgTable("woo_orders", {
+  id: serial("id").primaryKey(),
+  wooOrderId: varchar("woo_order_id", { length: 50 }).notNull().unique(),
+  orderId: varchar("order_id", { length: 255 }).notNull(),
+  locationId: integer("location_id").references(() => locations.id),
+  customerName: varchar("customer_name", { length: 255 }),
+  firstName: varchar("first_name", { length: 255 }),
+  lastName: varchar("last_name", { length: 255 }),
+  customerEmail: varchar("customer_email", { length: 255 }),
+  amount: decimal("amount", { precision: 10, scale: 2 }).notNull(),
+  refundAmount: decimal("refund_amount", { precision: 10, scale: 2 }).default('0'),
+  status: varchar("status", { length: 50 }).notNull(),
+  orderDate: timestamp("order_date").notNull(),
+  wooOrderNumber: varchar("woo_order_number", { length: 50 }),
+  paymentMethod: varchar("payment_method", { length: 100 }),
+  shippingTotal: decimal("shipping_total", { precision: 10, scale: 2 }).default('0'),
+  taxTotal: decimal("tax_total", { precision: 10, scale: 2 }).default('0'),
+  locationMeta: varchar("location_meta", { length: 255 }),
+  orderNotes: text("order_notes"),
+  rawData: text("raw_data"), // Store full WooCommerce order data as JSON
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
 // Relations
 export const usersRelations = relations(users, ({ many }) => ({
   locationAccess: many(userLocationAccess),
@@ -113,6 +138,7 @@ export const usersRelations = relations(users, ({ many }) => ({
 
 export const locationsRelations = relations(locations, ({ many }) => ({
   orders: many(orders),
+  wooOrders: many(wooOrders),
   userAccess: many(userLocationAccess),
 }));
 
@@ -148,6 +174,13 @@ export const notesRelations = relations(notes, ({ one }) => ({
   }),
 }));
 
+export const wooOrdersRelations = relations(wooOrders, ({ one }) => ({
+  location: one(locations, {
+    fields: [wooOrders.locationId],
+    references: [locations.id],
+  }),
+}));
+
 // Insert schemas
 export const insertUserSchema = createInsertSchema(users).omit({
   id: true,
@@ -177,6 +210,12 @@ export const insertNoteSchema = createInsertSchema(notes).omit({
   updatedAt: true,
 });
 
+export const insertWooOrderSchema = createInsertSchema(wooOrders).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
 // Types
 export type User = typeof users.$inferSelect;
 export type InsertUser = z.infer<typeof insertUserSchema>;
@@ -188,4 +227,6 @@ export type FileUpload = typeof fileUploads.$inferSelect;
 export type InsertFileUpload = z.infer<typeof insertFileUploadSchema>;
 export type Note = typeof notes.$inferSelect;
 export type InsertNote = z.infer<typeof insertNoteSchema>;
+export type WooOrder = typeof wooOrders.$inferSelect;
+export type InsertWooOrder = z.infer<typeof insertWooOrderSchema>;
 export type UserLocationAccess = typeof userLocationAccess.$inferSelect;
