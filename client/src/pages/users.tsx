@@ -17,7 +17,7 @@ interface UserLocationAccessProps {
 
 function UserLocationAccess({ userId, locations }: UserLocationAccessProps) {
   const { data: userAccess = [] } = useQuery({
-    queryKey: ["/api/users", userId, "locations"],
+    queryKey: [`/api/users/${userId}/locations`],
   });
 
   const accessibleLocations = locations.filter((loc: any) => 
@@ -49,11 +49,8 @@ interface UserStatusAccessProps {
 
 function UserStatusAccess({ userId }: UserStatusAccessProps) {
   const { data: userStatuses = [] } = useQuery({
-    queryKey: ["/api/users", userId, "statuses"],
+    queryKey: [`/api/users/${userId}/statuses`],
   });
-
-  // Debug logging
-  console.log("UserStatusAccess - userStatuses:", userStatuses, "type:", typeof userStatuses);
 
   const statusDisplayNames: { [key: string]: string } = {
     'processing': 'Processing',
