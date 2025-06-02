@@ -221,6 +221,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.delete('/api/orders/bulk-delete', isAuthenticated, async (req, res) => {
     try {
       const { orderIds } = req.body;
+      console.log("Received orderIds:", orderIds);
       
       if (!Array.isArray(orderIds) || orderIds.length === 0) {
         return res.status(400).json({ message: "Invalid order IDs" });
@@ -231,11 +232,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
         .filter(id => id !== null && id !== undefined && !isNaN(Number(id)))
         .map(id => Number(id));
       
+      console.log("Valid IDs:", validIds);
+      
       if (validIds.length === 0) {
         return res.status(400).json({ message: "No valid order IDs provided" });
       }
       
       await storage.deleteOrders(validIds);
+      console.log("Delete operation completed");
       res.json({ message: "Orders deleted successfully" });
     } catch (error: any) {
       console.error("Delete orders error:", error);

@@ -219,7 +219,9 @@ export class DatabaseStorage implements IStorage {
   }
 
   async deleteOrders(ids: number[]): Promise<void> {
-    await db.delete(orders).where(inArray(orders.id, ids));
+    console.log("Storage deleteOrders called with IDs:", ids);
+    const result = await db.delete(orders).where(inArray(orders.id, ids));
+    console.log("Delete result:", result);
   }
 
   async getAllOrders(locationId?: number): Promise<Order[]> {
