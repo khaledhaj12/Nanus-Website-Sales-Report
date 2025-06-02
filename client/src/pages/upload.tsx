@@ -25,6 +25,7 @@ export default function Upload({ onMenuClick }: UploadProps) {
   const [uploadFileName, setUploadFileName] = useState('');
   const [processedRecords, setProcessedRecords] = useState(0);
   const [totalRecords, setTotalRecords] = useState(0);
+  const [currentUploadId, setCurrentUploadId] = useState<number | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { toast } = useToast();
   const queryClient = useQueryClient();
@@ -34,19 +35,30 @@ export default function Upload({ onMenuClick }: UploadProps) {
     queryKey: ["/api/uploads/all"],
   });
 
-  // Simulated processing progress for better user experience
+  // Real-time progress polling for processing
   useEffect(() => {
-    if (uploadStatus === 'processing') {
-      const interval = setInterval(() => {
-        setProcessingProgress(prev => {
-          if (prev >= 95) return prev;
-          return prev + Math.random() * 10;
-        });
-      }, 500);
+    if (uploadStatus === 'processing' && currentUploadId) {
+      const interval = setInterval(async () => {
+        try {
+          const response = await fetch(`/api/progress/${currentUploadId}`);
+          const progressData = await response.json();
+          
+          if (progressData.status === 'processing') {
+            setProcessingProgress(progressData.progress);
+            setProcessedRecords(progressData.processedRecords);
+            setTotalRecords(progressData.totalRecords);
+          } else if (progressData.status === 'completed') {
+            setProcessingProgress(100);
+            clearInterval(interval);
+          }
+        } catch (error) {
+          console.error('Error fetching progress:', error);
+        }
+      }, 200); // Poll every 200ms for smooth updates
 
       return () => clearInterval(interval);
     }
-  }, [uploadStatus]);
+  }, [uploadStatus, currentUploadId]);
 
   const uploadMutation = useMutation({
     mutationFn: async (file: File) => {
@@ -75,25 +87,13 @@ export default function Upload({ onMenuClick }: UploadProps) {
           if (xhr.status >= 200 && xhr.status < 300) {
             setUploadStatus('processing');
             setUploadProgress(100);
-            
-            // Simulate processing progress
-            let progress = 0;
-            const processingInterval = setInterval(() => {
-              progress += Math.random() * 15 + 5; // Random increment between 5-20%
-              if (progress >= 100) {
-                progress = 100;
-                clearInterval(processingInterval);
-              }
-              setProcessingProgress(Math.min(progress, 100));
-            }, 200);
+            setProcessingProgress(0);
             
             try {
               const response = JSON.parse(xhr.responseText);
-              clearInterval(processingInterval);
-              setProcessingProgress(100);
+              setCurrentUploadId(response.fileId);
               resolve(response);
             } catch (e) {
-              clearInterval(processingInterval);
               reject(new Error('Failed to parse response'));
             }
           } else {

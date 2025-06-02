@@ -218,6 +218,9 @@ async function processOrderData(data: any[], uploadId: number, userId: number): 
         processedRecords: processedCount,
         status: 'processing'
       });
+      
+      // Add small delay to make progress visible
+      await new Promise(resolve => setTimeout(resolve, 50));
     } catch (error) {
       console.error('Error processing row:', error);
     }
@@ -667,6 +670,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
         
         // Update file upload status to completed
         await storage.updateFileUpload(fileUpload.id, {
+          status: 'completed'
+        });
+        
+        // Mark as completed and clean up progress tracking
+        const finalProgress = uploadProgress.get(fileUpload.id) || {};
+        uploadProgress.set(fileUpload.id, {
+          ...finalProgress,
+          progress: 100,
           status: 'completed'
         });
         
