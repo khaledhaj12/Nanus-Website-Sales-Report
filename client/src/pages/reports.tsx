@@ -3,7 +3,7 @@ import { useQuery } from "@tanstack/react-query";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import Header from "@/components/layout/header";
 import { MonthRangePicker } from "@/components/ui/month-range-picker";
-import MonthlyBreakdown from "@/components/dashboard/monthly-breakdown";
+import ReportsMonthlyBreakdown from "@/components/reports/monthly-breakdown";
 import SummaryCards from "@/components/dashboard/summary-cards";
 import { useAuth } from "@/hooks/useAuth";
 
@@ -128,7 +128,7 @@ export default function Reports({ onMenuClick }: ReportsProps) {
         />
 
         {/* Monthly Breakdown */}
-        <MonthlyBreakdown 
+        <ReportsMonthlyBreakdown 
           data={monthlyData} 
           isLoading={isMonthlyLoading}
           selectedLocation={selectedLocation}
