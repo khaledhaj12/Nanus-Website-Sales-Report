@@ -46,7 +46,7 @@ export default function SummaryCards({
       icon: Percent,
       bgColor: "bg-yellow-50",
       iconColor: "text-yellow-600",
-      subText: "7% of total sales",
+      subText: "7% commission (refunded on refunds)",
     },
     {
       title: "Stripe Fees",

@@ -300,15 +300,51 @@ export class DatabaseStorage implements IStorage {
     netDeposit: number;
   }> {
     try {
-      // Temporary workaround: Return actual data we know exists
-      // This bypasses all ORM issues completely
+      let whereConditions: any[] = [];
+      
+      if (locationId) {
+        whereConditions.push(eq(orders.locationId, locationId));
+      }
+      
+      // Filter by month if provided
+      if (month) {
+        const [year, monthNum] = month.split('-');
+        const startDate = `${year}-${monthNum}-01`;
+        const lastDay = new Date(parseInt(year), parseInt(monthNum), 0).getDate();
+        const endDate = `${year}-${monthNum}-${lastDay.toString().padStart(2, '0')}`;
+        whereConditions.push(sql`${orders.orderDate} >= ${startDate}`);
+        whereConditions.push(sql`${orders.orderDate} <= ${endDate}`);
+      }
+
+      const whereClause = whereConditions.length > 0 ? and(...whereConditions) : undefined;
+
+      const result = await db
+        .select({
+          totalSales: sql<number>`COALESCE(SUM(CASE WHEN ${orders.status} IN ('completed', 'processing') THEN CAST(${orders.amount} AS DECIMAL) ELSE 0 END), 0)`,
+          totalRefunds: sql<number>`COALESCE(SUM(CASE WHEN ${orders.status} = 'refunded' THEN CAST(${orders.amount} AS DECIMAL) ELSE 0 END), 0)`,
+          totalOrders: sql<number>`COUNT(CASE WHEN ${orders.status} IN ('completed', 'processing') THEN 1 END)`,
+          // Platform fees: positive for completed/processing orders, negative for refunded orders
+          platformFees: sql<number>`COALESCE(
+            SUM(CASE WHEN ${orders.status} IN ('completed', 'processing') THEN CAST(${orders.amount} AS DECIMAL) * 0.07 ELSE 0 END) +
+            SUM(CASE WHEN ${orders.status} = 'refunded' THEN -(CAST(${orders.amount} AS DECIMAL) * 0.07) ELSE 0 END), 0)`,
+          // Stripe fees: always positive (never refunded by Stripe)
+          stripeFees: sql<number>`COALESCE(SUM((CAST(${orders.amount} AS DECIMAL) * 0.029 + 0.30)), 0)`,
+        })
+        .from(orders)
+        .where(whereClause);
+
+      const summary = result[0];
+      
+      // Calculate net deposit: total sales - total refunds - platform fees - stripe fees
+      const netDeposit = summary.totalSales - summary.totalRefunds - summary.platformFees - summary.stripeFees;
+
       return {
-        totalSales: 1926.65,
-        totalOrders: 85,
-        totalRefunds: 0,
-        platformFees: 134.87,
-        stripeFees: 81.27,
-        netDeposit: 1710.51,
+        totalSales: summary.totalSales,
+        totalOrders: summary.totalOrders,
+        totalRefunds: summary.totalRefunds,
+        platformFees: summary.platformFees,
+        stripeFees: summary.stripeFees,
+        netDeposit: netDeposit,
       };
     } catch (error) {
       console.error('Dashboard summary error:', error);
@@ -361,10 +397,23 @@ export class DatabaseStorage implements IStorage {
       }
       
       const monthData = monthlyData.get(monthKey);
-      monthData.totalSales += parseFloat(order.amount.toString());
-      monthData.totalOrders += 1;
-      monthData.totalRefunds += parseFloat(order.refundAmount?.toString() || '0');
-      monthData.netAmount += parseFloat(order.netAmount.toString());
+      const amount = parseFloat(order.amount.toString());
+      
+      if (order.status === 'refunded') {
+        monthData.totalRefunds += amount;
+        // Platform fee is negative for refunded orders (refunded back)
+        const platformFee = -(amount * 0.07);
+        const stripeFee = (amount * 0.029) + 0.30; // Stripe keeps fees
+        monthData.netAmount += (-amount - platformFee - stripeFee);
+      } else if (order.status === 'completed' || order.status === 'processing') {
+        monthData.totalSales += amount;
+        monthData.totalOrders += 1;
+        // Normal platform fee calculation
+        const platformFee = amount * 0.07;
+        const stripeFee = (amount * 0.029) + 0.30;
+        monthData.netAmount += (amount - platformFee - stripeFee);
+      }
+      
       monthData.orders.push(order);
     }
 

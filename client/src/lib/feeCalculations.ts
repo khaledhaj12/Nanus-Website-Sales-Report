@@ -1,13 +1,15 @@
-export function calculatePlatformFee(amount: number): number {
-  return amount * 0.07; // 7%
+export function calculatePlatformFee(amount: number, status?: string): number {
+  const fee = amount * 0.07; // 7%
+  // For refunded orders, platform fee should be negative (refunded)
+  return status === 'refunded' ? -fee : fee;
 }
 
 export function calculateStripeFee(amount: number): number {
   return (amount * 0.029) + 0.30; // 2.9% + $0.30
 }
 
-export function calculateNetAmount(amount: number): number {
-  const platformFee = calculatePlatformFee(amount);
+export function calculateNetAmount(amount: number, status?: string): number {
+  const platformFee = calculatePlatformFee(amount, status);
   const stripeFee = calculateStripeFee(amount);
   return amount - platformFee - stripeFee;
 }
