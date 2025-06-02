@@ -119,21 +119,22 @@ export default function Locations({ onMenuClick }: LocationsProps) {
 
         <Card>
           <CardHeader>
-            <div className="flex items-center justify-between">
+            <div className="flex flex-col space-y-4 sm:flex-row sm:items-center sm:justify-between sm:space-y-0">
               <CardTitle>Location Management</CardTitle>
-              <div className="flex items-center space-x-2">
+              <div className="flex flex-col space-y-2 sm:flex-row sm:items-center sm:space-y-0 sm:space-x-2">
                 {selectedLocations.length > 0 && (
                   <Button
                     variant="destructive"
                     size="sm"
                     onClick={() => deleteLocationsMutation.mutate(selectedLocations)}
                     disabled={deleteLocationsMutation.isPending}
+                    className="w-full sm:w-auto"
                   >
                     <Trash2 className="mr-2 h-4 w-4" />
                     Delete {selectedLocations.length} location{selectedLocations.length > 1 ? 's' : ''}
                   </Button>
                 )}
-                <Button>
+                <Button className="w-full sm:w-auto">
                   <Plus className="mr-2 h-4 w-4" />
                   Add Location
                 </Button>
