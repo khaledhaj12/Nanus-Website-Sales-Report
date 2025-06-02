@@ -31,10 +31,26 @@ interface MonthData {
 interface MonthlyBreakdownProps {
   data: MonthData[];
   isLoading?: boolean;
+  selectedLocation?: string;
+  startMonth?: string;
+  endMonth?: string;
+  isMultipleMonths?: boolean;
 }
 
-export default function MonthlyBreakdown({ data, isLoading }: MonthlyBreakdownProps) {
-  const [expandedMonths, setExpandedMonths] = useState<Set<string>>(new Set());
+export default function MonthlyBreakdown({ 
+  data, 
+  isLoading, 
+  selectedLocation, 
+  startMonth, 
+  endMonth, 
+  isMultipleMonths 
+}: MonthlyBreakdownProps) {
+  // For single month (current month), expand by default
+  // For multiple months, keep compact view (collapsed)
+  const currentMonth = new Date().toISOString().slice(0, 7); // YYYY-MM format
+  const defaultExpanded = !isMultipleMonths && startMonth === currentMonth ? new Set([currentMonth]) : new Set();
+  
+  const [expandedMonths, setExpandedMonths] = useState<Set<string>>(defaultExpanded);
   const [searchTerm, setSearchTerm] = useState("");
 
   const toggleMonth = (month: string) => {

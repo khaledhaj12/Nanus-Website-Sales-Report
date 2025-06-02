@@ -538,7 +538,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Dashboard routes
   app.get('/api/dashboard/summary', isAuthenticated, async (req, res) => {
     try {
-      const { locationId, month } = req.query;
+      const { location, locationId, month, startMonth, endMonth } = req.query;
       
       // Use raw SQL query to bypass ORM date issues
       const { pool } = await import('./db');
@@ -546,12 +546,26 @@ export async function registerRoutes(app: Express): Promise<Server> {
       let whereClause = "WHERE 1=1";
       const params: any[] = [];
       
-      if (locationId && locationId !== 'all') {
+      // Handle location parameter (can be 'location' or 'locationId')
+      const targetLocationId = location || locationId;
+      if (targetLocationId && targetLocationId !== 'all') {
         whereClause += ` AND location_id = $${params.length + 1}`;
-        params.push(parseInt(locationId as string));
+        params.push(parseInt(targetLocationId as string));
       }
       
-      if (month) {
+      // Handle date filtering - prioritize startMonth/endMonth over month
+      if (startMonth && endMonth) {
+        // Date range filtering
+        const startDate = `${startMonth}-01`;
+        const [endYear, endMonthNum] = (endMonth as string).split('-');
+        const lastDay = new Date(parseInt(endYear), parseInt(endMonthNum), 0).getDate();
+        const endDate = `${endMonth}-${lastDay.toString().padStart(2, '0')}`;
+        
+        whereClause += ` AND order_date >= $${params.length + 1} AND order_date <= $${params.length + 2}`;
+        params.push(startDate);
+        params.push(endDate);
+      } else if (month) {
+        // Single month filtering (for backward compatibility)
         whereClause += ` AND TO_CHAR(order_date, 'YYYY-MM') = $${params.length + 1}`;
         params.push(month);
       }
