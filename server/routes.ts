@@ -1050,12 +1050,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       // Use URL parameters for authentication (more reliable than headers)
-      const testUrl = new URL(`${settings.storeUrl.replace(/\/$/, '')}/wp-json/wc/v3/orders`);
-      testUrl.searchParams.set('per_page', '1');
-      testUrl.searchParams.set('consumer_key', settings.consumerKey);
-      testUrl.searchParams.set('consumer_secret', settings.consumerSecret);
+      const baseUrl = settings.storeUrl.replace(/\/$/, '');
+      const testUrl = `${baseUrl}/wp-json/wc/v3/orders?per_page=1&consumer_key=${encodeURIComponent(settings.consumerKey)}&consumer_secret=${encodeURIComponent(settings.consumerSecret)}`;
       
-      const response = await fetch(testUrl.toString(), {
+      const response = await fetch(testUrl, {
         headers: {
           'Content-Type': 'application/json',
         }
@@ -1102,22 +1100,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
       let totalSkipped = 0;
 
       while (true) {
-        const url = new URL(`${settings.storeUrl.replace(/\/$/, '')}/wp-json/wc/v3/orders`);
-        url.searchParams.set('per_page', perPage.toString());
-        url.searchParams.set('page', page.toString());
-        url.searchParams.set('orderby', 'date');
-        url.searchParams.set('order', 'desc');
-        url.searchParams.set('consumer_key', settings.consumerKey);
-        url.searchParams.set('consumer_secret', settings.consumerSecret);
+        const baseUrl = settings.storeUrl.replace(/\/$/, '');
+        let url = `${baseUrl}/wp-json/wc/v3/orders?per_page=${perPage}&page=${page}&orderby=date&order=desc&consumer_key=${encodeURIComponent(settings.consumerKey)}&consumer_secret=${encodeURIComponent(settings.consumerSecret)}`;
         
         if (startDate) {
-          url.searchParams.set('after', `${startDate}T00:00:00`);
+          url += `&after=${encodeURIComponent(startDate + 'T00:00:00')}`;
         }
         if (endDate) {
-          url.searchParams.set('before', `${endDate}T23:59:59`);
+          url += `&before=${encodeURIComponent(endDate + 'T23:59:59')}`;
         }
 
-        const response = await fetch(url.toString(), {
+        const response = await fetch(url, {
           headers: {
             'Content-Type': 'application/json',
           }
