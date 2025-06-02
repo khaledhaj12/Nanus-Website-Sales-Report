@@ -1,4 +1,4 @@
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -7,6 +7,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import Header from "@/components/layout/header";
 import { useToast } from "@/hooks/use-toast";
+import { useAuth } from "@/hooks/useAuth";
 import { formatFileSize, getFileIcon, validateFileType, validateFileSize } from "@/lib/fileUtils";
 import { apiRequest } from "@/lib/queryClient";
 import { CloudUpload, FileText, Trash2, Download, Clock, CheckCircle, AlertCircle } from "lucide-react";
@@ -22,19 +23,55 @@ export default function Upload({ onMenuClick }: UploadProps) {
   const [processingProgress, setProcessingProgress] = useState(0);
   const [uploadStatus, setUploadStatus] = useState<'idle' | 'uploading' | 'processing' | 'completed' | 'error'>('idle');
   const [uploadFileName, setUploadFileName] = useState('');
+  const [processedRecords, setProcessedRecords] = useState(0);
+  const [totalRecords, setTotalRecords] = useState(0);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  const { user } = useAuth();
 
   const { data: allUploads = [], isLoading: historyLoading } = useQuery({
     queryKey: ["/api/uploads/all"],
   });
+
+  // WebSocket connection for real-time progress updates
+  useEffect(() => {
+    if (!user?.id) return;
+
+    const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+    const wsUrl = `${protocol}//${window.location.host}?userId=${user.id}`;
+    const ws = new WebSocket(wsUrl);
+
+    ws.onmessage = (event) => {
+      try {
+        const data = JSON.parse(event.data);
+        if (data.type === 'processing_progress') {
+          setProcessingProgress(data.progress);
+          setProcessedRecords(data.processedRecords);
+          setTotalRecords(data.totalRecords);
+        }
+      } catch (error) {
+        console.error('Error parsing WebSocket message:', error);
+      }
+    };
+
+    ws.onclose = () => {
+      console.log('WebSocket connection closed');
+    };
+
+    return () => {
+      ws.close();
+    };
+  }, [user?.id]);
 
   const uploadMutation = useMutation({
     mutationFn: async (file: File) => {
       setUploadFileName(file.name);
       setUploadStatus('uploading');
       setUploadProgress(0);
+      setProcessingProgress(0);
+      setProcessedRecords(0);
+      setTotalRecords(0);
 
       const formData = new FormData();
       formData.append('file', file);
@@ -295,8 +332,8 @@ export default function Upload({ onMenuClick }: UploadProps) {
                   {(uploadStatus === 'processing' || uploadStatus === 'completed') && (
                     <div className="mb-4">
                       <div className="flex justify-between text-sm text-gray-600 mb-1">
-                        <span>Processing Progress</span>
-                        <span>{Math.round(processingProgress)}%</span>
+                        <span>Processing Records</span>
+                        <span>{processingProgress}%</span>
                       </div>
                       <div className="w-full bg-gray-200 rounded-full h-2">
                         <div 
@@ -307,6 +344,11 @@ export default function Upload({ onMenuClick }: UploadProps) {
                           style={{ width: `${processingProgress}%` }}
                         ></div>
                       </div>
+                      {totalRecords > 0 && (
+                        <div className="text-xs text-gray-500 text-center mt-1">
+                          {processedRecords} of {totalRecords} records processed
+                        </div>
+                      )}
                     </div>
                   )}
 
