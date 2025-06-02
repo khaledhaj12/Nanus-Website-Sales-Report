@@ -570,14 +570,26 @@ export async function registerRoutes(app: Express): Promise<Server> {
         params.push(month);
       }
       
+      // Handle status filtering
+      let statusFilter = ['processing', 'completed']; // Default to paid orders
+      if (statuses) {
+        statusFilter = Array.isArray(statuses) ? statuses : [statuses];
+      }
+      
+      if (statusFilter.length > 0) {
+        const statusPlaceholders = statusFilter.map((_, index) => `$${params.length + index + 1}`).join(', ');
+        whereClause += ` AND status IN (${statusPlaceholders})`;
+        params.push(...statusFilter);
+      }
+      
       const query = `
         SELECT 
-          COALESCE(SUM(CASE WHEN status IN ('processing', 'completed') THEN amount::decimal ELSE 0 END), 0) as total_sales,
+          COALESCE(SUM(amount::decimal), 0) as total_sales,
           COALESCE(SUM(CASE WHEN status = 'refunded' THEN amount::decimal ELSE 0 END), 0) as total_refunds,
-          COUNT(CASE WHEN status IN ('processing', 'completed') THEN 1 END) as total_orders,
-          COALESCE(SUM(CASE WHEN status IN ('processing', 'completed') THEN amount::decimal * 0.07 ELSE 0 END), 0) as platform_fees,
-          COALESCE(SUM(CASE WHEN status IN ('processing', 'completed') THEN (amount::decimal * 0.029 + 0.30) ELSE 0 END), 0) as stripe_fees,
-          COALESCE(SUM(CASE WHEN status IN ('processing', 'completed') THEN (amount::decimal - (amount::decimal * 0.07) - (amount::decimal * 0.029 + 0.30)) ELSE 0 END), 0) as net_deposit
+          COUNT(*) as total_orders,
+          COALESCE(SUM(amount::decimal * 0.07), 0) as platform_fees,
+          COALESCE(SUM(amount::decimal * 0.029 + 0.30), 0) as stripe_fees,
+          COALESCE(SUM(amount::decimal - (amount::decimal * 0.07) - (amount::decimal * 0.029 + 0.30)), 0) as net_deposit
         FROM woo_orders 
         ${whereClause}
       `;
@@ -603,7 +615,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.get('/api/dashboard/monthly-breakdown', isAuthenticated, async (req, res) => {
     try {
-      const { year, locationId, location, startMonth, endMonth } = req.query;
+      const { year, locationId, location, startMonth, endMonth, statuses } = req.query;
       const { pool } = await import('./db');
       
       let whereClause = "WHERE 1=1";
