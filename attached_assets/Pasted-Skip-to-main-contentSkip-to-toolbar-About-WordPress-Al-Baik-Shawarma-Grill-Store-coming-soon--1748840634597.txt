@@ -1,0 +1,83 @@
+Skip to main contentSkip to toolbar
+About WordPress
+Al-Baik Shawarma & Grill
+Store coming soon
+ Flatsome
+00 Comments in moderation
+New
+SEO11 notification
+WPCode
+Hostinger
+Howdy, khaledhaj12@gmail.com
+Status
+Store Activity
+Activityunread activity
+Help
+System statusToolsLogsScheduled Actions
+Logs
+Orderable Pro needs to be at least v1.17.0 for compatibility. Please update the Orderable Pro plugin. Update now.
+
+Flatsome Maintenance Mode is active. Please don't forget to deactivate it as soon as you are done.
+
+Browse | Settings
+Viewing log file webhooks-delivery-2025-06-02
+Download
+Delete permanently
+2025-06-02T04:57:36+00:00 Info Array
+(
+    [Webhook Delivery] => Array
+        (
+            [Delivery ID] => 4cbe47ca665d7619c254a6d9f5d01f8a
+            [Date] => Jun 2, 2025 @ 4:57
+            [URL] => https://ee4b7f00-6d45-4ffc-a131-b72a4d989a18-00-9t5valsb7bpr.worf.replit.dev/api/webhook/woocommerce
+            [Duration] => 2.59002
+            [Request] => Array
+                (
+                    [Method] => POST
+                    [Headers] => Array
+                        (
+                            [User-Agent] => WooCommerce/9.8.5 Hookshot (WordPress/6.8.1)
+                            [Content-Type] => application/json
+                            [X-WC-Webhook-Source] => https://albaikshawarma.com/
+                            [X-WC-Webhook-Topic] => order.created
+                            [X-WC-Webhook-Resource] => order
+                            [X-WC-Webhook-Event] => created
+                            [X-WC-Webhook-Signature] => rsbmK9CPHHUu3C0eEIjGckdSVtjdDEJEB7ojiiaw8rU=
+                            [X-WC-Webhook-ID] => 1
+                            [X-WC-Webhook-Delivery-ID] => 4cbe47ca665d7619c254a6d9f5d01f8a
+                        )
+
+                )
+
+            [Body] => Webhook body is not logged unless WP_DEBUG mode is turned on. This is to avoid the storing of personal data in the logs.
+            [Response] => Array
+                (
+                    [Code] => 401
+                    [Message] => Unauthorized
+                    [Headers] => WpOrg\Requests\Utility\CaseInsensitiveDictionary Object
+                        (
+                            [data:protected] => Array
+                                (
+                                    [content-length] => 48
+                                    [content-type] => application/json; charset=utf-8
+                                    [date] => Mon, 02 Jun 2025 04:57:36 GMT
+                                    [etag] => W/"30-oxnhi28oZNhrZ27Bo+DanrgEfUM"
+                                    [replit-cluster] => worf
+                                    [x-powered-by] => Express
+                                    [x-robots-tag] => Array
+                                        (
+                                            [0] => none, noindex, noarchive, nofollow, nositelinkssearchbox, noimageindex
+                                            [1] => none, noindex, noarchive, nofollow, nositelinkssearchbox, noimageindex
+                                        )
+
+                                )
+
+                        )
+
+                    [Body] => Webhook body is not logged unless WP_DEBUG mode is turned on. This is to avoid the storing of personal data in the logs.
+                )
+
+        )
+
+)
+
