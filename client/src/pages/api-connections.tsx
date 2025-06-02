@@ -24,7 +24,7 @@ interface SyncSettings {
   nextSyncAt?: Date;
 }
 
-interface SyncStatus {
+interface SyncStatusData {
   isRunning: boolean;
   hasInterval: boolean;
   settings: SyncSettings;
@@ -105,12 +105,12 @@ function ConnectionSettings({ connectionId, platform }: ConnectionSettingsProps)
 
   // Initialize settings from API data - only populate if data exists, otherwise keep defaults
   useEffect(() => {
-    if (syncData && typeof syncData === 'object' && syncData.platform) {
+    if (syncData && typeof syncData === 'object' && 'platform' in syncData && syncData.platform) {
       setSyncSettings(prev => ({
         ...prev,
-        platform: syncData.platform,
-        isActive: syncData.isActive || false,
-        intervalMinutes: syncData.intervalMinutes || 5
+        platform: syncData.platform as string,
+        isActive: ('isActive' in syncData ? syncData.isActive : false) as boolean,
+        intervalMinutes: ('intervalMinutes' in syncData ? syncData.intervalMinutes : 5) as number
       }));
     } else {
       // Reset to defaults for new connections
@@ -123,14 +123,14 @@ function ConnectionSettings({ connectionId, platform }: ConnectionSettingsProps)
   }, [syncData, platformId]);
 
   useEffect(() => {
-    if (apiData && typeof apiData === 'object' && apiData.platform) {
+    if (apiData && typeof apiData === 'object' && 'platform' in apiData && apiData.platform) {
       setApiSettings(prev => ({
         ...prev,
-        platform: apiData.platform,
-        consumerKey: apiData.consumerKey || '',
-        consumerSecret: apiData.consumerSecret || '',
-        storeUrl: apiData.storeUrl || '',
-        isActive: apiData.isActive !== undefined ? apiData.isActive : true
+        platform: apiData.platform as string,
+        consumerKey: ('consumerKey' in apiData ? apiData.consumerKey : '') as string,
+        consumerSecret: ('consumerSecret' in apiData ? apiData.consumerSecret : '') as string,
+        storeUrl: ('storeUrl' in apiData ? apiData.storeUrl : '') as string,
+        isActive: ('isActive' in apiData && apiData.isActive !== undefined ? apiData.isActive : true) as boolean
       }));
     } else {
       // Reset to defaults for new connections
@@ -301,7 +301,7 @@ function ConnectionSettings({ connectionId, platform }: ConnectionSettingsProps)
   };
 
   const handleToggleSync = () => {
-    if (syncStatus && typeof syncStatus === 'object' && syncStatus.isRunning) {
+    if (syncStatus && typeof syncStatus === 'object' && 'isRunning' in syncStatus && syncStatus.isRunning) {
       stopSyncMutation.mutate();
     } else {
       startSyncMutation.mutate();
@@ -358,12 +358,12 @@ function ConnectionSettings({ connectionId, platform }: ConnectionSettingsProps)
             >
               {startSyncMutation.isPending || stopSyncMutation.isPending ? (
                 <RefreshCw className="mr-2 h-4 w-4 animate-spin" />
-              ) : (syncStatus && typeof syncStatus === 'object' && syncStatus.isRunning) ? (
+              ) : (syncStatus && typeof syncStatus === 'object' && 'isRunning' in syncStatus && syncStatus.isRunning) ? (
                 <AlertCircle className="mr-2 h-4 w-4" />
               ) : (
                 <Zap className="mr-2 h-4 w-4" />
               )}
-              {(syncStatus && typeof syncStatus === 'object' && syncStatus.isRunning) ? "Stop Auto Sync" : "Start Auto Sync"}
+              {(syncStatus && typeof syncStatus === 'object' && 'isRunning' in syncStatus && syncStatus.isRunning) ? "Stop Auto Sync" : "Start Auto Sync"}
             </Button>
           </div>
         </CardContent>
