@@ -8,8 +8,13 @@ import { Switch } from "@/components/ui/switch";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
 import { Shield, Key, Globe } from "lucide-react";
+import Header from "@/components/layout/header";
 
-export default function Recaptcha() {
+interface RecaptchaProps {
+  onMenuClick?: () => void;
+}
+
+export default function Recaptcha({ onMenuClick }: RecaptchaProps) {
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const [formData, setFormData] = useState({
@@ -86,14 +91,19 @@ export default function Recaptcha() {
   }
 
   return (
-    <div className="container mx-auto p-6 max-w-4xl">
-      <div className="flex items-center gap-3 mb-6">
-        <Shield className="h-8 w-8 text-primary" />
-        <div>
-          <h1 className="text-3xl font-bold">Google reCAPTCHA Configuration</h1>
-          <p className="text-muted-foreground">Configure Google reCAPTCHA for enhanced login security</p>
-        </div>
-      </div>
+    <div className="flex-1 flex flex-col overflow-hidden">
+      <Header 
+        title="Google reCAPTCHA Configuration" 
+        onMenuClick={onMenuClick || (() => {})} 
+      />
+      <main className="flex-1 overflow-y-auto p-6">
+        <div className="container mx-auto max-w-4xl">
+          <div className="flex items-center gap-3 mb-6">
+            <Shield className="h-8 w-8 text-primary" />
+            <div>
+              <p className="text-muted-foreground">Configure Google reCAPTCHA for enhanced login security</p>
+            </div>
+          </div>
 
       <Card>
         <CardHeader>
@@ -237,6 +247,8 @@ export default function Recaptcha() {
           </div>
         </CardContent>
       </Card>
+        </div>
+      </main>
     </div>
   );
 }

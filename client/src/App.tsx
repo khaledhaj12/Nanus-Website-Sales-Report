@@ -88,9 +88,9 @@ function AppRouter() {
       case "users":
         return isAdmin ? <Users {...commonProps} /> : <Dashboard {...commonProps} />;
       case "api-connections":
-        return isAdmin ? <ApiConnections /> : <Dashboard {...commonProps} />;
+        return isAdmin ? <ApiConnections {...commonProps} /> : <Dashboard {...commonProps} />;
       case "recaptcha":
-        return isAdmin ? <Recaptcha /> : <Dashboard {...commonProps} />;
+        return isAdmin ? <Recaptcha {...commonProps} /> : <Dashboard {...commonProps} />;
       case "footer":
         return isAdmin ? <FooterSettings /> : <Dashboard {...commonProps} />;
       default:
