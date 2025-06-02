@@ -38,10 +38,14 @@ export default function Upload({ onMenuClick }: UploadProps) {
   // Real-time progress polling for processing
   useEffect(() => {
     if (uploadStatus === 'processing' && currentUploadId) {
+      console.log('Starting progress polling for upload ID:', currentUploadId);
+      
       const interval = setInterval(async () => {
         try {
           const response = await fetch(`/api/progress/${currentUploadId}`);
           const progressData = await response.json();
+          
+          console.log('Progress data:', progressData);
           
           if (progressData.status === 'processing') {
             setProcessingProgress(progressData.progress);
@@ -49,6 +53,7 @@ export default function Upload({ onMenuClick }: UploadProps) {
             setTotalRecords(progressData.totalRecords);
           } else if (progressData.status === 'completed') {
             setProcessingProgress(100);
+            setUploadStatus('completed');
             clearInterval(interval);
           }
         } catch (error) {
