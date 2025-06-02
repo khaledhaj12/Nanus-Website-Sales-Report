@@ -6,6 +6,7 @@ import {
   userStatusAccess,
   syncSettings,
   restApiSettings,
+  recaptchaSettings,
   type User,
   type InsertUser,
   type Location,
@@ -16,6 +17,8 @@ import {
   type InsertSyncSettings,
   type RestApiSettings,
   type InsertRestApiSettings,
+  type RecaptchaSettings,
+  type InsertRecaptchaSettings,
   type UserLocationAccess,
   type UserStatusAccess,
 } from "@shared/schema";
@@ -91,6 +94,10 @@ export interface IStorage {
   // REST API settings operations
   getRestApiSettings(platform: string): Promise<RestApiSettings | undefined>;
   upsertRestApiSettings(settings: InsertRestApiSettings): Promise<RestApiSettings>;
+  
+  // reCAPTCHA settings operations
+  getRecaptchaSettings(): Promise<RecaptchaSettings | undefined>;
+  upsertRecaptchaSettings(settings: InsertRecaptchaSettings): Promise<RecaptchaSettings>;
 }
 
 export class DatabaseStorage implements IStorage {

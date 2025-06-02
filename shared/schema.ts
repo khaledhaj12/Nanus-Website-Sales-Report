@@ -131,6 +131,16 @@ export const restApiSettings = pgTable("rest_api_settings", {
   updatedAt: timestamp("updated_at").defaultNow(),
 });
 
+// reCAPTCHA settings table
+export const recaptchaSettings = pgTable("recaptcha_settings", {
+  id: serial("id").primaryKey(),
+  siteKey: varchar("site_key", { length: 255 }).notNull(),
+  secretKey: varchar("secret_key", { length: 255 }).notNull(),
+  isActive: boolean("is_active").default(true),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
 // Relations
 export const usersRelations = relations(users, ({ many }) => ({
   locationAccess: many(userLocationAccess),
@@ -211,6 +221,12 @@ export const insertRestApiSettingsSchema = createInsertSchema(restApiSettings).o
   updatedAt: true,
 });
 
+export const insertRecaptchaSettingsSchema = createInsertSchema(recaptchaSettings).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
 // Types
 export type User = typeof users.$inferSelect;
 export type InsertUser = z.infer<typeof insertUserSchema>;
@@ -226,5 +242,7 @@ export type StoreConnection = typeof storeConnections.$inferSelect;
 export type InsertStoreConnection = z.infer<typeof insertStoreConnectionSchema>;
 export type RestApiSettings = typeof restApiSettings.$inferSelect;
 export type InsertRestApiSettings = z.infer<typeof insertRestApiSettingsSchema>;
+export type RecaptchaSettings = typeof recaptchaSettings.$inferSelect;
+export type InsertRecaptchaSettings = z.infer<typeof insertRecaptchaSettingsSchema>;
 export type UserLocationAccess = typeof userLocationAccess.$inferSelect;
 export type UserStatusAccess = typeof userStatusAccess.$inferSelect;
