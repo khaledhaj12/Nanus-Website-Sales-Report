@@ -58,16 +58,19 @@ function ConnectionSettings({ connectionId, platform }: ConnectionSettingsProps)
   const { toast } = useToast();
   const queryClient = useQueryClient();
   
+  // Use original platform name for default connection, suffixed for others
+  const platformId = connectionId === 'default' ? platform : `${platform}-${connectionId}`;
+  
   // Sync settings state
   const [syncSettings, setSyncSettings] = useState<SyncSettings>({
-    platform: `${platform}-${connectionId}`,
+    platform: platformId,
     isActive: false,
     intervalMinutes: 5
   });
   
   // API settings state
   const [apiSettings, setApiSettings] = useState<RestApiSettings>({
-    platform: `${platform}-${connectionId}`,
+    platform: platformId,
     consumerKey: '',
     consumerSecret: '',
     storeUrl: '',
@@ -82,12 +85,12 @@ function ConnectionSettings({ connectionId, platform }: ConnectionSettingsProps)
 
   // Queries - Use connection-specific platform identifiers
   const { data: syncData = {} } = useQuery({
-    queryKey: [`/api/sync-settings/${platform}-${connectionId}`],
+    queryKey: [`/api/sync-settings/${platformId}`],
     refetchInterval: connectionId === 'default' ? 2000 : 0, // Only auto-refresh for main store
   });
 
   const { data: apiData = {} } = useQuery({
-    queryKey: [`/api/rest-api-settings/${platform}-${connectionId}`],
+    queryKey: [`/api/rest-api-settings/${platformId}`],
   });
 
   const { data: syncStatus } = useQuery({
@@ -108,12 +111,12 @@ function ConnectionSettings({ connectionId, platform }: ConnectionSettingsProps)
     } else {
       // Reset to defaults for new connections
       setSyncSettings({
-        platform: `${platform}-${connectionId}`,
+        platform: platformId,
         isActive: false,
         intervalMinutes: 5
       });
     }
-  }, [syncData, platform, connectionId]);
+  }, [syncData, platformId]);
 
   useEffect(() => {
     if (apiData && Object.keys(apiData).length > 0 && apiData.platform) {
@@ -128,14 +131,14 @@ function ConnectionSettings({ connectionId, platform }: ConnectionSettingsProps)
     } else {
       // Reset to defaults for new connections
       setApiSettings({
-        platform: `${platform}-${connectionId}`,
+        platform: platformId,
         consumerKey: '',
         consumerSecret: '',
         storeUrl: '',
         isActive: true
       });
     }
-  }, [apiData, platform, connectionId]);
+  }, [apiData, platformId]);
 
   // Mutations
   const updateSyncSettingsMutation = useMutation({
@@ -148,7 +151,7 @@ function ConnectionSettings({ connectionId, platform }: ConnectionSettingsProps)
         title: "Success",
         description: "Sync settings updated successfully",
       });
-      queryClient.invalidateQueries({ queryKey: [`/api/sync-settings/${platform}`] });
+      queryClient.invalidateQueries({ queryKey: [`/api/sync-settings/${platformId}`] });
     },
     onError: (error) => {
       toast({
@@ -169,7 +172,7 @@ function ConnectionSettings({ connectionId, platform }: ConnectionSettingsProps)
         title: "Success",
         description: "API settings updated successfully",
       });
-      queryClient.invalidateQueries({ queryKey: [`/api/rest-api-settings/${platform}`] });
+      queryClient.invalidateQueries({ queryKey: [`/api/rest-api-settings/${platformId}`] });
     },
     onError: (error) => {
       toast({
@@ -182,7 +185,7 @@ function ConnectionSettings({ connectionId, platform }: ConnectionSettingsProps)
 
   const testConnectionMutation = useMutation({
     mutationFn: async () => {
-      const response = await apiRequest("POST", "/api/test-connection", apiSettings);
+      const response = await apiRequest("POST", "/api/test-woo-connection", apiSettings);
       return response.json();
     },
     onSuccess: (data) => {
