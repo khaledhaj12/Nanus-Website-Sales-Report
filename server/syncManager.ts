@@ -4,62 +4,66 @@ import axios from "axios";
 interface SyncManager {
   intervalId: NodeJS.Timeout | null;
   isRunning: boolean;
+  platform: string;
 }
 
-const syncManager: SyncManager = {
-  intervalId: null,
-  isRunning: false
-};
+const syncManagers: Map<string, SyncManager> = new Map();
 
-export async function startAutoSync() {
-  if (syncManager.isRunning) {
-    console.log("Auto sync already running");
+export async function startAutoSync(platform: string = 'woocommerce') {
+  const manager = syncManagers.get(platform);
+  if (manager?.isRunning) {
+    console.log(`Auto sync already running for ${platform}`);
     return;
   }
 
-  const settings = await storage.getSyncSettings('woocommerce');
+  const settings = await storage.getSyncSettings(platform);
   if (!settings || !settings.isActive) {
-    console.log("Auto sync is disabled");
+    console.log(`Auto sync is disabled for ${platform}`);
     return;
   }
 
   const intervalMs = (settings.intervalMinutes || 5) * 60 * 1000;
   
-  syncManager.intervalId = setInterval(async () => {
-    await performSync();
+  const intervalId = setInterval(async () => {
+    await performSync(platform);
   }, intervalMs);
   
-  syncManager.isRunning = true;
-  console.log(`Auto sync started - running every ${settings.intervalMinutes} minutes`);
+  syncManagers.set(platform, {
+    intervalId,
+    isRunning: true,
+    platform
+  });
+  
+  console.log(`Auto sync started for ${platform} - running every ${settings.intervalMinutes} minutes`);
   
   // Perform initial sync
-  await performSync();
+  await performSync(platform);
 }
 
-export async function stopAutoSync() {
-  if (syncManager.intervalId) {
-    clearInterval(syncManager.intervalId);
-    syncManager.intervalId = null;
+export async function stopAutoSync(platform: string = 'woocommerce') {
+  const manager = syncManagers.get(platform);
+  if (manager?.intervalId) {
+    clearInterval(manager.intervalId);
+    syncManagers.delete(platform);
+    console.log(`Auto sync stopped for ${platform}`);
   }
-  syncManager.isRunning = false;
-  console.log("Auto sync stopped");
 }
 
-export async function restartAutoSync() {
-  await stopAutoSync();
-  await startAutoSync();
+export async function restartAutoSync(platform: string = 'woocommerce') {
+  await stopAutoSync(platform);
+  await startAutoSync(platform);
 }
 
-async function performSync() {
+async function performSync(platform: string = 'woocommerce') {
   try {
-    console.log("=== AUTO SYNC STARTED ===");
+    console.log(`=== AUTO SYNC STARTED for ${platform} ===`);
     
     // Update sync status to running
-    const settings = await storage.getSyncSettings('woocommerce');
+    const settings = await storage.getSyncSettings(platform);
     if (!settings) return;
     
     await storage.upsertSyncSettings({
-      platform: 'woocommerce',
+      platform: platform,
       isActive: settings.isActive,
       intervalMinutes: settings.intervalMinutes,
       isRunning: true,
@@ -68,7 +72,7 @@ async function performSync() {
     });
 
     // Get API settings
-    const apiSettings = await storage.getRestApiSettings('woocommerce');
+    const apiSettings = await storage.getRestApiSettings(platform);
     if (!apiSettings || !apiSettings.consumerKey || !apiSettings.consumerSecret || !apiSettings.storeUrl) {
       console.log("WooCommerce API not configured for auto sync");
       return;

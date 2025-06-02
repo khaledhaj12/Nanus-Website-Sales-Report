@@ -212,7 +212,7 @@ function ConnectionSettings({ connectionId, platform }: ConnectionSettingsProps)
 
   const startSyncMutation = useMutation({
     mutationFn: async () => {
-      const response = await apiRequest("POST", "/api/start-sync");
+      const response = await apiRequest("POST", "/api/start-sync", { platform: platformId });
       return response.json();
     },
     onSuccess: () => {
@@ -220,7 +220,7 @@ function ConnectionSettings({ connectionId, platform }: ConnectionSettingsProps)
         title: "Success",
         description: "Auto sync started successfully",
       });
-      queryClient.invalidateQueries({ queryKey: ["/api/sync-status"] });
+      queryClient.invalidateQueries({ queryKey: [`/api/sync-status/${platformId}`] });
     },
     onError: (error) => {
       toast({
@@ -233,7 +233,7 @@ function ConnectionSettings({ connectionId, platform }: ConnectionSettingsProps)
 
   const stopSyncMutation = useMutation({
     mutationFn: async () => {
-      const response = await apiRequest("POST", "/api/stop-sync");
+      const response = await apiRequest("POST", "/api/stop-sync", { platform: platformId });
       return response.json();
     },
     onSuccess: () => {
@@ -241,7 +241,7 @@ function ConnectionSettings({ connectionId, platform }: ConnectionSettingsProps)
         title: "Success",
         description: "Auto sync stopped successfully",
       });
-      queryClient.invalidateQueries({ queryKey: ["/api/sync-status"] });
+      queryClient.invalidateQueries({ queryKey: [`/api/sync-status/${platformId}`] });
     },
     onError: (error) => {
       toast({

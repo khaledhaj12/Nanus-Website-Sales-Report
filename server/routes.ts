@@ -340,11 +340,23 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.post('/api/start-sync', isAuthenticated, async (req, res) => {
     try {
-      await restartAutoSync();
+      const { platform = 'woocommerce' } = req.body;
+      await restartAutoSync(platform);
       res.json({ success: true, message: "Auto sync started successfully" });
     } catch (error) {
       console.error("Start sync error:", error);
       res.status(500).json({ message: "Failed to start auto sync" });
+    }
+  });
+
+  app.post('/api/stop-sync', isAuthenticated, async (req, res) => {
+    try {
+      const { platform = 'woocommerce' } = req.body;
+      await stopAutoSync(platform);
+      res.json({ success: true, message: "Auto sync stopped successfully" });
+    } catch (error) {
+      console.error("Stop sync error:", error);
+      res.status(500).json({ message: "Failed to stop auto sync" });
     }
   });
 
