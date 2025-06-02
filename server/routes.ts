@@ -973,7 +973,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       console.log('WooCommerce webhook received:', JSON.stringify(req.body, null, 2));
       
+      // Validate secret key from headers
+      const providedSecret = req.headers['x-wc-webhook-signature'] || req.headers['x-webhook-secret'];
+      const expectedSecret = 'woo_webhook_secret_2025';
+      
+      if (!providedSecret || providedSecret !== expectedSecret) {
+        console.log('Invalid or missing webhook secret');
+        return res.status(401).json({ error: 'Unauthorized: Invalid webhook secret' });
+      }
+      
       const orderData = req.body;
+      
+      // Validate that this is a proper WooCommerce order webhook
+      if (!orderData.id || !orderData.number) {
+        console.log('Invalid webhook data - missing required order fields');
+        return res.status(400).json({ error: 'Invalid webhook data' });
+      }
       
       // Extract order information
       const wooOrderId = orderData.id?.toString();
@@ -1020,7 +1035,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       // Prepare order data
       const wooOrderData = {
-        wooOrderId,
+        wooOrderId: wooOrderId || orderId, // Ensure we have a wooOrderId
         orderId,
         locationId: location.id,
         customerName: customerName || 'Unknown',
@@ -1028,16 +1043,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
         lastName,
         customerEmail,
         amount: total.toString(),
-        refundAmount: refundTotal.toString(),
+        refundAmount: refundTotal > 0 ? refundTotal.toString() : null,
         status,
         orderDate: new Date(orderData.date_created || new Date()),
-        wooOrderNumber: orderData.number?.toString() || '',
-        paymentMethod: orderData.payment_method || '',
+        wooOrderNumber: orderData.number?.toString() || orderId,
+        paymentMethod: orderData.payment_method || null,
         shippingTotal: orderData.shipping_total || '0',
         taxTotal: orderData.tax_total || '0',
         locationMeta,
-        orderNotes: orderData.customer_note || '',
-        rawData: JSON.stringify(orderData),
+        orderNotes: orderData.customer_note || null,
+        rawData: orderData,
       };
       
       // Check if order already exists

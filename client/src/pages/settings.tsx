@@ -80,6 +80,25 @@ export default function Settings({ onMenuClick }: SettingsProps) {
                 </div>
 
                 <div className="space-y-2">
+                  <label className="text-sm font-medium text-gray-700">Secret Key</label>
+                  <div className="flex gap-2">
+                    <Input 
+                      value="woo_webhook_secret_2025"
+                      readOnly
+                      className="font-mono text-sm"
+                    />
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => copyToClipboard("woo_webhook_secret_2025", "Secret Key")}
+                    >
+                      <Copy className="h-4 w-4" />
+                    </Button>
+                  </div>
+                  <p className="text-xs text-gray-500">Use this secret key in WooCommerce webhook settings for security</p>
+                </div>
+
+                <div className="space-y-2">
                   <label className="text-sm font-medium text-gray-700">Status</label>
                   <div>
                     <Badge variant="default" className="bg-green-100 text-green-800">
@@ -110,6 +129,10 @@ export default function Settings({ onMenuClick }: SettingsProps) {
                   <div className="flex justify-between">
                     <span className="text-gray-600">Delivery URL:</span>
                     <code className="text-xs bg-white px-2 py-1 rounded border">{webhookUrl}</code>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-gray-600">Secret:</span>
+                    <code className="text-xs bg-white px-2 py-1 rounded border">woo_webhook_secret_2025</code>
                   </div>
                   <div className="flex justify-between">
                     <span className="text-gray-600">Topic:</span>
