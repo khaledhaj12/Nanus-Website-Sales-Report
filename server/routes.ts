@@ -175,7 +175,22 @@ async function processOrderData(data: any[], uploadId: number, userId: number): 
         stripeFee: stripeFee.toString(),
         netAmount: netAmount.toString(),
         orderNotes: orderRow.notes || orderRow.Notes || orderRow['Order Notes'] || '',
-        orderDate: new Date(orderRow['Paid Date'] || orderRow.paid_date || orderRow.order_date || new Date()).toISOString().split('T')[0],
+        orderDate: (() => {
+          const dateString = orderRow['Paid Date'] || orderRow.paid_date || orderRow.order_date || orderRow['Order Date'];
+          if (!dateString) {
+            console.warn('No date found for order:', orderId);
+            return new Date().toISOString().split('T')[0];
+          }
+          
+          // Try parsing the date string
+          const parsedDate = new Date(dateString);
+          if (isNaN(parsedDate.getTime())) {
+            console.warn('Invalid date format for order:', orderId, 'Date value:', dateString);
+            return new Date().toISOString().split('T')[0];
+          }
+          
+          return parsedDate.toISOString().split('T')[0];
+        })(),
       };
 
       // Check if order already exists
