@@ -1,5 +1,5 @@
-import { useState } from "react";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useState, useRef, useEffect } from "react";
+import { useMutation, useQueryClient, useQuery } from "@tanstack/react-query";
 import { useLocation } from "wouter";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
@@ -7,16 +7,25 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import ReCAPTCHA from "react-google-recaptcha";
 
 export default function Login() {
   const [, setLocation] = useLocation();
   const [username, setUsername] = useState("admin");
   const [password, setPassword] = useState("admin");
+  const [recaptchaToken, setRecaptchaToken] = useState<string | null>(null);
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  const recaptchaRef = useRef<ReCAPTCHA>(null);
+
+  // Fetch reCAPTCHA settings
+  const { data: recaptchaSettings } = useQuery({
+    queryKey: ["/api/recaptcha-settings"],
+    retry: false,
+  });
 
   const loginMutation = useMutation({
-    mutationFn: async (credentials: { username: string; password: string }) => {
+    mutationFn: async (credentials: { username: string; password: string; recaptchaToken?: string }) => {
       const response = await apiRequest("POST", "/api/auth/login", credentials);
       return response.json();
     },
@@ -47,7 +56,26 @@ export default function Login() {
       });
       return;
     }
-    loginMutation.mutate({ username, password });
+
+    // Check if reCAPTCHA is enabled and required
+    if (recaptchaSettings?.isEnabled && !recaptchaToken) {
+      toast({
+        title: "Error",
+        description: "Please complete the reCAPTCHA verification",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    loginMutation.mutate({ 
+      username, 
+      password, 
+      recaptchaToken: recaptchaToken || undefined 
+    });
+  };
+
+  const handleRecaptchaChange = (token: string | null) => {
+    setRecaptchaToken(token);
   };
 
   return (
@@ -89,6 +117,18 @@ export default function Login() {
                 required
               />
             </div>
+            
+            {/* reCAPTCHA component - only show if enabled */}
+            {recaptchaSettings?.isEnabled && recaptchaSettings?.siteKey && (
+              <div className="flex justify-center">
+                <ReCAPTCHA
+                  ref={recaptchaRef}
+                  sitekey={recaptchaSettings.siteKey}
+                  onChange={handleRecaptchaChange}
+                />
+              </div>
+            )}
+            
             <Button
               type="submit"
               className="w-full"

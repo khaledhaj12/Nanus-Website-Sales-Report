@@ -26,7 +26,34 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Auth routes
   app.post('/api/auth/login', async (req, res) => {
     try {
-      const { username, password } = req.body;
+      const { username, password, recaptchaToken } = req.body;
+      
+      // Check reCAPTCHA if enabled
+      const recaptchaSettings = await storage.getRecaptchaSettings();
+      if (recaptchaSettings && recaptchaSettings.isEnabled) {
+        if (!recaptchaToken) {
+          return res.status(400).json({ message: "reCAPTCHA verification required" });
+        }
+        
+        // Verify reCAPTCHA token
+        try {
+          const verifyUrl = 'https://www.google.com/recaptcha/api/siteverify';
+          const verifyResponse = await axios.post(verifyUrl, null, {
+            params: {
+              secret: recaptchaSettings.secretKey,
+              response: recaptchaToken
+            }
+          });
+          
+          if (!verifyResponse.data.success) {
+            return res.status(400).json({ message: "reCAPTCHA verification failed" });
+          }
+        } catch (recaptchaError) {
+          console.error("reCAPTCHA verification error:", recaptchaError);
+          return res.status(500).json({ message: "reCAPTCHA verification error" });
+        }
+      }
+      
       const user = await storage.validateUser(username, password);
       
       if (user) {
