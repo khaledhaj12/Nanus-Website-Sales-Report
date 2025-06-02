@@ -1042,60 +1042,47 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const settings = await storage.getRestApiSettings('woocommerce');
       
-      if (!settings || !settings.consumerKey || !settings.consumerSecret || !settings.storeUrl) {
-        return res.status(400).json({ 
+      if (!settings?.consumerKey || !settings?.consumerSecret || !settings?.storeUrl) {
+        return res.json({ 
           success: false, 
           message: "REST API credentials not configured" 
         });
       }
 
-      // Use URL parameters for authentication (more reliable than headers)
-      const baseUrl = settings.storeUrl.replace(/\/$/, '');
-      const testUrl = `${baseUrl}/wp-json/wc/v3/orders?per_page=1&consumer_key=${encodeURIComponent(settings.consumerKey)}&consumer_secret=${encodeURIComponent(settings.consumerSecret)}`;
+      const testUrl = `${settings.storeUrl.replace(/\/$/, '')}/wp-json/wc/v3/orders?per_page=1&consumer_key=${settings.consumerKey}&consumer_secret=${settings.consumerSecret}`;
       
-      console.log(`Testing connection to: ${testUrl}`);
+      const response = await fetch(testUrl);
       
-      const response = await fetch(testUrl, {
-        headers: {
-          'Content-Type': 'application/json',
-        }
-      });
-
-      console.log(`Test response status: ${response.status}`);
-
       if (response.ok) {
         const data = await response.json();
-        console.log(`Test response data:`, data);
         res.json({ 
           success: true, 
-          message: "Connection successful", 
-          orderCount: response.headers.get('x-wp-total') || 'Unknown'
+          message: `Connection successful! Found ${data.length} orders.`
         });
       } else {
-        const errorData = await response.text();
-        console.log(`Test connection failed:`, errorData);
         res.json({ 
           success: false, 
           message: `Connection failed: ${response.status} ${response.statusText}` 
         });
       }
     } catch (error) {
-      console.error("Test connection error:", error);
       res.json({ 
         success: false, 
-        message: `Connection error: ${error.message}` 
+        message: `Connection error: ${error instanceof Error ? error.message : 'Unknown error'}` 
       });
     }
   });
 
   // Import orders from WooCommerce
   app.post('/api/import-woocommerce-orders', async (req, res) => {
+    console.log('=== IMPORT ORDERS CALLED ===');
     try {
       const { startDate, endDate } = req.body;
       console.log(`Import request received - startDate: ${startDate}, endDate: ${endDate}`);
       const settings = await storage.getRestApiSettings('woocommerce');
       
       if (!settings || !settings.consumerKey || !settings.consumerSecret || !settings.storeUrl) {
+        console.log('Missing import credentials');
         return res.status(400).json({ 
           success: false, 
           message: "REST API credentials not configured" 
@@ -1109,7 +1096,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       while (true) {
         const baseUrl = settings.storeUrl.replace(/\/$/, '');
-        let url = `${baseUrl}/wp-json/wc/v3/orders?per_page=${perPage}&page=${page}&orderby=date&order=desc&consumer_key=${encodeURIComponent(settings.consumerKey)}&consumer_secret=${encodeURIComponent(settings.consumerSecret)}`;
+        let url = `${baseUrl}/wp-json/wc/v3/orders?per_page=${perPage}&page=${page}&orderby=date&order=desc&consumer_key=${settings.consumerKey}&consumer_secret=${settings.consumerSecret}`;
         
         if (startDate) {
           url += `&after=${startDate}T00:00:00`;
