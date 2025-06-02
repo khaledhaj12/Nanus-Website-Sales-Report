@@ -625,16 +625,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
         params.push(month);
       }
       
-      // Handle status filtering - only apply filter if statuses are explicitly provided
-      if (statuses && Array.isArray(statuses) && statuses.length > 0) {
-        const statusFilter = statuses;
-        const statusPlaceholders = statusFilter.map((_, index) => `$${params.length + index + 1}`).join(', ');
-        whereClause += ` AND status IN (${statusPlaceholders})`;
-        params.push(...statusFilter);
-      } else if (statuses && !Array.isArray(statuses)) {
-        // Single status provided
-        whereClause += ` AND status = $${params.length + 1}`;
-        params.push(statuses);
+      // Handle status filtering - properly parse multiple status parameters
+      if (statuses) {
+        let statusFilter: string[] = [];
+        if (Array.isArray(statuses)) {
+          statusFilter = statuses;
+        } else {
+          // Single status or comma-separated statuses
+          statusFilter = [statuses as string];
+        }
+        
+        if (statusFilter.length > 0) {
+          const statusPlaceholders = statusFilter.map((_, index) => `$${params.length + index + 1}`).join(', ');
+          whereClause += ` AND status IN (${statusPlaceholders})`;
+          params.push(...statusFilter);
+        }
       }
       
       const query = `
@@ -704,17 +709,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
         params.push(currentYear);
       }
       
-      // Handle status filtering - only apply filter if statuses are explicitly provided
-      if (statuses && Array.isArray(statuses) && statuses.length > 0) {
-        statusFilter = statuses as string[];
-        const statusPlaceholders = statusFilter.map((_, index) => `$${params.length + index + 1}`).join(', ');
-        whereClause += ` AND status IN (${statusPlaceholders})`;
-        params.push(...statusFilter);
-      } else if (statuses && !Array.isArray(statuses)) {
-        // Single status provided
-        statusFilter = [statuses as string];
-        whereClause += ` AND status = $${params.length + 1}`;
-        params.push(statuses);
+      // Handle status filtering - properly parse multiple status parameters
+      if (statuses) {
+        if (Array.isArray(statuses)) {
+          statusFilter = statuses.filter(s => typeof s === 'string') as string[];
+        } else {
+          // Single status or comma-separated statuses
+          statusFilter = [statuses as string];
+        }
+        
+        if (statusFilter.length > 0) {
+          const statusPlaceholders = statusFilter.map((_, index) => `$${params.length + index + 1}`).join(', ');
+          whereClause += ` AND status IN (${statusPlaceholders})`;
+          params.push(...statusFilter);
+        }
       }
       
       const query = `

@@ -20,8 +20,8 @@ export default function Reports({ onMenuClick }: ReportsProps) {
   const [endMonth, setEndMonth] = useState(currentMonth);
   const [selectedLocation, setSelectedLocation] = useState("all");
   
-  // Fixed statuses for reports page - no user selection
-  const selectedStatuses = ["processing", "completed", "refunded", "on-hold", "checkout-draft"];
+  // Fixed statuses for reports page - only show completed business transactions
+  const selectedStatuses = ["processing", "completed", "refunded"];
 
   const { data: locations = [] } = useQuery({
     queryKey: ["/api/locations"],
