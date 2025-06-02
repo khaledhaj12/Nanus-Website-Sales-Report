@@ -590,10 +590,41 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get('/api/dashboard/monthly-breakdown', isAuthenticated, async (req, res) => {
     try {
       const { year, locationId } = req.query;
-      const breakdown = await storage.getMonthlyBreakdown(
-        year ? parseInt(year as string) : undefined,
-        locationId ? parseInt(locationId as string) : undefined
-      );
+      const { pool } = await import('./db');
+      
+      const currentYear = year ? parseInt(year as string) : new Date().getFullYear();
+      let whereClause = `WHERE EXTRACT(YEAR FROM order_date) = $1`;
+      const params: any[] = [currentYear];
+      
+      if (locationId && locationId !== 'all') {
+        whereClause += ` AND location_id = $${params.length + 1}`;
+        params.push(parseInt(locationId as string));
+      }
+      
+      const query = `
+        SELECT 
+          TO_CHAR(order_date, 'YYYY-MM') as month,
+          COALESCE(SUM(CASE WHEN status = 'processing' THEN amount::decimal ELSE 0 END), 0) as total_sales,
+          COUNT(CASE WHEN status = 'processing' THEN 1 END) as total_orders,
+          COALESCE(SUM(CASE WHEN status = 'refunded' THEN amount::decimal ELSE 0 END), 0) as total_refunds,
+          COALESCE(SUM(CASE WHEN status = 'processing' THEN (amount::decimal - (amount::decimal * 0.07) - (amount::decimal * 0.029 + 0.30)) ELSE 0 END), 0) as net_amount
+        FROM woo_orders 
+        ${whereClause}
+        GROUP BY TO_CHAR(order_date, 'YYYY-MM')
+        ORDER BY month DESC
+      `;
+
+      const result = await pool.query(query, params);
+      
+      const breakdown = result.rows.map((row: any) => ({
+        month: row.month,
+        totalSales: parseFloat(row.total_sales || '0'),
+        totalOrders: parseInt(row.total_orders || '0'),
+        totalRefunds: parseFloat(row.total_refunds || '0'),
+        netAmount: parseFloat(row.net_amount || '0'),
+        orders: [] // Empty array since we're not fetching individual orders for performance
+      }));
+      
       res.json(breakdown);
     } catch (error) {
       console.error("Monthly breakdown error:", error);
