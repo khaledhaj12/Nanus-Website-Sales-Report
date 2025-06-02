@@ -103,6 +103,7 @@ export const syncSettings = pgTable("sync_settings", {
   lastSyncAt: timestamp("last_sync_at"),
   nextSyncAt: timestamp("next_sync_at"),
   isRunning: boolean("is_running").default(false),
+  lastOrderCount: integer("last_order_count").default(0), // Number of orders fetched in last sync
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });

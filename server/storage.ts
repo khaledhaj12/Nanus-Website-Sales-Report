@@ -96,6 +96,7 @@ export interface IStorage {
   // Sync settings operations
   getSyncSettings(platform: string): Promise<SyncSettings | undefined>;
   upsertSyncSettings(settings: InsertSyncSettings): Promise<SyncSettings>;
+  updateSyncStats(platform: string, orderCount: number): Promise<void>;
   
   // REST API settings operations
   getRestApiSettings(platform: string): Promise<RestApiSettings | undefined>;
@@ -392,6 +393,18 @@ export class DatabaseStorage implements IStorage {
       })
       .returning();
     return result;
+  }
+
+  async updateSyncStats(platform: string, orderCount: number): Promise<void> {
+    await db
+      .update(syncSettings)
+      .set({
+        lastSyncAt: new Date(),
+        lastOrderCount: orderCount,
+        isRunning: false,
+        updatedAt: new Date(),
+      })
+      .where(eq(syncSettings.platform, platform));
   }
 
   async getRestApiSettings(platform: string): Promise<RestApiSettings | undefined> {
