@@ -629,7 +629,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (statuses) {
         let statusFilter: string[] = [];
         if (Array.isArray(statuses)) {
-          statusFilter = statuses;
+          statusFilter = statuses.filter(s => typeof s === 'string') as string[];
         } else {
           // Single status or comma-separated statuses
           statusFilter = [statuses as string];
