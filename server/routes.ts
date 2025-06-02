@@ -1026,6 +1026,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const orderData = req.body;
       console.log('Processing order data:', orderData);
       
+      // Handle WooCommerce test webhook
+      if (orderData.webhook_id && !orderData.id && !orderData.number) {
+        console.log('Received WooCommerce test webhook:', orderData.webhook_id);
+        return res.status(200).json({ message: 'Webhook test successful' });
+      }
+      
       // Validate that this is a proper WooCommerce order webhook
       if (!orderData.id && !orderData.number) {
         console.log('Invalid webhook data - missing required order fields');
