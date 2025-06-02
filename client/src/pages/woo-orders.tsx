@@ -389,70 +389,76 @@ export default function WooOrders() {
             <CardTitle className="text-lg">Order Management</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="flex flex-col sm:flex-row gap-4 items-start sm:items-center">
-              {/* Search */}
-              <div className="relative flex-1 min-w-64">
-                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
-                <Input
-                  placeholder="Search orders..."
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                  className="pl-10"
-                />
+            <div className="flex flex-col lg:flex-row gap-4 items-start lg:items-center justify-between">
+              {/* Left side controls */}
+              <div className="flex flex-col sm:flex-row gap-4 items-start sm:items-center flex-1">
+                {/* Search */}
+                <div className="relative flex-1 min-w-64 max-w-md">
+                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+                  <Input
+                    placeholder="Search orders..."
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                    className="pl-10"
+                  />
+                </div>
+
+                {/* Location Filter */}
+                <Select value={selectedLocation} onValueChange={setSelectedLocation}>
+                  <SelectTrigger className="w-48">
+                    <SelectValue placeholder="All Locations" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All Locations</SelectItem>
+                    {locations.map((location) => (
+                      <SelectItem key={location.id} value={location.id.toString()}>
+                        {location.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
 
-              {/* Location Filter */}
-              <Select value={selectedLocation} onValueChange={setSelectedLocation}>
-                <SelectTrigger className="w-48">
-                  <SelectValue placeholder="All Locations" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All Locations</SelectItem>
-                  {locations.map((location) => (
-                    <SelectItem key={location.id} value={location.id.toString()}>
-                      {location.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-
-              {/* Column Visibility */}
-              <Popover>
-                <PopoverTrigger asChild>
-                  <Button variant="outline" className="gap-2">
-                    <Settings className="h-4 w-4" />
-                    Columns
-                  </Button>
-                </PopoverTrigger>
-                <PopoverContent className="w-64" align="end">
-                  <div className="space-y-2">
-                    <h4 className="font-medium text-sm">Show/Hide Columns</h4>
-                    <div className="grid gap-2 max-h-64 overflow-auto">
-                      {COLUMN_DEFINITIONS.map((col) => (
-                        <div key={col.key} className="flex items-center space-x-2">
-                          <Checkbox
-                            id={col.key}
-                            checked={visibleColumns.includes(col.key)}
-                            onCheckedChange={() => handleColumnToggle(col.key)}
-                          />
-                          <Label htmlFor={col.key} className="text-sm">
-                            {col.label}
-                          </Label>
-                        </div>
-                      ))}
+              {/* Right side controls */}
+              <div className="flex flex-col sm:flex-row gap-4 items-start sm:items-center">
+                {/* Column Visibility */}
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <Button variant="outline" className="gap-2">
+                      <Settings className="h-4 w-4" />
+                      Columns
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-64" align="end">
+                    <div className="space-y-2">
+                      <h4 className="font-medium text-sm">Show/Hide Columns</h4>
+                      <div className="grid gap-2 max-h-64 overflow-auto">
+                        {COLUMN_DEFINITIONS.map((col) => (
+                          <div key={col.key} className="flex items-center space-x-2">
+                            <Checkbox
+                              id={col.key}
+                              checked={visibleColumns.includes(col.key)}
+                              onCheckedChange={() => handleColumnToggle(col.key)}
+                            />
+                            <Label htmlFor={col.key} className="text-sm">
+                              {col.label}
+                            </Label>
+                          </div>
+                        ))}
+                      </div>
                     </div>
-                  </div>
-                </PopoverContent>
-              </Popover>
+                  </PopoverContent>
+                </Popover>
 
-              {/* Import Button */}
-              <Button 
-                onClick={() => setShowImportForm(true)}
-                className="bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700"
-              >
-                <Upload className="h-4 w-4 mr-2" />
-                Import Orders
-              </Button>
+                {/* Import Button */}
+                <Button 
+                  onClick={() => setShowImportForm(true)}
+                  className="bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700"
+                >
+                  <Upload className="h-4 w-4 mr-2" />
+                  Import Orders
+                </Button>
+              </div>
             </div>
           </CardContent>
         </Card>
