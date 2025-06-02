@@ -850,7 +850,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
       console.log("Reports summary params:", params);
       
       const result = await pool.query(query, params);
-      const summary = result.rows[0];
+      const row = result.rows[0];
+      
+      // Convert string values to numbers and fix field names to match frontend expectations
+      const summary = {
+        totalSales: parseFloat(row.total_sales) || 0,
+        totalOrders: parseInt(row.total_orders) || 0,
+        totalRefunds: parseFloat(row.total_refunds) || 0,
+        platformFees: parseFloat(row.platform_fees) || 0,
+        stripeFees: parseFloat(row.stripe_fees) || 0,
+        netDeposit: parseFloat(row.net_deposit) || 0
+      };
       
       console.log("Reports summary result:", summary);
       
