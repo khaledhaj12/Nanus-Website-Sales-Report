@@ -30,6 +30,10 @@ export default function Settings({ onMenuClick }: SettingsProps) {
   const [storeUrl, setStoreUrl] = useState("");
   const [apiIsActive, setApiIsActive] = useState(true);
   
+  // Import settings state
+  const [startDate, setStartDate] = useState("");
+  const [endDate, setEndDate] = useState("");
+  
   // Get the current domain for webhook URL
   const webhookUrl = `${window.location.origin}/api/webhook/woocommerce`;
 
@@ -112,6 +116,57 @@ export default function Settings({ onMenuClick }: SettingsProps) {
       toast({
         title: "Error",
         description: "Failed to save REST API settings",
+        variant: "destructive",
+      });
+    },
+  });
+
+  // Test connection mutation
+  const testConnectionMutation = useMutation({
+    mutationFn: async () => {
+      const response = await apiRequest("POST", "/api/test-woocommerce-connection", {});
+      return response;
+    },
+    onSuccess: (data: any) => {
+      toast({
+        title: data.success ? "Connection Successful" : "Connection Failed",
+        description: data.message,
+        variant: data.success ? "default" : "destructive",
+      });
+    },
+    onError: () => {
+      toast({
+        title: "Error",
+        description: "Failed to test connection",
+        variant: "destructive",
+      });
+    },
+  });
+
+  // Import orders mutation
+  const importOrdersMutation = useMutation({
+    mutationFn: async () => {
+      const response = await apiRequest("POST", "/api/import-woocommerce-orders", {
+        startDate,
+        endDate,
+      });
+      return response;
+    },
+    onSuccess: (data: any) => {
+      toast({
+        title: data.success ? "Import Successful" : "Import Failed",
+        description: data.message,
+        variant: data.success ? "default" : "destructive",
+      });
+      
+      // Refresh order data
+      queryClient.invalidateQueries({ queryKey: ["/api/woo-orders"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/dashboard/summary"] });
+    },
+    onError: () => {
+      toast({
+        title: "Error",
+        description: "Failed to import orders",
         variant: "destructive",
       });
     },
@@ -556,6 +611,81 @@ export default function Settings({ onMenuClick }: SettingsProps) {
                       )}
                     </Button>
                   </div>
+                </div>
+
+                {/* Connection Test */}
+                <div className="border rounded-lg p-4">
+                  <h4 className="font-medium text-gray-900 mb-3">Test Connection</h4>
+                  <p className="text-sm text-gray-600 mb-4">
+                    Test your WooCommerce REST API credentials to ensure they work correctly.
+                  </p>
+                  <Button 
+                    onClick={() => testConnectionMutation.mutate()}
+                    disabled={testConnectionMutation.isPending || !consumerKey || !consumerSecret || !storeUrl}
+                    variant="outline"
+                    className="flex items-center gap-2"
+                  >
+                    {testConnectionMutation.isPending ? (
+                      <>
+                        <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-gray-600"></div>
+                        Testing...
+                      </>
+                    ) : (
+                      <>
+                        <Link className="h-4 w-4" />
+                        Test Connection
+                      </>
+                    )}
+                  </Button>
+                </div>
+
+                {/* Order Import */}
+                <div className="border rounded-lg p-4">
+                  <h4 className="font-medium text-gray-900 mb-3">Import Historical Orders</h4>
+                  <p className="text-sm text-gray-600 mb-4">
+                    Import existing orders from your WooCommerce store. This will fetch orders based on the date range you specify.
+                  </p>
+                  
+                  <div className="grid gap-4 mb-4">
+                    <div className="grid grid-cols-2 gap-4">
+                      <div className="grid gap-2">
+                        <Label htmlFor="startDate">Start Date</Label>
+                        <Input
+                          id="startDate"
+                          type="date"
+                          value={startDate}
+                          onChange={(e) => setStartDate(e.target.value)}
+                        />
+                      </div>
+                      <div className="grid gap-2">
+                        <Label htmlFor="endDate">End Date</Label>
+                        <Input
+                          id="endDate"
+                          type="date"
+                          value={endDate}
+                          onChange={(e) => setEndDate(e.target.value)}
+                        />
+                      </div>
+                    </div>
+                  </div>
+
+                  <Button 
+                    onClick={() => importOrdersMutation.mutate()}
+                    disabled={importOrdersMutation.isPending || !consumerKey || !consumerSecret || !storeUrl}
+                    className="flex items-center gap-2"
+                  >
+                    {importOrdersMutation.isPending ? (
+                      <>
+                        <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                        Importing...
+                      </>
+                    ) : (
+                      <>
+                        <Database className="h-4 w-4" />
+                        Import Orders
+                      </>
+                    )}
+                  </Button>
                 </div>
 
                 <div className="bg-gray-50 rounded-lg p-4">

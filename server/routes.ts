@@ -1037,6 +1037,212 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Test WooCommerce connection
+  app.post('/api/test-woocommerce-connection', requireAdmin, async (req, res) => {
+    try {
+      const settings = await storage.getRestApiSettings('woocommerce');
+      
+      if (!settings || !settings.consumerKey || !settings.consumerSecret || !settings.storeUrl) {
+        return res.status(400).json({ 
+          success: false, 
+          message: "REST API credentials not configured" 
+        });
+      }
+
+      const auth = Buffer.from(`${settings.consumerKey}:${settings.consumerSecret}`).toString('base64');
+      const testUrl = `${settings.storeUrl.replace(/\/$/, '')}/wp-json/wc/v3/orders?per_page=1`;
+      
+      const response = await fetch(testUrl, {
+        headers: {
+          'Authorization': `Basic ${auth}`,
+          'Content-Type': 'application/json',
+        }
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        res.json({ 
+          success: true, 
+          message: "Connection successful", 
+          orderCount: response.headers.get('x-wp-total') || 'Unknown'
+        });
+      } else {
+        res.json({ 
+          success: false, 
+          message: `Connection failed: ${response.status} ${response.statusText}` 
+        });
+      }
+    } catch (error) {
+      console.error("Test connection error:", error);
+      res.json({ 
+        success: false, 
+        message: `Connection error: ${error.message}` 
+      });
+    }
+  });
+
+  // Import orders from WooCommerce
+  app.post('/api/import-woocommerce-orders', requireAdmin, async (req, res) => {
+    try {
+      const { startDate, endDate } = req.body;
+      const settings = await storage.getRestApiSettings('woocommerce');
+      
+      if (!settings || !settings.consumerKey || !settings.consumerSecret || !settings.storeUrl) {
+        return res.status(400).json({ 
+          success: false, 
+          message: "REST API credentials not configured" 
+        });
+      }
+
+      const auth = Buffer.from(`${settings.consumerKey}:${settings.consumerSecret}`).toString('base64');
+      let page = 1;
+      const perPage = 100;
+      let totalImported = 0;
+      let totalSkipped = 0;
+
+      while (true) {
+        const url = new URL(`${settings.storeUrl.replace(/\/$/, '')}/wp-json/wc/v3/orders`);
+        url.searchParams.set('per_page', perPage.toString());
+        url.searchParams.set('page', page.toString());
+        url.searchParams.set('orderby', 'date');
+        url.searchParams.set('order', 'desc');
+        
+        if (startDate) {
+          url.searchParams.set('after', `${startDate}T00:00:00`);
+        }
+        if (endDate) {
+          url.searchParams.set('before', `${endDate}T23:59:59`);
+        }
+
+        const response = await fetch(url.toString(), {
+          headers: {
+            'Authorization': `Basic ${auth}`,
+            'Content-Type': 'application/json',
+          }
+        });
+
+        if (!response.ok) {
+          throw new Error(`API request failed: ${response.status} ${response.statusText}`);
+        }
+
+        const orders = await response.json();
+        
+        if (!orders.length) {
+          break; // No more orders
+        }
+
+        // Process each order using the same logic as webhook
+        for (const orderData of orders) {
+          try {
+            const wooOrderId = orderData.id?.toString();
+            const orderId = orderData.number?.toString() || orderData.id?.toString();
+            
+            // Check if order already exists
+            const existingOrder = await storage.getWooOrderByWooOrderId(wooOrderId);
+            if (existingOrder) {
+              totalSkipped++;
+              continue;
+            }
+
+            // Extract order information (same as webhook logic)
+            const status = orderData.status;
+            const total = parseFloat(orderData.total || '0');
+            const refundTotal = parseFloat(orderData.refund_total || '0');
+            
+            const billing = orderData.billing || {};
+            const customerName = billing.first_name && billing.last_name 
+              ? `${billing.first_name} ${billing.last_name}`.trim()
+              : billing.first_name || billing.last_name || 'Unknown';
+            const firstName = billing.first_name || null;
+            const customerEmail = billing.email || null;
+            const customerPhone = billing.phone || null;
+
+            // Location detection logic (same as webhook)
+            const metaData = orderData.meta_data || [];
+            let locationMeta = '';
+            let locationName = '';
+            
+            const orderableLocationKeys = [
+              '_orderable_location',
+              '_orderable_store_id',
+              '_orderable_pickup_location', 
+              '_orderable_service_location',
+              '_orderable_location_name',
+              '_orderable_store_name'
+            ];
+            
+            let locationMetaItem = metaData.find((meta: any) => 
+              orderableLocationKeys.includes(meta.key)
+            );
+            
+            if (!locationMetaItem) {
+              locationMetaItem = metaData.find((meta: any) => 
+                meta.key?.toLowerCase().includes('location') || 
+                meta.key?.toLowerCase().includes('store') ||
+                meta.key?.toLowerCase().includes('branch')
+              );
+            }
+            
+            if (locationMetaItem && locationMetaItem.value) {
+              locationMeta = locationMetaItem.value;
+              locationName = locationMetaItem.value;
+            }
+            
+            if (!locationName) {
+              locationName = billing.city || billing.state || 'Default Location';
+            }
+            
+            // Find or create location
+            let location = await storage.getLocationByName(locationName);
+            if (!location) {
+              location = await storage.createLocation({ name: locationName });
+            }
+
+            // Create order
+            const wooOrderData = {
+              wooOrderId: wooOrderId,
+              orderId,
+              locationId: location.id,
+              customerName: customerName || 'Unknown',
+              firstName,
+              customerEmail,
+              customerPhone,
+              status,
+              amount: total.toString(),
+              total: total.toString(),
+              refundTotal: refundTotal.toString(),
+              orderDate: new Date(orderData.date_created || new Date()),
+              locationMeta,
+              rawData: JSON.stringify(orderData),
+            };
+
+            await storage.createWooOrder(wooOrderData);
+            totalImported++;
+
+          } catch (orderError) {
+            console.error(`Failed to import order ${orderData.id}:`, orderError);
+          }
+        }
+
+        page++;
+      }
+
+      res.json({ 
+        success: true, 
+        message: `Import completed: ${totalImported} orders imported, ${totalSkipped} skipped (already exist)`,
+        imported: totalImported,
+        skipped: totalSkipped
+      });
+
+    } catch (error) {
+      console.error("Import orders error:", error);
+      res.status(500).json({ 
+        success: false, 
+        message: `Import failed: ${error.message}` 
+      });
+    }
+  });
+
   // WooCommerce webhook endpoint
   app.post('/api/webhook/woocommerce', async (req, res) => {
     try {
