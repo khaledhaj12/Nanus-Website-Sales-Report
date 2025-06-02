@@ -507,66 +507,70 @@ export default function Settings() {
             </Card>
 
             {/* Manual Import Card */}
-            <Card className="border-0 shadow-xl bg-gradient-to-r from-orange-50 to-red-50 dark:from-orange-900/20 dark:to-red-900/20 backdrop-blur-sm">
+            <Card className="border-0 shadow-xl bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm">
               <CardHeader className="pb-4">
-                <CardTitle className="flex items-center gap-3 text-lg">
-                  <Download className="h-5 w-5 text-orange-600" />
-                  Manual Import
+                <CardTitle className="flex items-center gap-3 text-lg sm:text-xl">
+                  <div className="p-2 bg-gradient-to-r from-orange-500 to-red-500 rounded-lg">
+                    <Download className="h-5 w-5 text-white" />
+                  </div>
+                  <span>Manual Import</span>
                 </CardTitle>
-                <CardDescription>
+                <CardDescription className="text-sm sm:text-base">
                   Import orders from a specific date range for immediate synchronization
                 </CardDescription>
               </CardHeader>
               <CardContent>
-                <form onSubmit={handleManualImport} className="space-y-4">
-                  <div className="grid grid-cols-2 gap-4">
+                <form onSubmit={handleManualImport} className="space-y-6">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div className="space-y-2">
-                      <Label htmlFor="start-date">Start Date</Label>
+                      <Label htmlFor="start-date" className="font-medium">Start Date</Label>
                       <Input
                         id="start-date"
                         type="date"
                         value={importForm.startDate}
                         onChange={(e) => setImportForm({...importForm, startDate: e.target.value})}
-                        className="border-orange-200 focus:border-orange-500 focus:ring-orange-500/20"
+                        className="transition-all duration-200 focus:ring-2 focus:ring-orange-500"
                       />
                     </div>
                     <div className="space-y-2">
-                      <Label htmlFor="end-date">End Date</Label>
+                      <Label htmlFor="end-date" className="font-medium">End Date</Label>
                       <Input
                         id="end-date"
                         type="date"
                         value={importForm.endDate}
                         onChange={(e) => setImportForm({...importForm, endDate: e.target.value})}
-                        className="border-orange-200 focus:border-orange-500 focus:ring-orange-500/20"
+                        className="transition-all duration-200 focus:ring-2 focus:ring-orange-500"
                       />
                     </div>
                   </div>
 
-                  <Alert>
-                    <AlertCircle className="h-4 w-4" />
-                    <AlertDescription>
+                  <Alert className="bg-blue-50 border-blue-200 dark:bg-blue-900/20 dark:border-blue-800">
+                    <AlertCircle className="h-4 w-4 text-blue-600" />
+                    <AlertDescription className="text-blue-800 dark:text-blue-200">
                       Import will fetch orders from your WooCommerce store within the selected date range. 
                       Existing orders will be skipped automatically.
                     </AlertDescription>
                   </Alert>
 
-                  <Button
-                    type="submit"
-                    disabled={manualImportMutation.isPending}
-                    className="w-full bg-gradient-to-r from-orange-600 to-red-600 hover:from-orange-700 hover:to-red-700"
-                  >
-                    {manualImportMutation.isPending ? (
-                      <>
-                        <RefreshCw className="w-4 h-4 mr-2 animate-spin" />
-                        Importing Orders...
-                      </>
-                    ) : (
-                      <>
-                        <Download className="w-4 h-4 mr-2" />
-                        Import Orders
-                      </>
-                    )}
-                  </Button>
+                  <div className="pt-2">
+                    <Button
+                      type="submit"
+                      disabled={manualImportMutation.isPending}
+                      className="w-full bg-gradient-to-r from-orange-600 to-red-600 hover:from-orange-700 hover:to-red-700 text-white shadow-lg hover:shadow-xl transition-all duration-200"
+                    >
+                      {manualImportMutation.isPending ? (
+                        <>
+                          <RefreshCw className="w-4 h-4 mr-2 animate-spin" />
+                          Importing Orders...
+                        </>
+                      ) : (
+                        <>
+                          <Download className="w-4 h-4 mr-2" />
+                          Import Orders
+                        </>
+                      )}
+                    </Button>
+                  </div>
                 </form>
               </CardContent>
             </Card>
