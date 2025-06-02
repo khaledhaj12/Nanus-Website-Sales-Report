@@ -187,7 +187,10 @@ function ConnectionSettings({ connectionId, platform }: ConnectionSettingsProps)
 
   const testConnectionMutation = useMutation({
     mutationFn: async () => {
-      const response = await apiRequest("POST", "/api/test-woo-connection", apiSettings);
+      const response = await apiRequest("POST", "/api/test-woo-connection", {
+        ...apiSettings,
+        platform: platformId
+      });
       return response.json();
     },
     onSuccess: (data) => {
@@ -249,7 +252,10 @@ function ConnectionSettings({ connectionId, platform }: ConnectionSettingsProps)
 
   const importHistoricalMutation = useMutation({
     mutationFn: async (data: ImportFormData) => {
-      const response = await apiRequest("POST", "/api/import-historical", data);
+      const response = await apiRequest("POST", "/api/import-historical", {
+        ...data,
+        platform: platformId
+      });
       return response.json();
     },
     onSuccess: (data) => {
