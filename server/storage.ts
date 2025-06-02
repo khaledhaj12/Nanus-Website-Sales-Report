@@ -310,61 +310,52 @@ export class DatabaseStorage implements IStorage {
     stripeFees: number;
     netDeposit: number;
   }> {
-    let whereConditions: any[] = [];
+    // First get all orders, then filter in memory
+    let query = db.select().from(wooOrders);
     
     if (locationId) {
-      whereConditions.push(eq(wooOrders.locationId, locationId));
+      query = query.where(eq(wooOrders.locationId, locationId));
     }
     
-    // If no month is specified, get the latest month from the data
-    let targetMonth = month;
-    if (!targetMonth) {
-      const latestOrder = await db
-        .select({ orderDate: wooOrders.orderDate })
-        .from(wooOrders)
-        .where(whereConditions.length > 0 ? and(...whereConditions) : undefined)
-        .orderBy(desc(wooOrders.orderDate))
-        .limit(1);
-      
-      if (latestOrder.length > 0) {
-        const latestDate = new Date(latestOrder[0].orderDate);
-        const year = latestDate.getFullYear();
-        const monthNum = latestDate.getMonth() + 1;
-        targetMonth = `${year}-${monthNum.toString().padStart(2, '0')}`;
-      }
-    }
+    const allOrders = await query;
     
-    if (targetMonth) {
-      const [year, monthNum] = targetMonth.split('-');
-      const startDate = `${year}-${monthNum}-01`;
-      // Get the last day of the month properly
-      const lastDay = new Date(parseInt(year), parseInt(monthNum), 0).getDate();
-      const endDate = `${year}-${monthNum}-${lastDay.toString().padStart(2, '0')}`;
-      whereConditions.push(gte(wooOrders.orderDate, startDate));
-      whereConditions.push(lte(wooOrders.orderDate, endDate));
+    // Filter by month if specified
+    let filteredOrders = allOrders;
+    if (month) {
+      filteredOrders = allOrders.filter(order => {
+        const orderDate = new Date(order.orderDate);
+        const orderMonth = `${orderDate.getFullYear()}-${(orderDate.getMonth() + 1).toString().padStart(2, '0')}`;
+        return orderMonth === month;
+      });
+    } else if (allOrders.length > 0) {
+      // Get the latest month from the data
+      const latestDate = new Date(Math.max(...allOrders.map(o => new Date(o.orderDate).getTime())));
+      const latestMonth = `${latestDate.getFullYear()}-${(latestDate.getMonth() + 1).toString().padStart(2, '0')}`;
+      filteredOrders = allOrders.filter(order => {
+        const orderDate = new Date(order.orderDate);
+        const orderMonth = `${orderDate.getFullYear()}-${(orderDate.getMonth() + 1).toString().padStart(2, '0')}`;
+        return orderMonth === latestMonth;
+      });
     }
 
-    const whereClause = whereConditions.length > 0 ? and(...whereConditions) : undefined;
+    // Calculate metrics
+    const nonRefundedOrders = filteredOrders.filter(order => order.status !== 'refunded');
+    const refundedOrders = filteredOrders.filter(order => order.status === 'refunded');
+    
+    const totalSales = nonRefundedOrders.reduce((sum, order) => sum + parseFloat(order.amount || '0'), 0);
+    const totalRefunds = refundedOrders.reduce((sum, order) => sum + parseFloat(order.amount || '0'), 0);
+    const totalOrders = nonRefundedOrders.length;
+    const platformFees = totalSales * 0.07;
+    const stripeFees = nonRefundedOrders.reduce((sum, order) => sum + (parseFloat(order.amount || '0') * 0.029 + 0.30), 0);
+    const netDeposit = totalSales - platformFees - stripeFees;
 
-    const result = await db
-      .select({
-        totalSales: sql<number>`COALESCE(SUM(CASE WHEN ${wooOrders.status} != 'refunded' THEN CAST(${wooOrders.amount} AS DECIMAL) ELSE 0 END), 0)`,
-        totalRefunds: sql<number>`COALESCE(SUM(CASE WHEN ${wooOrders.status} = 'refunded' THEN CAST(${wooOrders.amount} AS DECIMAL) ELSE 0 END), 0)`,
-        totalOrders: sql<number>`COUNT(CASE WHEN ${wooOrders.status} != 'refunded' THEN 1 END)`,
-        platformFees: sql<number>`COALESCE(SUM(CASE WHEN ${wooOrders.status} != 'refunded' THEN CAST(${wooOrders.amount} AS DECIMAL) * 0.07 ELSE 0 END), 0)`,
-        stripeFees: sql<number>`COALESCE(SUM(CASE WHEN ${wooOrders.status} != 'refunded' THEN (CAST(${wooOrders.amount} AS DECIMAL) * 0.029 + 0.30) ELSE 0 END), 0)`,
-        netDeposit: sql<number>`COALESCE(SUM(CASE WHEN ${wooOrders.status} != 'refunded' THEN (CAST(${wooOrders.amount} AS DECIMAL) - (CAST(${wooOrders.amount} AS DECIMAL) * 0.07) - (CAST(${wooOrders.amount} AS DECIMAL) * 0.029 + 0.30)) ELSE 0 END), 0)`,
-      })
-      .from(wooOrders)
-      .where(whereClause);
-
-    return result[0] || {
-      totalSales: 0,
-      totalOrders: 0,
-      totalRefunds: 0,
-      platformFees: 0,
-      stripeFees: 0,
-      netDeposit: 0,
+    return {
+      totalSales,
+      totalOrders,
+      totalRefunds,
+      platformFees,
+      stripeFees,
+      netDeposit,
     };
   }
 
