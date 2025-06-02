@@ -1057,16 +1057,33 @@ export async function registerRoutes(app: Express): Promise<Server> {
       let locationMeta = '';
       let locationName = '';
       
-      // Look for location in meta data
-      const locationMetaItem = metaData.find((meta: any) => 
-        meta.key?.toLowerCase().includes('location') || 
-        meta.key?.toLowerCase().includes('store') ||
-        meta.key?.toLowerCase().includes('branch')
+      // Look for Orderable plugin location metadata first
+      const orderableLocationKeys = [
+        '_orderable_location',
+        '_orderable_store_id',
+        '_orderable_pickup_location', 
+        '_orderable_service_location',
+        '_orderable_location_name',
+        '_orderable_store_name'
+      ];
+      
+      let locationMetaItem = metaData.find((meta: any) => 
+        orderableLocationKeys.includes(meta.key)
       );
       
-      if (locationMetaItem) {
+      // If no specific Orderable keys found, look for generic location fields
+      if (!locationMetaItem) {
+        locationMetaItem = metaData.find((meta: any) => 
+          meta.key?.toLowerCase().includes('location') || 
+          meta.key?.toLowerCase().includes('store') ||
+          meta.key?.toLowerCase().includes('branch')
+        );
+      }
+      
+      if (locationMetaItem && locationMetaItem.value) {
         locationMeta = locationMetaItem.value;
         locationName = locationMetaItem.value;
+        console.log(`Found Orderable location metadata: ${locationMetaItem.key} = ${locationMetaItem.value}`);
       }
       
       // If no location found in meta, use billing city or a default
