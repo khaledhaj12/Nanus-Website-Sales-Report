@@ -55,6 +55,8 @@ export default function Upload({ onMenuClick }: UploadProps) {
             setProcessingProgress(100);
             setUploadStatus('completed');
             clearInterval(interval);
+            // Refresh upload history to show completed status
+            queryClient.invalidateQueries({ queryKey: ["/api/uploads/all"] });
           }
         } catch (error) {
           console.error('Error fetching progress:', error);
