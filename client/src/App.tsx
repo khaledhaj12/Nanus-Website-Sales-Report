@@ -16,6 +16,7 @@ import Locations from "@/pages/locations";
 import Users from "@/pages/users";
 
 import ApiConnections from "@/pages/api-connections";
+import Recaptcha from "@/pages/recaptcha";
 import NotFound from "@/pages/not-found";
 
 // Layout
@@ -86,6 +87,8 @@ function AppRouter() {
         return isAdmin ? <Users {...commonProps} /> : <Dashboard {...commonProps} />;
       case "api-connections":
         return isAdmin ? <ApiConnections /> : <Dashboard {...commonProps} />;
+      case "recaptcha":
+        return isAdmin ? <Recaptcha /> : <Dashboard {...commonProps} />;
       default:
         return <Dashboard {...commonProps} />;
     }

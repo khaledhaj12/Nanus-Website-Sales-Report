@@ -32,6 +32,7 @@ const navigationItems = [
   { id: "locations", label: "Locations", icon: MapPin },
   { id: "users", label: "User Access", icon: Users, adminOnly: true },
   { id: "api-connections", label: "API Connections", icon: Globe, adminOnly: true },
+  { id: "recaptcha", label: "reCAPTCHA", icon: Shield, adminOnly: true },
 ];
 
 export default function Sidebar({ activeSection, onSectionChange, isOpen, onToggle }: SidebarProps) {
