@@ -105,7 +105,7 @@ function ConnectionSettings({ connectionId, platform }: ConnectionSettingsProps)
 
   // Initialize settings from API data - only populate if data exists, otherwise keep defaults
   useEffect(() => {
-    if (syncData && Object.keys(syncData).length > 0 && syncData.platform) {
+    if (syncData && typeof syncData === 'object' && syncData.platform) {
       setSyncSettings(prev => ({
         ...prev,
         platform: syncData.platform,
@@ -123,7 +123,7 @@ function ConnectionSettings({ connectionId, platform }: ConnectionSettingsProps)
   }, [syncData, platformId]);
 
   useEffect(() => {
-    if (apiData && Object.keys(apiData).length > 0 && apiData.platform) {
+    if (apiData && typeof apiData === 'object' && apiData.platform) {
       setApiSettings(prev => ({
         ...prev,
         platform: apiData.platform,
@@ -301,7 +301,7 @@ function ConnectionSettings({ connectionId, platform }: ConnectionSettingsProps)
   };
 
   const handleToggleSync = () => {
-    if (syncStatus?.isRunning) {
+    if (syncStatus && typeof syncStatus === 'object' && syncStatus.isRunning) {
       stopSyncMutation.mutate();
     } else {
       startSyncMutation.mutate();
@@ -358,12 +358,12 @@ function ConnectionSettings({ connectionId, platform }: ConnectionSettingsProps)
             >
               {startSyncMutation.isPending || stopSyncMutation.isPending ? (
                 <RefreshCw className="mr-2 h-4 w-4 animate-spin" />
-              ) : syncStatus?.isRunning ? (
+              ) : (syncStatus && typeof syncStatus === 'object' && syncStatus.isRunning) ? (
                 <AlertCircle className="mr-2 h-4 w-4" />
               ) : (
                 <Zap className="mr-2 h-4 w-4" />
               )}
-              {syncStatus?.isRunning ? "Stop Auto Sync" : "Start Auto Sync"}
+              {(syncStatus && typeof syncStatus === 'object' && syncStatus.isRunning) ? "Stop Auto Sync" : "Start Auto Sync"}
             </Button>
           </div>
         </CardContent>
