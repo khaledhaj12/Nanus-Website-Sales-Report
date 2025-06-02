@@ -92,18 +92,18 @@ async function performSync(platform: string = 'woocommerce') {
       now.toISOString()
     );
 
-    // Update sync status with order count
-    await storage.updateSyncStats('woocommerce', result.imported);
+    // Update sync status with order count for the specific platform
+    await storage.updateSyncStats(platform, result.imported);
 
     console.log(`Auto sync completed: ${result.imported} imported, ${result.skipped} skipped`);
   } catch (error) {
     console.error("Auto sync failed:", error);
     
-    // Update sync status to not running
-    const settings = await storage.getSyncSettings('woocommerce');
+    // Update sync status to not running for the specific platform
+    const settings = await storage.getSyncSettings(platform);
     if (settings) {
       await storage.upsertSyncSettings({
-        platform: 'woocommerce',
+        platform: platform,
         isActive: settings.isActive,
         intervalMinutes: settings.intervalMinutes,
         isRunning: false,
