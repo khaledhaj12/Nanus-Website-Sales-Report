@@ -14,6 +14,11 @@ import { Badge } from "@/components/ui/badge";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import SyncStatus from "@/components/sync-status";
+import Header from "@/components/layout/header";
+
+interface ApiConnectionsProps {
+  onMenuClick?: () => void;
+}
 
 interface SyncSettings {
   platform: string;
@@ -598,7 +603,7 @@ function ConnectionSettings({ connectionId, platform }: ConnectionSettingsProps)
   );
 }
 
-export default function ApiConnections() {
+function ApiConnections({ onMenuClick }: ApiConnectionsProps) {
   const { toast } = useToast();
   const queryClient = useQueryClient();
   
@@ -723,15 +728,19 @@ export default function ApiConnections() {
   const activeConnection = connections.find(conn => conn.connectionId === activeConnectionId);
 
   return (
-    <div className="p-4 md:p-6 space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold">API Connections</h1>
-          <p className="text-muted-foreground">
-            Manage your store connections and sync settings
-          </p>
-        </div>
-      </div>
+    <div className="flex flex-col h-screen">
+      <Header 
+        title="API Connections" 
+        onMenuClick={onMenuClick || (() => {})} 
+      />
+      <main className="flex-1 overflow-y-auto p-6">
+        <div className="container mx-auto max-w-4xl">
+          <div className="flex items-center gap-3 mb-6">
+            <Settings2 className="h-8 w-8 text-primary" />
+            <div>
+              <p className="text-muted-foreground">Manage your store connections and sync settings</p>
+            </div>
+          </div>
 
       <Tabs value={activeConnectionId} onValueChange={setActiveConnectionId}>
         <TabsList className="w-full flex-wrap h-auto p-1">
@@ -835,6 +844,10 @@ export default function ApiConnections() {
           </TabsContent>
         ))}
       </Tabs>
+        </div>
+      </main>
     </div>
   );
 }
+
+export default ApiConnections;
