@@ -1083,6 +1083,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post('/api/store-connections', isAuthenticated, async (req, res) => {
     try {
       const connection = await storage.createStoreConnection(req.body);
+      
+      // Automatically enable auto-sync for new store connections
+      const platform = connection.platform;
+      await storage.upsertSyncSettings({
+        platform: platform,
+        isActive: true,
+        intervalMinutes: 5,
+        isRunning: false,
+        lastSyncAt: null,
+        nextSyncAt: null
+      });
+      
+      // Start auto-sync for this new connection
+      const { startAutoSync } = await import('./syncManager');
+      await startAutoSync(platform);
+      
       res.json({ success: true, connection });
     } catch (error) {
       console.error("Create store connection error:", error);

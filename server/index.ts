@@ -1,6 +1,41 @@
 import express, { type Request, Response, NextFunction } from "express";
 import { registerRoutes } from "./routes";
 import { setupVite, serveStatic, log } from "./vite";
+import { storage } from "./storage";
+import { startAutoSync } from "./syncManager";
+
+async function enableAutoSyncForAllConnections() {
+  try {
+    // Enable auto-sync for main store
+    await storage.upsertSyncSettings({
+      platform: 'woocommerce',
+      isActive: true,
+      intervalMinutes: 5,
+      isRunning: false,
+      lastSyncAt: null,
+      nextSyncAt: null
+    });
+    await startAutoSync('woocommerce');
+
+    // Enable auto-sync for all additional store connections
+    const connections = await storage.getAllStoreConnections();
+    for (const connection of connections) {
+      await storage.upsertSyncSettings({
+        platform: connection.platform,
+        isActive: true,
+        intervalMinutes: 5,
+        isRunning: false,
+        lastSyncAt: null,
+        nextSyncAt: null
+      });
+      await startAutoSync(connection.platform);
+    }
+    
+    console.log(`Auto-sync enabled for ${connections.length + 1} store connections`);
+  } catch (error) {
+    console.error("Failed to enable auto-sync for store connections:", error);
+  }
+}
 
 const app = express();
 app.use(express.json());
@@ -38,6 +73,9 @@ app.use((req, res, next) => {
 
 (async () => {
   const server = await registerRoutes(app);
+  
+  // Auto-enable sync for all store connections on startup
+  await enableAutoSyncForAllConnections();
 
   app.use((err: any, _req: Request, res: Response, _next: NextFunction) => {
     const status = err.status || err.statusCode || 500;
