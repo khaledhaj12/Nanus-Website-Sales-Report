@@ -219,8 +219,8 @@ async function processOrderData(data: any[], uploadId: number, userId: number): 
         status: 'processing'
       });
       
-      // Add small delay to make progress visible
-      await new Promise(resolve => setTimeout(resolve, 50));
+      // Add delay to make progress visible (500ms per record)
+      await new Promise(resolve => setTimeout(resolve, 500));
     } catch (error) {
       console.error('Error processing row:', error);
     }
