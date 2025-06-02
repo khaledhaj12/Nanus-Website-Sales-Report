@@ -1027,27 +1027,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(401).json({ error: 'Webhook not configured' });
       }
       
-      // WooCommerce typically sends webhook signature for verification
-      // Common headers: x-wc-webhook-signature, x-wc-webhook-source, x-wc-webhook-topic
-      const signature = req.headers['x-wc-webhook-signature'];
-      const source = req.headers['x-wc-webhook-source'];
+      // Check for secret in URL parameters (common WooCommerce approach)
+      const urlSecret = req.query.secret as string;
       const topic = req.headers['x-wc-webhook-topic'];
       
       console.log('Expected secret:', webhookSettings.secretKey);
-      console.log('Webhook signature:', signature);
-      console.log('Webhook source:', source);
+      console.log('URL secret parameter:', urlSecret);
       console.log('Webhook topic:', topic);
       
-      // For now, let's temporarily accept any webhook to test the processing
-      // You can re-enable strict validation later
-      console.log('Processing webhook (validation temporarily disabled for testing)');
-      
-      /*
-      if (!signature || signature !== webhookSettings.secretKey) {
-        console.log('Invalid or missing webhook signature');
-        return res.status(401).json({ error: 'Unauthorized: Invalid webhook signature' });
+      // Validate the secret from URL parameter
+      if (!urlSecret || urlSecret !== webhookSettings.secretKey) {
+        console.log('Invalid or missing webhook secret in URL parameter');
+        return res.status(401).json({ error: 'Unauthorized: Invalid webhook secret' });
       }
-      */
+      
+      console.log('Webhook authenticated successfully');
       
       const orderData = req.body;
       
@@ -1142,16 +1136,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
         await storage.createWooOrder(wooOrderData);
       }
       
-      // Log successful webhook processing
-      logData.status = 'success';
-      logData.location = locationName || 'Default Location';
-      await storage.createWebhookLog(logData);
-      
+      console.log('Order processed successfully');
       res.status(200).json({ success: true, message: 'Order processed successfully' });
     } catch (error) {
-      logData.status = 'error';
-      logData.errorMessage = error.message;
-      await storage.createWebhookLog(logData);
       console.error('WooCommerce webhook error:', error);
       res.status(500).json({ error: 'Failed to process webhook' });
     }
