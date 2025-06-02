@@ -14,10 +14,14 @@ export function useAuth() {
     retry: false,
   });
 
+  // Safe computation of authentication state
+  const isAuthenticated = Boolean(user);
+  const isAdmin = Boolean(user && user.role === 'admin');
+
   return {
     user,
     isLoading,
-    isAuthenticated: !!user,
-    isAdmin: user?.role === 'admin',
+    isAuthenticated,
+    isAdmin,
   };
 }
