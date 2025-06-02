@@ -4,8 +4,7 @@ import {
   orders,
   userLocationAccess,
   wooOrders,
-  webhookSettings,
-  webhookLogs,
+  syncSettings,
   restApiSettings,
   type User,
   type InsertUser,
@@ -15,18 +14,17 @@ import {
   type InsertOrder,
   type WooOrder,
   type InsertWooOrder,
-  type WebhookSettings,
-  type InsertWebhookSettings,
-  type WebhookLog,
-  type InsertWebhookLog,
+  type SyncSettings,
+  type InsertSyncSettings,
   type RestApiSettings,
   type InsertRestApiSettings,
   type UserLocationAccess,
 } from "@shared/schema";
 import { db } from "./db";
-import { eq, and, desc, asc, like, or, gte, lte, sql, inArray } from "drizzle-orm";
+import { eq, desc, and, gte, lte, or, like, inArray, sql } from "drizzle-orm";
 import bcrypt from "bcrypt";
 
+// Interface for storage operations
 export interface IStorage {
   // User operations
   getUser(id: number): Promise<User | undefined>;
@@ -58,8 +56,6 @@ export interface IStorage {
   getOrdersByDateRange(startDate: string, endDate: string, locationId?: number): Promise<Order[]>;
   searchOrders(searchTerm: string, locationId?: number): Promise<Order[]>;
   
-
-  
   // User location access
   getUserLocationAccess(userId: number): Promise<number[]>;
   setUserLocationAccess(userId: number, locationIds: number[]): Promise<void>;
@@ -83,8 +79,6 @@ export interface IStorage {
     orders: Order[];
   }>>;
   
-
-  
   // WooCommerce orders operations
   getWooOrder(id: number): Promise<WooOrder | undefined>;
   getWooOrderByWooOrderId(wooOrderId: string): Promise<WooOrder | undefined>;
@@ -97,13 +91,9 @@ export interface IStorage {
   getWooOrdersByDateRange(startDate: string, endDate: string, locationId?: number): Promise<WooOrder[]>;
   searchWooOrders(searchTerm: string, locationId?: number): Promise<WooOrder[]>;
   
-  // Webhook settings operations
-  getWebhookSettings(platform: string): Promise<WebhookSettings | undefined>;
-  upsertWebhookSettings(settings: InsertWebhookSettings): Promise<WebhookSettings>;
-  
-  // Webhook logs operations
-  createWebhookLog(log: InsertWebhookLog): Promise<WebhookLog>;
-  getRecentWebhookLogs(platform?: string, limit?: number): Promise<WebhookLog[]>;
+  // Sync settings operations
+  getSyncSettings(platform: string): Promise<SyncSettings | undefined>;
+  upsertSyncSettings(settings: InsertSyncSettings): Promise<SyncSettings>;
   
   // REST API settings operations
   getRestApiSettings(platform: string): Promise<RestApiSettings | undefined>;
@@ -113,19 +103,22 @@ export interface IStorage {
 export class DatabaseStorage implements IStorage {
   async getUser(id: number): Promise<User | undefined> {
     const [user] = await db.select().from(users).where(eq(users.id, id));
-    return user;
+    return user || undefined;
   }
 
   async getUserByUsername(username: string): Promise<User | undefined> {
     const [user] = await db.select().from(users).where(eq(users.username, username));
-    return user;
+    return user || undefined;
   }
 
   async createUser(insertUser: InsertUser): Promise<User> {
     const hashedPassword = await bcrypt.hash(insertUser.password, 10);
     const [user] = await db
       .insert(users)
-      .values({ ...insertUser, password: hashedPassword })
+      .values({
+        ...insertUser,
+        password: hashedPassword,
+      })
       .returning();
     return user;
   }
@@ -138,7 +131,7 @@ export class DatabaseStorage implements IStorage {
     
     const [user] = await db
       .update(users)
-      .set({ ...updateData, updatedAt: new Date() })
+      .set(updateData)
       .where(eq(users.id, id))
       .returning();
     return user;
@@ -149,11 +142,11 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getAllUsers(): Promise<User[]> {
-    return await db.select().from(users).orderBy(asc(users.username));
+    return db.select().from(users).orderBy(desc(users.createdAt));
   }
 
   async validateUser(username: string, password: string): Promise<User | null> {
-    const user = await this.getUserByUsername(username);
+    const [user] = await db.select().from(users).where(eq(users.username, username));
     if (!user) return null;
     
     const isValid = await bcrypt.compare(password, user.password);
@@ -162,12 +155,12 @@ export class DatabaseStorage implements IStorage {
 
   async getLocation(id: number): Promise<Location | undefined> {
     const [location] = await db.select().from(locations).where(eq(locations.id, id));
-    return location;
+    return location || undefined;
   }
 
   async getLocationByName(name: string): Promise<Location | undefined> {
     const [location] = await db.select().from(locations).where(eq(locations.name, name));
-    return location;
+    return location || undefined;
   }
 
   async createLocation(insertLocation: InsertLocation): Promise<Location> {
@@ -179,17 +172,21 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getAllLocations(): Promise<Location[]> {
-    return await db.select().from(locations).where(eq(locations.isActive, true)).orderBy(asc(locations.name));
+    return db.select().from(locations).orderBy(desc(locations.createdAt));
+  }
+
+  async deleteLocations(ids: number[]): Promise<void> {
+    await db.delete(locations).where(inArray(locations.id, ids));
   }
 
   async getOrder(id: number): Promise<Order | undefined> {
     const [order] = await db.select().from(orders).where(eq(orders.id, id));
-    return order;
+    return order || undefined;
   }
 
   async getOrderByOrderId(orderId: string): Promise<Order | undefined> {
     const [order] = await db.select().from(orders).where(eq(orders.orderId, orderId));
-    return order;
+    return order || undefined;
   }
 
   async createOrder(insertOrder: InsertOrder): Promise<Order> {
@@ -203,178 +200,81 @@ export class DatabaseStorage implements IStorage {
   async updateOrder(id: number, insertOrder: Partial<InsertOrder>): Promise<Order> {
     const [order] = await db
       .update(orders)
-      .set({ ...insertOrder, updatedAt: new Date() })
+      .set(insertOrder)
       .where(eq(orders.id, id))
       .returning();
     return order;
   }
 
   async deleteOrder(id: number): Promise<void> {
-    console.log("Deleting single order with ID:", id, "Type:", typeof id);
-    if (isNaN(id) || id === null || id === undefined) {
-      throw new Error(`Invalid order ID: ${id}`);
-    }
     await db.delete(orders).where(eq(orders.id, id));
   }
 
   async deleteOrders(ids: number[]): Promise<void> {
-    console.log("Deleting multiple orders with IDs:", ids);
-    if (!Array.isArray(ids) || ids.length === 0) {
-      throw new Error("Invalid IDs array");
-    }
-    
-    // Validate all IDs
-    for (const id of ids) {
-      if (isNaN(id) || id === null || id === undefined) {
-        throw new Error(`Invalid order ID in array: ${id}`);
-      }
-    }
-    
     await db.delete(orders).where(inArray(orders.id, ids));
   }
 
   async getAllOrders(locationId?: number): Promise<Order[]> {
     if (locationId) {
-      return await db.select().from(orders).where(eq(orders.locationId, locationId)).orderBy(desc(orders.orderDate));
+      return db.select().from(orders)
+        .where(eq(orders.locationId, locationId))
+        .orderBy(desc(orders.createdAt));
     }
-    return await db.select().from(orders).orderBy(desc(orders.orderDate));
+    return db.select().from(orders).orderBy(desc(orders.createdAt));
   }
 
   async getOrdersByLocation(locationId: number): Promise<Order[]> {
-    return await db
-      .select()
-      .from(orders)
+    return db.select().from(orders)
       .where(eq(orders.locationId, locationId))
-      .orderBy(desc(orders.orderDate));
+      .orderBy(desc(orders.createdAt));
   }
 
   async getOrdersByDateRange(startDate: string, endDate: string, locationId?: number): Promise<Order[]> {
-    let query = db
-      .select()
-      .from(orders)
+    const query = db.select().from(orders)
       .where(
         and(
           gte(orders.orderDate, startDate),
-          lte(orders.orderDate, endDate)
-        )
-      );
-
-    if (locationId) {
-      query = query.where(
-        and(
-          gte(orders.orderDate, startDate),
           lte(orders.orderDate, endDate),
-          eq(orders.locationId, locationId)
+          locationId ? eq(orders.locationId, locationId) : undefined
         )
-      );
-    }
-
-    return await query.orderBy(desc(orders.orderDate));
+      )
+      .orderBy(desc(orders.orderDate));
+    
+    return query;
   }
 
   async searchOrders(searchTerm: string, locationId?: number): Promise<Order[]> {
-    let whereClause = or(
-      like(orders.orderId, `%${searchTerm}%`),
-      like(orders.customerName, `%${searchTerm}%`),
-      like(orders.customerEmail, `%${searchTerm}%`),
-      like(orders.cardLast4, `%${searchTerm}%`)
-    );
-
-    if (locationId) {
-      whereClause = and(whereClause, eq(orders.locationId, locationId));
-    }
-
-    return await db
-      .select()
-      .from(orders)
-      .where(whereClause)
+    const query = db.select().from(orders)
+      .where(
+        and(
+          or(
+            like(orders.customerName, `%${searchTerm}%`),
+            like(orders.customerEmail, `%${searchTerm}%`),
+            like(orders.orderId, `%${searchTerm}%`)
+          ),
+          locationId ? eq(orders.locationId, locationId) : undefined
+        )
+      )
       .orderBy(desc(orders.orderDate));
-  }
-
-  async createFileUpload(insertFileUpload: InsertFileUpload): Promise<FileUpload> {
-    const [fileUpload] = await db
-      .insert(fileUploads)
-      .values(insertFileUpload)
-      .returning();
-    return fileUpload;
-  }
-
-  async updateFileUpload(id: number, insertFileUpload: Partial<InsertFileUpload>): Promise<FileUpload> {
-    const [fileUpload] = await db
-      .update(fileUploads)
-      .set(insertFileUpload)
-      .where(eq(fileUploads.id, id))
-      .returning();
-    return fileUpload;
-  }
-
-  async getFileUpload(id: number): Promise<FileUpload | undefined> {
-    const [fileUpload] = await db
-      .select()
-      .from(fileUploads)
-      .where(eq(fileUploads.id, id));
-    return fileUpload || undefined;
-  }
-
-  async getRecentFileUploads(limit = 10): Promise<FileUpload[]> {
-    return await db
-      .select()
-      .from(fileUploads)
-      .orderBy(desc(fileUploads.createdAt))
-      .limit(limit);
-  }
-
-  async getAllFileUploads(): Promise<FileUpload[]> {
-    return await db
-      .select()
-      .from(fileUploads)
-      .orderBy(desc(fileUploads.createdAt));
-  }
-
-  async deleteFileUploads(ids: number[]): Promise<void> {
-    await db.delete(fileUploads).where(inArray(fileUploads.id, ids));
-  }
-
-  async deleteLocations(ids: number[]): Promise<void> {
-    // Check if any locations have associated orders
-    const locationsWithOrders = await db
-      .selectDistinct({ locationId: orders.locationId })
-      .from(orders)
-      .where(inArray(orders.locationId, ids));
-
-    if (locationsWithOrders.length > 0) {
-      const usedLocationIds = Array.from(new Set(locationsWithOrders.map(o => o.locationId)));
-      throw new Error(`Cannot delete locations with existing orders. Location IDs: ${usedLocationIds.join(', ')}`);
-    }
-
-    // First delete user location access records for these locations
-    await db.delete(userLocationAccess).where(inArray(userLocationAccess.locationId, ids));
     
-    // Then delete the locations
-    await db.delete(locations).where(inArray(locations.id, ids));
+    return query;
   }
 
   async getUserLocationAccess(userId: number): Promise<number[]> {
-    const access = await db
-      .select({ locationId: userLocationAccess.locationId })
-      .from(userLocationAccess)
+    const access = await db.select().from(userLocationAccess)
       .where(eq(userLocationAccess.userId, userId));
-    
     return access.map(a => a.locationId);
   }
 
   async setUserLocationAccess(userId: number, locationIds: number[]): Promise<void> {
-    // Remove existing access
+    // Delete existing access
     await db.delete(userLocationAccess).where(eq(userLocationAccess.userId, userId));
     
-    // Add new access
+    // Insert new access
     if (locationIds.length > 0) {
-      const accessRecords = locationIds.map(locationId => ({
-        userId,
-        locationId,
-      }));
-      
-      await db.insert(userLocationAccess).values(accessRecords);
+      await db.insert(userLocationAccess).values(
+        locationIds.map(locationId => ({ userId, locationId }))
+      );
     }
   }
 
@@ -386,62 +286,38 @@ export class DatabaseStorage implements IStorage {
     stripeFees: number;
     netDeposit: number;
   }> {
-    let whereConditions: any[] = [];
+    const whereConditions = [];
     
     if (locationId) {
       whereConditions.push(eq(orders.locationId, locationId));
     }
     
-    // If no month is specified, get the latest month from the data
-    let targetMonth = month;
-    if (!targetMonth) {
-      const latestOrder = await db
-        .select({ orderDate: orders.orderDate })
-        .from(orders)
-        .where(whereConditions.length > 0 ? and(...whereConditions) : undefined)
-        .orderBy(desc(orders.orderDate))
-        .limit(1);
-      
-      if (latestOrder.length > 0) {
-        const latestDate = new Date(latestOrder[0].orderDate);
-        const year = latestDate.getFullYear();
-        const monthNum = latestDate.getMonth() + 1;
-        targetMonth = `${year}-${monthNum.toString().padStart(2, '0')}`;
-      }
-    }
-    
-    if (targetMonth) {
-      const [year, monthNum] = targetMonth.split('-');
-      const startDate = `${year}-${monthNum}-01`;
-      // Get the last day of the month properly
-      const lastDay = new Date(parseInt(year), parseInt(monthNum), 0).getDate();
-      const endDate = `${year}-${monthNum}-${lastDay.toString().padStart(2, '0')}`;
-      whereConditions.push(gte(orders.orderDate, startDate));
-      whereConditions.push(lte(orders.orderDate, endDate));
+    if (month) {
+      const [year, monthNum] = month.split('-');
+      whereConditions.push(
+        sql`EXTRACT(YEAR FROM ${orders.orderDate}) = ${year}`,
+        sql`EXTRACT(MONTH FROM ${orders.orderDate}) = ${monthNum}`
+      );
     }
 
-    const whereClause = whereConditions.length > 0 ? and(...whereConditions) : undefined;
+    const result = await db.select().from(orders)
+      .where(whereConditions.length ? and(...whereConditions) : undefined);
 
-    const result = await db
-      .select({
-        totalSales: sql<number>`COALESCE(SUM(CASE WHEN ${orders.status} != 'refunded' THEN CAST(${orders.amount} AS DECIMAL) ELSE 0 END), 0)`,
-        totalRefunds: sql<number>`COALESCE(SUM(CASE WHEN ${orders.status} = 'refunded' THEN CAST(${orders.amount} AS DECIMAL) ELSE 0 END), 0)`,
-        totalOrders: sql<number>`COUNT(CASE WHEN ${orders.status} != 'refunded' THEN 1 END)`,
-        platformFees: sql<number>`COALESCE(SUM(CASE WHEN ${orders.status} != 'refunded' THEN CAST(${orders.platformFee} AS DECIMAL) ELSE 0 END), 0)`,
-        stripeFees: sql<number>`COALESCE(SUM(CASE WHEN ${orders.status} != 'refunded' THEN CAST(${orders.stripeFee} AS DECIMAL) ELSE 0 END), 0)`,
-        netDeposit: sql<number>`COALESCE(SUM(CASE WHEN ${orders.status} != 'refunded' THEN CAST(${orders.netAmount} AS DECIMAL) ELSE 0 END), 0)`,
-      })
-      .from(orders)
-      .where(whereClause);
-
-    return result[0] || {
+    return result.reduce((acc, order) => ({
+      totalSales: acc.totalSales + parseFloat(order.amount.toString()),
+      totalOrders: acc.totalOrders + 1,
+      totalRefunds: acc.totalRefunds + parseFloat(order.refundAmount?.toString() || '0'),
+      platformFees: acc.platformFees + parseFloat(order.platformFee.toString()),
+      stripeFees: acc.stripeFees + parseFloat(order.stripeFee.toString()),
+      netDeposit: acc.netDeposit + parseFloat(order.netAmount.toString()),
+    }), {
       totalSales: 0,
       totalOrders: 0,
       totalRefunds: 0,
       platformFees: 0,
       stripeFees: 0,
       netDeposit: 0,
-    };
+    });
   }
 
   async getMonthlyBreakdown(year?: number, locationId?: number): Promise<Array<{
@@ -452,125 +328,70 @@ export class DatabaseStorage implements IStorage {
     netAmount: number;
     orders: Order[];
   }>> {
-    // Get all orders and group by month in JavaScript to avoid SQL ORDER BY conflict
-    let whereConditions: any[] = [];
+    const currentYear = year || new Date().getFullYear();
+    const whereConditions = [
+      sql`EXTRACT(YEAR FROM ${orders.orderDate}) = ${currentYear}`
+    ];
+    
     if (locationId) {
       whereConditions.push(eq(orders.locationId, locationId));
     }
 
-    const allOrders = await db
-      .select()
-      .from(orders)
-      .where(whereConditions.length > 0 ? and(...whereConditions) : undefined)
+    const result = await db.select().from(orders)
+      .where(and(...whereConditions))
       .orderBy(desc(orders.orderDate));
 
-    // Group orders by month
-    const monthGroups = new Map<string, Order[]>();
+    const monthlyData = new Map();
     
-    for (const order of allOrders) {
-      const orderDate = new Date(order.orderDate);
-      const year = orderDate.getFullYear();
-      const month = orderDate.getMonth() + 1;
-      const monthKey = `${year}-${month.toString().padStart(2, '0')}`;
-      
-      if (!monthGroups.has(monthKey)) {
-        monthGroups.set(monthKey, []);
+    for (const order of result) {
+      const monthKey = order.orderDate?.toISOString().substring(0, 7) || '';
+      if (!monthlyData.has(monthKey)) {
+        monthlyData.set(monthKey, {
+          month: monthKey,
+          totalSales: 0,
+          totalOrders: 0,
+          totalRefunds: 0,
+          netAmount: 0,
+          orders: []
+        });
       }
-      monthGroups.get(monthKey)!.push(order);
+      
+      const monthData = monthlyData.get(monthKey);
+      monthData.totalSales += parseFloat(order.amount.toString());
+      monthData.totalOrders += 1;
+      monthData.totalRefunds += parseFloat(order.refundAmount?.toString() || '0');
+      monthData.netAmount += parseFloat(order.netAmount.toString());
+      monthData.orders.push(order);
     }
 
-    // Convert to result format
-    const months = [];
-    for (const [monthKey, monthOrders] of monthGroups.entries()) {
-      const completedOrders = monthOrders.filter(order => order.status !== 'refunded');
-      const refundedOrders = monthOrders.filter(order => order.status === 'refunded');
-
-      const totalSales = completedOrders.reduce((sum, order) => sum + parseFloat(order.amount), 0);
-      const totalRefunds = refundedOrders.reduce((sum, order) => sum + parseFloat(order.amount), 0);
-      const netAmount = completedOrders.reduce((sum, order) => sum + parseFloat(order.netAmount), 0);
-
-      months.push({
-        month: monthKey,
-        totalSales,
-        totalOrders: completedOrders.length,
-        totalRefunds,
-        netAmount,
-        orders: monthOrders,
-      });
-    }
-    
-    // Sort by month descending
-    months.sort((a, b) => b.month.localeCompare(a.month));
-    
-    return months;
+    return Array.from(monthlyData.values()).sort((a, b) => b.month.localeCompare(a.month));
   }
 
-  // Notes operations (admin only)
-  async getNotes(userId: number): Promise<Note[]> {
-    return await db
-      .select()
-      .from(notes)
-      .where(eq(notes.createdBy, userId))
-      .orderBy(desc(notes.updatedAt));
-  }
-
-  async getNote(id: number, userId: number): Promise<Note | undefined> {
-    const [note] = await db
-      .select()
-      .from(notes)
-      .where(and(eq(notes.id, id), eq(notes.createdBy, userId)));
-    return note;
-  }
-
-  async createNote(insertNote: InsertNote): Promise<Note> {
-    const [note] = await db
-      .insert(notes)
-      .values(insertNote)
-      .returning();
-    return note;
-  }
-
-  async updateNote(id: number, insertNote: Partial<InsertNote>, userId: number): Promise<Note> {
-    const [note] = await db
-      .update(notes)
-      .set({ ...insertNote, updatedAt: new Date() })
-      .where(and(eq(notes.id, id), eq(notes.createdBy, userId)))
-      .returning();
-    return note;
-  }
-
-  async deleteNote(id: number, userId: number): Promise<void> {
-    await db
-      .delete(notes)
-      .where(and(eq(notes.id, id), eq(notes.createdBy, userId)));
-  }
-
-  // WooCommerce orders operations
   async getWooOrder(id: number): Promise<WooOrder | undefined> {
-    const [wooOrder] = await db.select().from(wooOrders).where(eq(wooOrders.id, id));
-    return wooOrder || undefined;
+    const [order] = await db.select().from(wooOrders).where(eq(wooOrders.id, id));
+    return order || undefined;
   }
 
   async getWooOrderByWooOrderId(wooOrderId: string): Promise<WooOrder | undefined> {
-    const [wooOrder] = await db.select().from(wooOrders).where(eq(wooOrders.wooOrderId, wooOrderId));
-    return wooOrder || undefined;
+    const [order] = await db.select().from(wooOrders).where(eq(wooOrders.wooOrderId, wooOrderId));
+    return order || undefined;
   }
 
   async createWooOrder(insertWooOrder: InsertWooOrder): Promise<WooOrder> {
-    const [wooOrder] = await db
+    const [order] = await db
       .insert(wooOrders)
       .values(insertWooOrder)
       .returning();
-    return wooOrder;
+    return order;
   }
 
   async updateWooOrder(id: number, insertWooOrder: Partial<InsertWooOrder>): Promise<WooOrder> {
-    const [wooOrder] = await db
+    const [order] = await db
       .update(wooOrders)
-      .set({ ...insertWooOrder, updatedAt: new Date() })
+      .set(insertWooOrder)
       .where(eq(wooOrders.id, id))
       .returning();
-    return wooOrder;
+    return order;
   }
 
   async deleteWooOrder(id: number): Promise<void> {
@@ -578,111 +399,83 @@ export class DatabaseStorage implements IStorage {
   }
 
   async deleteWooOrders(ids: number[]): Promise<void> {
-    if (!Array.isArray(ids) || ids.length === 0) {
-      throw new Error("Invalid IDs array");
-    }
     await db.delete(wooOrders).where(inArray(wooOrders.id, ids));
   }
 
   async getAllWooOrders(locationId?: number): Promise<WooOrder[]> {
     if (locationId) {
-      return await db.select().from(wooOrders).where(eq(wooOrders.locationId, locationId)).orderBy(desc(wooOrders.orderDate));
+      return db.select().from(wooOrders)
+        .where(eq(wooOrders.locationId, locationId))
+        .orderBy(desc(wooOrders.createdAt));
     }
-    return await db.select().from(wooOrders).orderBy(desc(wooOrders.orderDate));
+    return db.select().from(wooOrders).orderBy(desc(wooOrders.createdAt));
   }
 
   async getWooOrdersByLocation(locationId: number): Promise<WooOrder[]> {
-    return await db.select().from(wooOrders).where(eq(wooOrders.locationId, locationId)).orderBy(desc(wooOrders.orderDate));
+    return db.select().from(wooOrders)
+      .where(eq(wooOrders.locationId, locationId))
+      .orderBy(desc(wooOrders.createdAt));
   }
 
   async getWooOrdersByDateRange(startDate: string, endDate: string, locationId?: number): Promise<WooOrder[]> {
-    let query = db.select().from(wooOrders).where(
-      and(
-        gte(wooOrders.orderDate, new Date(startDate)),
-        lte(wooOrders.orderDate, new Date(endDate))
-      )
-    );
-
-    if (locationId) {
-      query = query.where(
+    const query = db.select().from(wooOrders)
+      .where(
         and(
-          gte(wooOrders.orderDate, new Date(startDate)),
-          lte(wooOrders.orderDate, new Date(endDate)),
-          eq(wooOrders.locationId, locationId)
+          gte(wooOrders.orderDate, startDate),
+          lte(wooOrders.orderDate, endDate),
+          locationId ? eq(wooOrders.locationId, locationId) : undefined
         )
-      );
-    }
-
-    return await query.orderBy(desc(wooOrders.orderDate));
+      )
+      .orderBy(desc(wooOrders.orderDate));
+    
+    return query;
   }
 
   async searchWooOrders(searchTerm: string, locationId?: number): Promise<WooOrder[]> {
-    const searchConditions = or(
-      like(wooOrders.orderId, `%${searchTerm}%`),
-      like(wooOrders.customerName, `%${searchTerm}%`),
-      like(wooOrders.customerEmail, `%${searchTerm}%`),
-      like(wooOrders.wooOrderNumber, `%${searchTerm}%`)
-    );
-
-    if (locationId) {
-      return await db.select().from(wooOrders).where(
-        and(searchConditions, eq(wooOrders.locationId, locationId))
-      ).orderBy(desc(wooOrders.orderDate));
-    }
-
-    return await db.select().from(wooOrders).where(searchConditions).orderBy(desc(wooOrders.orderDate));
+    const query = db.select().from(wooOrders)
+      .where(
+        and(
+          or(
+            like(wooOrders.customerName, `%${searchTerm}%`),
+            like(wooOrders.customerEmail, `%${searchTerm}%`),
+            like(wooOrders.orderId, `%${searchTerm}%`),
+            like(wooOrders.wooOrderId, `%${searchTerm}%`)
+          ),
+          locationId ? eq(wooOrders.locationId, locationId) : undefined
+        )
+      )
+      .orderBy(desc(wooOrders.orderDate));
+    
+    return query;
   }
 
-  // Webhook settings operations
-  async getWebhookSettings(platform: string): Promise<WebhookSettings | undefined> {
-    const [settings] = await db.select().from(webhookSettings).where(eq(webhookSettings.platform, platform));
+  async getSyncSettings(platform: string): Promise<SyncSettings | undefined> {
+    const [settings] = await db.select().from(syncSettings).where(eq(syncSettings.platform, platform));
     return settings || undefined;
   }
 
-  async upsertWebhookSettings(settings: InsertWebhookSettings): Promise<WebhookSettings> {
-    const [webhookSetting] = await db
-      .insert(webhookSettings)
+  async upsertSyncSettings(settings: InsertSyncSettings): Promise<SyncSettings> {
+    const [result] = await db
+      .insert(syncSettings)
       .values(settings)
       .onConflictDoUpdate({
-        target: webhookSettings.platform,
+        target: syncSettings.platform,
         set: {
-          secretKey: settings.secretKey,
-          isActive: settings.isActive,
+          ...settings,
           updatedAt: new Date(),
         },
       })
       .returning();
-    return webhookSetting;
-  }
-
-  async createWebhookLog(insertWebhookLog: InsertWebhookLog): Promise<WebhookLog> {
-    const [webhookLog] = await db
-      .insert(webhookLogs)
-      .values(insertWebhookLog)
-      .returning();
-    return webhookLog;
-  }
-
-  async getRecentWebhookLogs(platform = 'woocommerce', limit = 20): Promise<WebhookLog[]> {
-    const logs = await db
-      .select()
-      .from(webhookLogs)
-      .where(eq(webhookLogs.platform, platform))
-      .orderBy(desc(webhookLogs.receivedAt))
-      .limit(limit);
-    return logs;
+    return result;
   }
 
   async getRestApiSettings(platform: string): Promise<RestApiSettings | undefined> {
-    const [settings] = await db
-      .select()
-      .from(restApiSettings)
-      .where(eq(restApiSettings.platform, platform));
-    return settings;
+    const [settings] = await db.select().from(restApiSettings).where(eq(restApiSettings.platform, platform));
+    return settings || undefined;
   }
 
   async upsertRestApiSettings(settings: InsertRestApiSettings): Promise<RestApiSettings> {
-    const [restApiSetting] = await db
+    const [result] = await db
       .insert(restApiSettings)
       .values(settings)
       .onConflictDoUpdate({
@@ -693,7 +486,7 @@ export class DatabaseStorage implements IStorage {
         },
       })
       .returning();
-    return restApiSetting;
+    return result;
   }
 }
 

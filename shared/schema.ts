@@ -149,29 +149,17 @@ export const wooOrders = pgTable("woo_orders", {
   updatedAt: timestamp("updated_at").defaultNow(),
 });
 
-// Webhook settings table
-export const webhookSettings = pgTable("webhook_settings", {
+// Sync settings table for automated data fetching
+export const syncSettings = pgTable("sync_settings", {
   id: serial("id").primaryKey(),
   platform: varchar("platform", { length: 50 }).notNull().unique(), // 'woocommerce'
-  secretKey: varchar("secret_key", { length: 255 }).notNull(),
   isActive: boolean("is_active").default(true),
+  intervalMinutes: integer("interval_minutes").default(5), // How often to sync in minutes
+  lastSyncAt: timestamp("last_sync_at"),
+  nextSyncAt: timestamp("next_sync_at"),
+  isRunning: boolean("is_running").default(false),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
-});
-
-// Webhook request logs table
-export const webhookLogs = pgTable("webhook_logs", {
-  id: serial("id").primaryKey(),
-  platform: varchar("platform", { length: 50 }).notNull(),
-  status: varchar("status", { length: 20 }).notNull(), // 'success', 'error', 'unauthorized'
-  orderId: varchar("order_id", { length: 100 }),
-  orderTotal: varchar("order_total", { length: 50 }),
-  customerName: varchar("customer_name", { length: 255 }),
-  location: varchar("location", { length: 255 }),
-  errorMessage: text("error_message"),
-  payload: jsonb("payload").notNull(),
-  headers: jsonb("headers"),
-  receivedAt: timestamp("received_at").defaultNow(),
 });
 
 // REST API settings table
@@ -250,15 +238,10 @@ export const insertWooOrderSchema = createInsertSchema(wooOrders).omit({
   updatedAt: true,
 });
 
-export const insertWebhookSettingsSchema = createInsertSchema(webhookSettings).omit({
+export const insertSyncSettingsSchema = createInsertSchema(syncSettings).omit({
   id: true,
   createdAt: true,
   updatedAt: true,
-});
-
-export const insertWebhookLogSchema = createInsertSchema(webhookLogs).omit({
-  id: true,
-  receivedAt: true,
 });
 
 export const insertRestApiSettingsSchema = createInsertSchema(restApiSettings).omit({
@@ -277,10 +260,8 @@ export type InsertOrder = z.infer<typeof insertOrderSchema>;
 
 export type WooOrder = typeof wooOrders.$inferSelect;
 export type InsertWooOrder = z.infer<typeof insertWooOrderSchema>;
-export type WebhookSettings = typeof webhookSettings.$inferSelect;
-export type InsertWebhookSettings = z.infer<typeof insertWebhookSettingsSchema>;
-export type WebhookLog = typeof webhookLogs.$inferSelect;
-export type InsertWebhookLog = z.infer<typeof insertWebhookLogSchema>;
+export type SyncSettings = typeof syncSettings.$inferSelect;
+export type InsertSyncSettings = z.infer<typeof insertSyncSettingsSchema>;
 export type RestApiSettings = typeof restApiSettings.$inferSelect;
 export type InsertRestApiSettings = z.infer<typeof insertRestApiSettingsSchema>;
 export type UserLocationAccess = typeof userLocationAccess.$inferSelect;
