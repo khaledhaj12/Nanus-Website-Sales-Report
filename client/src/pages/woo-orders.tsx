@@ -365,7 +365,7 @@ export default function WooOrders() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-100 dark:from-gray-900 dark:via-gray-800 dark:to-gray-900">
-      <div className="container mx-auto px-4 py-6 sm:py-8">
+      <div className="w-full px-4 py-6 sm:py-8 max-w-none mx-auto">
         {/* Header */}
         <div className="mb-8">
           <div className="flex items-center gap-3 mb-4">
