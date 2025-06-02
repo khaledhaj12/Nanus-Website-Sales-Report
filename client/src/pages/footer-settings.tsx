@@ -8,8 +8,13 @@ import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { Code, Save, Eye, EyeOff } from "lucide-react";
+import Header from "@/components/layout/header";
 
-export default function FooterSettings() {
+interface FooterSettingsProps {
+  onMenuClick?: () => void;
+}
+
+function FooterSettings({ onMenuClick }: FooterSettingsProps) {
   const { toast } = useToast();
   const [customCode, setCustomCode] = useState("");
   const [isEnabled, setIsEnabled] = useState(true);
@@ -57,14 +62,19 @@ export default function FooterSettings() {
   }, [footerSettings, isLoading]);
 
   return (
-    <div className="container mx-auto p-6">
-      <div className="max-w-4xl mx-auto">
-        <div className="mb-6">
-          <h1 className="text-3xl font-bold tracking-tight">Footer Settings</h1>
-          <p className="text-muted-foreground">
-            Manage your website footer and add custom code like Google Analytics, Yandex, or other tracking scripts.
-          </p>
-        </div>
+    <div className="flex flex-col h-screen">
+      <Header 
+        title="Footer Settings" 
+        onMenuClick={onMenuClick || (() => {})} 
+      />
+      <main className="flex-1 overflow-y-auto p-6">
+        <div className="container mx-auto max-w-4xl">
+          <div className="flex items-center gap-3 mb-6">
+            <Code className="h-8 w-8 text-primary" />
+            <div>
+              <p className="text-muted-foreground">Manage your website footer and add custom code like Google Analytics, Yandex, or other tracking scripts</p>
+            </div>
+          </div>
 
         <div className="grid gap-6">
           {/* Footer Code Management */}
@@ -214,7 +224,10 @@ export default function FooterSettings() {
             </CardContent>
           </Card>
         </div>
-      </div>
+        </div>
+      </main>
     </div>
   );
 }
+
+export default FooterSettings;
