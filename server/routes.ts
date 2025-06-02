@@ -538,7 +538,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Dashboard routes
   app.get('/api/dashboard/summary', isAuthenticated, async (req, res) => {
     try {
-      const { location, locationId, month, startMonth, endMonth } = req.query;
+      const { location, locationId, month, startMonth, endMonth, statuses } = req.query;
       
       // Use raw SQL query to bypass ORM date issues
       const { pool } = await import('./db');

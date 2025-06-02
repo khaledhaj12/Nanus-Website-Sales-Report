@@ -6,6 +6,12 @@ import MonthlyBreakdown from "@/components/dashboard/monthly-breakdown";
 import { MonthRangePicker } from "@/components/ui/month-range-picker";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useAuth } from "@/hooks/useAuth";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem } from "@/components/ui/command";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Check, ChevronsUpDown, X } from "lucide-react";
+import { cn } from "@/lib/utils";
 
 interface DashboardProps {
   onMenuClick: () => void;
@@ -20,6 +26,7 @@ export default function Dashboard({ onMenuClick }: DashboardProps) {
   const [startMonth, setStartMonth] = useState(currentMonth);
   const [endMonth, setEndMonth] = useState(currentMonth);
   const [selectedLocation, setSelectedLocation] = useState(isAdmin ? "all" : "");
+  const [selectedStatuses, setSelectedStatuses] = useState<string[]>(["processing", "completed"]);
 
   const { data: locations = [] } = useQuery({
     queryKey: ["/api/locations"],
@@ -32,7 +39,7 @@ export default function Dashboard({ onMenuClick }: DashboardProps) {
 
   // Fetch dashboard summary
   const { data: summary, isLoading: summaryLoading } = useQuery({
-    queryKey: ["/api/dashboard/summary", { location: selectedLocation, startMonth, endMonth }],
+    queryKey: ["/api/dashboard/summary", { location: selectedLocation, startMonth, endMonth, statuses: selectedStatuses }],
     queryFn: async () => {
       const params = new URLSearchParams();
       if (selectedLocation && selectedLocation !== "all") {
@@ -44,6 +51,9 @@ export default function Dashboard({ onMenuClick }: DashboardProps) {
       if (endMonth) {
         params.append("endMonth", endMonth);
       }
+      selectedStatuses.forEach(status => {
+        params.append("statuses", status);
+      });
       
       const response = await fetch(`/api/dashboard/summary?${params}`, {
         credentials: "include",
@@ -59,7 +69,7 @@ export default function Dashboard({ onMenuClick }: DashboardProps) {
 
   // Fetch monthly breakdown
   const { data: monthlyData = [], isLoading: monthlyLoading } = useQuery({
-    queryKey: ["/api/dashboard/monthly-breakdown", { startMonth, endMonth, location: selectedLocation }],
+    queryKey: ["/api/dashboard/monthly-breakdown", { startMonth, endMonth, location: selectedLocation, statuses: selectedStatuses }],
     queryFn: async () => {
       const params = new URLSearchParams();
       if (selectedLocation && selectedLocation !== "all") {
@@ -71,6 +81,9 @@ export default function Dashboard({ onMenuClick }: DashboardProps) {
       if (endMonth) {
         params.append("endMonth", endMonth);
       }
+      selectedStatuses.forEach(status => {
+        params.append("statuses", status);
+      });
       
       const response = await fetch(`/api/dashboard/monthly-breakdown?${params}`, {
         credentials: "include",
@@ -92,9 +105,9 @@ export default function Dashboard({ onMenuClick }: DashboardProps) {
       />
       
       <main className="flex-1 overflow-auto p-4 md:p-6 bg-slate-50">
-        {/* Date Range and Location Filters */}
+        {/* Date Range, Location, and Status Filters */}
         <div className="mb-6">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
                 Date Range
@@ -129,6 +142,68 @@ export default function Dashboard({ onMenuClick }: DashboardProps) {
                 </Select>
               </div>
             )}
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Order Status
+              </label>
+              <Popover>
+                <PopoverTrigger asChild>
+                  <Button
+                    variant="outline"
+                    role="combobox"
+                    className="w-full justify-between"
+                  >
+                    {selectedStatuses.length > 0 ? (
+                      <div className="flex flex-wrap gap-1">
+                        {selectedStatuses.slice(0, 2).map((status) => (
+                          <Badge key={status} variant="secondary" className="text-xs">
+                            {status}
+                          </Badge>
+                        ))}
+                        {selectedStatuses.length > 2 && (
+                          <Badge variant="secondary" className="text-xs">
+                            +{selectedStatuses.length - 2}
+                          </Badge>
+                        )}
+                      </div>
+                    ) : (
+                      "Select statuses"
+                    )}
+                    <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-full p-0">
+                  <Command>
+                    <CommandInput placeholder="Search status..." />
+                    <CommandEmpty>No status found.</CommandEmpty>
+                    <CommandGroup>
+                      {["processing", "completed", "pending", "on-hold", "cancelled", "refunded", "failed"].map((status) => (
+                        <CommandItem
+                          key={status}
+                          value={status}
+                          onSelect={() => {
+                            setSelectedStatuses(prev => 
+                              prev.includes(status)
+                                ? prev.filter(s => s !== status)
+                                : [...prev, status]
+                            );
+                          }}
+                        >
+                          <Check
+                            className={cn(
+                              "mr-2 h-4 w-4",
+                              selectedStatuses.includes(status) ? "opacity-100" : "opacity-0"
+                            )}
+                          />
+                          {status}
+                        </CommandItem>
+                      ))}
+                    </CommandGroup>
+                  </Command>
+                </PopoverContent>
+              </Popover>
+            </div>
           </div>
         </div>
         <SummaryCards
