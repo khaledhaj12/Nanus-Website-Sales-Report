@@ -616,14 +616,41 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       const result = await pool.query(query, params);
       
-      const breakdown = result.rows.map((row: any) => ({
-        month: row.month,
-        totalSales: parseFloat(row.total_sales || '0'),
-        totalOrders: parseInt(row.total_orders || '0'),
-        totalRefunds: parseFloat(row.total_refunds || '0'),
-        netAmount: parseFloat(row.net_amount || '0'),
-        orders: [] // Empty array since we're not fetching individual orders for performance
-      }));
+      // Fetch individual orders for each month
+      const breakdown = await Promise.all(
+        result.rows.map(async (row: any) => {
+          const month = row.month;
+          
+          // Get orders for this specific month
+          let orderWhereClause = `WHERE TO_CHAR(order_date, 'YYYY-MM') = $1`;
+          const orderParams: any[] = [month];
+          
+          if (locationId && locationId !== 'all') {
+            orderWhereClause += ` AND location_id = $${orderParams.length + 1}`;
+            orderParams.push(parseInt(locationId as string));
+          }
+          
+          const orderQuery = `
+            SELECT id, woo_order_id as "orderId", order_date as "orderDate", 
+                   customer_name as "customerName", customer_email as "customerEmail",
+                   amount, status, billing_address_1 as "cardLast4", amount as "refundAmount"
+            FROM woo_orders 
+            ${orderWhereClause}
+            ORDER BY order_date DESC
+          `;
+          
+          const orderResult = await pool.query(orderQuery, orderParams);
+          
+          return {
+            month: row.month,
+            totalSales: parseFloat(row.total_sales || '0'),
+            totalOrders: parseInt(row.total_orders || '0'),
+            totalRefunds: parseFloat(row.total_refunds || '0'),
+            netAmount: parseFloat(row.net_amount || '0'),
+            orders: orderResult.rows
+          };
+        })
+      );
       
       res.json(breakdown);
     } catch (error) {
