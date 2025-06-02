@@ -152,7 +152,7 @@ export default function ReportsMonthlyBreakdown({
             No data available for the selected period
           </div>
         ) : (
-          data.map((monthData) => {
+          (Array.isArray(data) ? data : []).map((monthData) => {
             const isExpanded = expandedMonths.has(monthData.month);
             const filteredOrders = filteredAndSortedOrders(monthData.orders);
             
