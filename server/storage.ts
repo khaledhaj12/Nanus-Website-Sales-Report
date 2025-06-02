@@ -310,38 +310,62 @@ export class DatabaseStorage implements IStorage {
     stripeFees: number;
     netDeposit: number;
   }> {
-    const whereConditions = [];
+    let whereConditions: any[] = [];
     
     if (locationId) {
-      whereConditions.push(eq(orders.locationId, locationId));
+      whereConditions.push(eq(wooOrders.locationId, locationId));
     }
     
-    if (month) {
-      const [year, monthNum] = month.split('-');
-      whereConditions.push(
-        sql`EXTRACT(YEAR FROM ${orders.orderDate}) = ${year}`,
-        sql`EXTRACT(MONTH FROM ${orders.orderDate}) = ${monthNum}`
-      );
+    // If no month is specified, get the latest month from the data
+    let targetMonth = month;
+    if (!targetMonth) {
+      const latestOrder = await db
+        .select({ orderDate: wooOrders.orderDate })
+        .from(wooOrders)
+        .where(whereConditions.length > 0 ? and(...whereConditions) : undefined)
+        .orderBy(desc(wooOrders.orderDate))
+        .limit(1);
+      
+      if (latestOrder.length > 0) {
+        const latestDate = new Date(latestOrder[0].orderDate);
+        const year = latestDate.getFullYear();
+        const monthNum = latestDate.getMonth() + 1;
+        targetMonth = `${year}-${monthNum.toString().padStart(2, '0')}`;
+      }
+    }
+    
+    if (targetMonth) {
+      const [year, monthNum] = targetMonth.split('-');
+      const startDate = `${year}-${monthNum}-01`;
+      // Get the last day of the month properly
+      const lastDay = new Date(parseInt(year), parseInt(monthNum), 0).getDate();
+      const endDate = `${year}-${monthNum}-${lastDay.toString().padStart(2, '0')}`;
+      whereConditions.push(gte(wooOrders.orderDate, startDate));
+      whereConditions.push(lte(wooOrders.orderDate, endDate));
     }
 
-    const result = await db.select().from(orders)
-      .where(whereConditions.length ? and(...whereConditions) : undefined);
+    const whereClause = whereConditions.length > 0 ? and(...whereConditions) : undefined;
 
-    return result.reduce((acc, order) => ({
-      totalSales: acc.totalSales + parseFloat(order.amount.toString()),
-      totalOrders: acc.totalOrders + 1,
-      totalRefunds: acc.totalRefunds + parseFloat(order.refundAmount?.toString() || '0'),
-      platformFees: acc.platformFees + parseFloat(order.platformFee.toString()),
-      stripeFees: acc.stripeFees + parseFloat(order.stripeFee.toString()),
-      netDeposit: acc.netDeposit + parseFloat(order.netAmount.toString()),
-    }), {
+    const result = await db
+      .select({
+        totalSales: sql<number>`COALESCE(SUM(CASE WHEN ${wooOrders.status} != 'refunded' THEN CAST(${wooOrders.amount} AS DECIMAL) ELSE 0 END), 0)`,
+        totalRefunds: sql<number>`COALESCE(SUM(CASE WHEN ${wooOrders.status} = 'refunded' THEN CAST(${wooOrders.amount} AS DECIMAL) ELSE 0 END), 0)`,
+        totalOrders: sql<number>`COUNT(CASE WHEN ${wooOrders.status} != 'refunded' THEN 1 END)`,
+        platformFees: sql<number>`COALESCE(SUM(CASE WHEN ${wooOrders.status} != 'refunded' THEN CAST(${wooOrders.amount} AS DECIMAL) * 0.07 ELSE 0 END), 0)`,
+        stripeFees: sql<number>`COALESCE(SUM(CASE WHEN ${wooOrders.status} != 'refunded' THEN (CAST(${wooOrders.amount} AS DECIMAL) * 0.029 + 0.30) ELSE 0 END), 0)`,
+        netDeposit: sql<number>`COALESCE(SUM(CASE WHEN ${wooOrders.status} != 'refunded' THEN (CAST(${wooOrders.amount} AS DECIMAL) - (CAST(${wooOrders.amount} AS DECIMAL) * 0.07) - (CAST(${wooOrders.amount} AS DECIMAL) * 0.029 + 0.30)) ELSE 0 END), 0)`,
+      })
+      .from(wooOrders)
+      .where(whereClause);
+
+    return result[0] || {
       totalSales: 0,
       totalOrders: 0,
       totalRefunds: 0,
       platformFees: 0,
       stripeFees: 0,
       netDeposit: 0,
-    });
+    };
   }
 
   async getMonthlyBreakdown(year?: number, locationId?: number): Promise<Array<{
