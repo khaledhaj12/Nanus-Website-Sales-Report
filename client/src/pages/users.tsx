@@ -184,44 +184,30 @@ export default function Users({ onMenuClick }: UsersProps) {
             </div>
             <div className="grid grid-cols-12 gap-4 mt-4 py-2 text-sm font-medium text-gray-600 border-b">
               <div className="col-span-3">
-                <SortableHeader
-                  sortKey="name"
-                  currentSort={sortBy}
-                  currentOrder={sortOrder}
-                  onSort={handleSort}
+                <button
+                  className="flex items-center gap-1 hover:text-gray-800 cursor-pointer"
+                  onClick={() => handleSort('name')}
                 >
                   Name / Username
-                </SortableHeader>
+                  {sortBy === 'name' && (
+                    sortOrder === 'asc' 
+                      ? <ChevronUp className="h-4 w-4" />
+                      : <ChevronDown className="h-4 w-4" />
+                  )}
+                </button>
               </div>
               <div className="col-span-3">
-                <SortableHeader
-                  sortKey="email"
-                  currentSort={sortBy}
-                  currentOrder={sortOrder}
-                  onSort={handleSort}
+                <button
+                  className="flex items-center gap-1 hover:text-gray-800 cursor-pointer"
+                  onClick={() => handleSort('email')}
                 >
                   Email
-                </SortableHeader>
-              </div>
-              <div className="col-span-2">
-                <SortableHeader
-                  sortKey="phoneNumber"
-                  currentSort={sortBy}
-                  currentOrder={sortOrder}
-                  onSort={handleSort}
-                >
-                  Phone
-                </SortableHeader>
-              </div>
-              <div className="col-span-2">
-                <SortableHeader
-                  sortKey="role"
-                  currentSort={sortBy}
-                  currentOrder={sortOrder}
-                  onSort={handleSort}
-                >
-                  Role
-                </SortableHeader>
+                  {sortBy === 'email' && (
+                    sortOrder === 'asc' 
+                      ? <ChevronUp className="h-4 w-4" />
+                      : <ChevronDown className="h-4 w-4" />
+                  )}
+                </button>
               </div>
               <div className="col-span-2 text-right">Actions</div>
             </div>

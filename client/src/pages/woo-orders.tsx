@@ -128,12 +128,19 @@ export default function WooOrders() {
   // Fetch data
   const { data: orders = [], isLoading, refetch } = useQuery({
     queryKey: ["/api/woo-orders", selectedLocation, searchTerm],
-    queryFn: () => {
+    queryFn: async () => {
       const params = new URLSearchParams();
       if (selectedLocation !== "all") params.append("locationId", selectedLocation);
       if (searchTerm) params.append("search", searchTerm);
-      const queryString = params.toString();
-      return queryString ? `/api/woo-orders?${queryString}` : "/api/woo-orders";
+      
+      const url = params.toString() ? `/api/woo-orders?${params.toString()}` : "/api/woo-orders";
+      const response = await fetch(url);
+      
+      if (!response.ok) {
+        throw new Error(`Failed to fetch orders: ${response.status} ${response.statusText}`);
+      }
+      
+      return response.json();
     }
   });
 
