@@ -287,7 +287,7 @@ export default function MonthlyBreakdown({
                             </TableRow>
                           </TableHeader>
                           <TableBody>
-                            {monthData.orders.map((order) => (
+                            {getSortedOrders(monthData.orders).map((order) => (
                               <TableRow key={order.id}>
                                 <TableCell>
                                   {new Date(order.orderDate).toLocaleDateString()}
