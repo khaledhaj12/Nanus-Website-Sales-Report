@@ -83,15 +83,18 @@ function UserStatusAccess({ userId }: UserStatusAccessProps) {
     }
   };
 
+  // Ensure userStatuses is an array of strings
+  const statusArray = Array.isArray(userStatuses) ? userStatuses : [];
+
   return (
     <div className="mt-2">
       <p className="text-xs text-gray-500 mb-1">Status Access:</p>
-      {(userStatuses as string[]).length === 0 ? (
+      {statusArray.length === 0 ? (
         <span className="text-xs text-gray-400">All statuses accessible</span>
       ) : (
         <div className="flex flex-wrap gap-1">
-          {(userStatuses as string[]).map((status: string) => (
-            <Badge key={status} variant="outline" className={`text-xs ${getStatusBadgeColor(status)}`}>
+          {statusArray.map((status: string, index: number) => (
+            <Badge key={`${status}-${index}`} variant="outline" className={`text-xs ${getStatusBadgeColor(status)}`}>
               <Shield className="mr-1 h-3 w-3" />
               {statusDisplayNames[status] || status}
             </Badge>
