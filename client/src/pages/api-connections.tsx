@@ -88,12 +88,12 @@ function ConnectionSettings({ connectionId, platform }: ConnectionSettingsProps)
   });
 
   // Queries - Use connection-specific platform identifiers
-  const { data: syncData = {}, isLoading: syncDataLoading } = useQuery({
+  const { data: syncData, isLoading: syncDataLoading } = useQuery({
     queryKey: [`/api/sync-settings/${platformId}`],
     refetchInterval: connectionId === 'default' ? 2000 : 0, // Only auto-refresh for main store
   });
 
-  const { data: apiData = {}, isLoading: apiDataLoading } = useQuery({
+  const { data: apiData, isLoading: apiDataLoading } = useQuery({
     queryKey: [`/api/rest-api-settings/${platformId}`],
   });
 
@@ -105,17 +105,17 @@ function ConnectionSettings({ connectionId, platform }: ConnectionSettingsProps)
 
   // Initialize settings from API data - only populate if data exists, otherwise keep defaults
   useEffect(() => {
-    if (syncDataLoading) return; // Don't run while loading
+    if (syncDataLoading || !syncData) return; // Don't run while loading or if no data
     
-    if (syncData && typeof syncData === 'object' && 'platform' in syncData && syncData.platform) {
+    if (typeof syncData === 'object' && 'platform' in syncData && syncData.platform) {
       setSyncSettings(prev => ({
         ...prev,
         platform: syncData.platform as string,
         isActive: ('isActive' in syncData ? syncData.isActive : false) as boolean,
         intervalMinutes: ('intervalMinutes' in syncData ? syncData.intervalMinutes : 5) as number
       }));
-    } else {
-      // Reset to defaults for new connections
+    } else if (syncData && !syncDataLoading) {
+      // Reset to defaults for new connections only after loading is complete
       setSyncSettings({
         platform: platformId,
         isActive: false,
@@ -125,9 +125,9 @@ function ConnectionSettings({ connectionId, platform }: ConnectionSettingsProps)
   }, [syncData, platformId, syncDataLoading]);
 
   useEffect(() => {
-    if (apiDataLoading) return; // Don't run while loading
+    if (apiDataLoading || !apiData) return; // Don't run while loading or if no data
     
-    if (apiData && typeof apiData === 'object' && 'platform' in apiData && apiData.platform) {
+    if (typeof apiData === 'object' && 'platform' in apiData && apiData.platform) {
       setApiSettings(prev => ({
         ...prev,
         platform: apiData.platform as string,
@@ -136,8 +136,8 @@ function ConnectionSettings({ connectionId, platform }: ConnectionSettingsProps)
         storeUrl: ('storeUrl' in apiData ? apiData.storeUrl : '') as string,
         isActive: ('isActive' in apiData && apiData.isActive !== undefined ? apiData.isActive : true) as boolean
       }));
-    } else {
-      // Reset to defaults for new connections
+    } else if (apiData && !apiDataLoading) {
+      // Reset to defaults for new connections only after loading is complete
       setApiSettings({
         platform: platformId,
         consumerKey: '',
