@@ -26,10 +26,6 @@ export default function Upload({ onMenuClick }: UploadProps) {
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
-  const { data: recentUploads = [], isLoading } = useQuery({
-    queryKey: ["/api/uploads/recent"],
-  });
-
   const { data: allUploads = [], isLoading: historyLoading } = useQuery({
     queryKey: ["/api/uploads/all"],
   });
@@ -105,7 +101,6 @@ export default function Upload({ onMenuClick }: UploadProps) {
         description: `${file.name} has been processed successfully`,
       });
       // Refresh the data
-      queryClient.invalidateQueries({ queryKey: ["/api/uploads/recent"] });
       queryClient.invalidateQueries({ queryKey: ["/api/uploads/all"] });
       queryClient.invalidateQueries({ queryKey: ["/api/dashboard/summary"] });
       queryClient.invalidateQueries({ queryKey: ["/api/locations"] });
@@ -151,7 +146,6 @@ export default function Upload({ onMenuClick }: UploadProps) {
         description: "Files deleted successfully",
       });
       setSelectedFiles([]);
-      queryClient.invalidateQueries({ queryKey: ["/api/uploads/recent"] });
       queryClient.invalidateQueries({ queryKey: ["/api/uploads/all"] });
     },
     onError: (error) => {
@@ -351,102 +345,7 @@ export default function Upload({ onMenuClick }: UploadProps) {
               </Button>
             </div>
 
-            {/* Recent Uploads */}
-            <div className="mt-6">
-              <div className="flex items-center justify-between mb-3">
-                <h4 className="font-medium text-gray-900">Recent Uploads</h4>
-                {selectedFiles.length > 0 && (
-                  <Button
-                    variant="destructive"
-                    size="sm"
-                    onClick={() => deleteFilesMutation.mutate(selectedFiles)}
-                    disabled={deleteFilesMutation.isPending}
-                  >
-                    <Trash2 className="mr-2 h-4 w-4" />
-                    Delete {selectedFiles.length} file{selectedFiles.length > 1 ? 's' : ''}
-                  </Button>
-                )}
-              </div>
-              
-              {isLoading ? (
-                <div className="space-y-3">
-                  {[1, 2, 3].map(i => (
-                    <div key={i} className="animate-pulse">
-                      <div className="h-16 bg-gray-200 rounded-lg"></div>
-                    </div>
-                  ))}
-                </div>
-              ) : (recentUploads as any[]).length === 0 ? (
-                <div className="text-center py-8">
-                  <FileText className="mx-auto h-12 w-12 text-gray-400 mb-2" />
-                  <p className="text-gray-500">No files uploaded yet</p>
-                </div>
-              ) : (
-                <div className="border rounded-lg overflow-hidden">
-                  <Table>
-                    <TableHeader>
-                      <TableRow>
-                        <TableHead className="w-12">
-                          <Checkbox
-                            checked={(recentUploads as any[]).length > 0 && selectedFiles.length === (recentUploads as any[]).length}
-                            onCheckedChange={(checked) => {
-                              if (checked) {
-                                setSelectedFiles((recentUploads as any[]).map((upload: any) => upload.id));
-                              } else {
-                                setSelectedFiles([]);
-                              }
-                            }}
-                          />
-                        </TableHead>
-                        <TableHead>File Name</TableHead>
-                        <TableHead>Upload Date</TableHead>
-                        <TableHead>Size</TableHead>
-                        <TableHead>Records</TableHead>
-                        <TableHead>Status</TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {(recentUploads as any[]).map((upload: any) => (
-                        <TableRow key={upload.id}>
-                          <TableCell>
-                            <Checkbox
-                              checked={selectedFiles.includes(upload.id)}
-                              onCheckedChange={(checked) => {
-                                if (checked) {
-                                  setSelectedFiles([...selectedFiles, upload.id]);
-                                } else {
-                                  setSelectedFiles(selectedFiles.filter(id => id !== upload.id));
-                                }
-                              }}
-                            />
-                          </TableCell>
-                          <TableCell>
-                            <div className="flex items-center">
-                              <i className={`${getFileIcon(upload.fileName)} text-green-600 mr-3 text-xl`} />
-                              <span className="font-medium">{upload.fileName}</span>
-                            </div>
-                          </TableCell>
-                          <TableCell>
-                            {new Date(upload.createdAt).toLocaleDateString()}
-                          </TableCell>
-                          <TableCell>
-                            {formatFileSize(upload.fileSize)}
-                          </TableCell>
-                          <TableCell>
-                            {upload.recordsProcessed}
-                          </TableCell>
-                          <TableCell>
-                            <Badge className={getStatusBadgeStyle(upload.status)}>
-                              {upload.status.charAt(0).toUpperCase() + upload.status.slice(1)}
-                            </Badge>
-                          </TableCell>
-                        </TableRow>
-                      ))}
-                    </TableBody>
-                  </Table>
-                </div>
-              )}
-            </div>
+
           </CardContent>
         </Card>
 
