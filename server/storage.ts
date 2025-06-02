@@ -221,7 +221,9 @@ export class DatabaseStorage implements IStorage {
   async deleteOrders(ids: number[]): Promise<void> {
     console.log("Storage deleteOrders called with IDs:", ids);
     // The dashboard shows WooCommerce orders, so delete from woo_orders table
-    const result = await db.execute(sql`DELETE FROM woo_orders WHERE id = ANY(ARRAY[${sql.join(ids, sql`, `)}])`);
+    // We need to use a raw SQL approach since the schema doesn't export woo_orders
+    const placeholders = ids.map((_, index) => `$${index + 1}`).join(', ');
+    const result = await db.execute(sql.raw(`DELETE FROM woo_orders WHERE id IN (${placeholders})`, ids));
     console.log("Delete result:", result);
   }
 
