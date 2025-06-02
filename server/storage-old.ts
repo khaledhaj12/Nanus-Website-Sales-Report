@@ -768,7 +768,17 @@ export class DatabaseStorage implements IStorage {
 
     while (hasMore) {
       try {
-        const url = `${storeUrl}/wp-json/wc/v3/orders?per_page=100&page=${page}&consumer_key=${consumerKey}&consumer_secret=${consumerSecret}`;
+        let url = `${storeUrl}/wp-json/wc/v3/orders?per_page=100&page=${page}&consumer_key=${consumerKey}&consumer_secret=${consumerSecret}`;
+        
+        // Add date filters if provided
+        if (startDate) {
+          url += `&after=${startDate}T00:00:00`;
+        }
+        if (endDate) {
+          url += `&before=${endDate}T23:59:59`;
+        }
+        
+        console.log(`Fetching from: ${url.replace(consumerKey, 'XXX').replace(consumerSecret, 'XXX')}`);
         const response = await fetch(url);
         
         if (!response.ok) {
