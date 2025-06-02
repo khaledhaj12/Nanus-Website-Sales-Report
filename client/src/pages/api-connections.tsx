@@ -252,9 +252,15 @@ function ConnectionSettings({ connectionId, platform }: ConnectionSettingsProps)
 
   const importHistoricalMutation = useMutation({
     mutationFn: async (data: ImportFormData) => {
-      const response = await apiRequest("POST", "/api/import-historical", {
+      // Get API settings for this platform
+      const apiSettings = await apiRequest("GET", `/api/rest-api-settings/${platformId}`);
+      const settings = await apiSettings.json();
+      
+      const response = await apiRequest("POST", "/api/import-woo-orders", {
         ...data,
-        platform: platformId
+        storeUrl: settings.storeUrl,
+        consumerKey: settings.consumerKey,
+        consumerSecret: settings.consumerSecret
       });
       return response.json();
     },
