@@ -211,9 +211,12 @@ export class DatabaseStorage implements IStorage {
   }
 
   async createWooOrder(orderData: any): Promise<any> {
-    const columns = Object.keys(orderData).join(', ');
-    const values = Object.values(orderData).map(v => typeof v === 'string' ? `'${v.replace(/'/g, "''")}'` : v).join(', ');
-    const result = await db.execute(sql.raw(`INSERT INTO woo_orders (${columns}) VALUES (${values}) RETURNING *`));
+    const columns = Object.keys(orderData);
+    const placeholders = columns.map((_, index) => `$${index + 1}`).join(', ');
+    const values = Object.values(orderData);
+    
+    const query = `INSERT INTO woo_orders (${columns.join(', ')}) VALUES (${placeholders}) RETURNING *`;
+    const result = await db.execute(sql.raw(query, values));
     return result.rows[0];
   }
 
