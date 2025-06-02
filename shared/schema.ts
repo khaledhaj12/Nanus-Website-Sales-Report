@@ -87,6 +87,7 @@ export const fileUploads = pgTable("file_uploads", {
   id: serial("id").primaryKey(),
   fileName: varchar("file_name", { length: 255 }).notNull(),
   fileSize: integer("file_size").notNull(),
+  fileData: text("file_data").notNull(), // Store as base64 encoded string
   recordsProcessed: integer("records_processed").notNull().default(0),
   status: varchar("status", { length: 50 }).notNull().default("processing"), // processing, completed, failed
   uploadedBy: integer("uploaded_by").notNull().references(() => users.id),
