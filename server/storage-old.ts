@@ -726,6 +726,39 @@ export class DatabaseStorage implements IStorage {
   async deleteStoreConnection(connectionId: string): Promise<void> {
     await db.delete(storeConnections).where(eq(storeConnections.connectionId, connectionId));
   }
+
+  async getSyncSettings(platform: string): Promise<any> {
+    const [settings] = await db
+      .select()
+      .from(syncSettings)
+      .where(eq(syncSettings.platform, platform));
+    return settings;
+  }
+
+  async upsertSyncSettings(settings: any): Promise<any> {
+    const [syncSetting] = await db
+      .insert(syncSettings)
+      .values(settings)
+      .onConflictDoUpdate({
+        target: syncSettings.platform,
+        set: {
+          ...settings,
+          updatedAt: new Date(),
+        },
+      })
+      .returning();
+    return syncSetting;
+  }
+
+  async getUserStatusAccess(userId: number): Promise<string[]> {
+    // For now, return all statuses as this feature isn't implemented yet
+    return ['pending', 'processing', 'shipped', 'completed', 'cancelled', 'refunded'];
+  }
+
+  async setUserStatusAccess(userId: number, statuses: string[]): Promise<void> {
+    // This feature isn't implemented yet, so we'll just return
+    return;
+  }
 }
 
 export const storage = new DatabaseStorage();
