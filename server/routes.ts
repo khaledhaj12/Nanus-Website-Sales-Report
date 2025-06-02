@@ -746,10 +746,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
           }
           
           // Add status filtering to individual orders as well
-          if (statusFilter.length > 0) {
-            const statusPlaceholders = statusFilter.map((_, index) => `$${orderParams.length + index + 1}`).join(', ');
+          if (capturedStatusFilter.length > 0) {
+            const statusPlaceholders = capturedStatusFilter.map((_, index) => `$${orderParams.length + index + 1}`).join(', ');
             orderWhereClause += ` AND w.status IN (${statusPlaceholders})`;
-            orderParams.push(...statusFilter);
+            orderParams.push(...capturedStatusFilter);
           }
           
           const orderQuery = `
