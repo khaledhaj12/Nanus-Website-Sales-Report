@@ -658,39 +658,50 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       console.log("File upload record created:", fileUpload.id);
 
-      // Process file based on type
-      try {
-        if (req.file.mimetype === 'text/csv') {
-          console.log("Processing CSV file");
-          await processCSVFile(req.file.buffer, fileUpload.id, userId);
-        } else {
-          console.log("Processing XLSX file");
-          await processXLSXFile(req.file.buffer, fileUpload.id, userId);
+      // Send immediate response to frontend to start progress polling
+      res.json({
+        message: "File uploaded successfully, processing started",
+        fileId: fileUpload.id,
+      });
+
+      // Process file asynchronously in background
+      (async () => {
+        try {
+          if (req.file.mimetype === 'text/csv') {
+            console.log("Processing CSV file");
+            await processCSVFile(req.file.buffer, fileUpload.id, userId);
+          } else {
+            console.log("Processing XLSX file");
+            await processXLSXFile(req.file.buffer, fileUpload.id, userId);
+          }
+          
+          // Update file upload status to completed
+          await storage.updateFileUpload(fileUpload.id, {
+            status: 'completed'
+          });
+          
+          // Mark as completed and clean up progress tracking
+          const finalProgress = uploadProgress.get(fileUpload.id) || {};
+          uploadProgress.set(fileUpload.id, {
+            ...finalProgress,
+            progress: 100,
+            status: 'completed'
+          });
+          
+          console.log("File processing completed successfully");
+        } catch (processError) {
+          console.error("File processing error:", processError);
+          await storage.updateFileUpload(fileUpload.id, { status: 'failed' });
+          
+          // Update progress tracking to show error
+          uploadProgress.set(fileUpload.id, {
+            progress: 0,
+            totalRecords: 0,
+            processedRecords: 0,
+            status: 'failed'
+          });
         }
-        
-        // Update file upload status to completed
-        await storage.updateFileUpload(fileUpload.id, {
-          status: 'completed'
-        });
-        
-        // Mark as completed and clean up progress tracking
-        const finalProgress = uploadProgress.get(fileUpload.id) || {};
-        uploadProgress.set(fileUpload.id, {
-          ...finalProgress,
-          progress: 100,
-          status: 'completed'
-        });
-        
-        console.log("File processing completed successfully");
-        res.json({
-          message: "File uploaded and processed successfully",
-          fileId: fileUpload.id,
-        });
-      } catch (processError) {
-        console.error("File processing error:", processError);
-        await storage.updateFileUpload(fileUpload.id, { status: 'failed' });
-        throw processError;
-      }
+      })();
     } catch (error) {
       console.error("File upload error:", error);
       res.status(500).json({ message: "Failed to upload file" });
