@@ -4,7 +4,6 @@ import {
   orders,
   userLocationAccess,
   userStatusAccess,
-  wooOrders,
   syncSettings,
   restApiSettings,
   type User,
@@ -13,8 +12,6 @@ import {
   type InsertLocation,
   type Order,
   type InsertOrder,
-  type WooOrder,
-  type InsertWooOrder,
   type SyncSettings,
   type InsertSyncSettings,
   type RestApiSettings,
@@ -85,17 +82,7 @@ export interface IStorage {
     orders: Order[];
   }>>;
   
-  // WooCommerce orders operations
-  getWooOrder(id: number): Promise<WooOrder | undefined>;
-  getWooOrderByWooOrderId(wooOrderId: string): Promise<WooOrder | undefined>;
-  createWooOrder(wooOrder: InsertWooOrder): Promise<WooOrder>;
-  updateWooOrder(id: number, wooOrder: Partial<InsertWooOrder>): Promise<WooOrder>;
-  deleteWooOrder(id: number): Promise<void>;
-  deleteWooOrders(ids: number[]): Promise<void>;
-  getAllWooOrders(locationId?: number): Promise<WooOrder[]>;
-  getWooOrdersByLocation(locationId: number): Promise<WooOrder[]>;
-  getWooOrdersByDateRange(startDate: string, endDate: string, locationId?: number): Promise<WooOrder[]>;
-  searchWooOrders(searchTerm: string, locationId?: number): Promise<WooOrder[]>;
+
   
   // Sync settings operations
   getSyncSettings(platform: string): Promise<SyncSettings | undefined>;
@@ -382,157 +369,9 @@ export class DatabaseStorage implements IStorage {
     return Array.from(monthlyData.values()).sort((a, b) => b.month.localeCompare(a.month));
   }
 
-  async getWooOrder(id: number): Promise<WooOrder | undefined> {
-    const [order] = await db.select().from(wooOrders).where(eq(wooOrders.id, id));
-    return order || undefined;
-  }
 
-  async getWooOrderByWooOrderId(wooOrderId: string): Promise<WooOrder | undefined> {
-    const [order] = await db.select().from(wooOrders).where(eq(wooOrders.wooOrderId, wooOrderId));
-    return order || undefined;
-  }
 
-  async createWooOrder(insertWooOrder: InsertWooOrder): Promise<WooOrder> {
-    const [order] = await db
-      .insert(wooOrders)
-      .values(insertWooOrder)
-      .returning();
-    return order;
-  }
 
-  async updateWooOrder(id: number, insertWooOrder: Partial<InsertWooOrder>): Promise<WooOrder> {
-    const [order] = await db
-      .update(wooOrders)
-      .set(insertWooOrder)
-      .where(eq(wooOrders.id, id))
-      .returning();
-    return order;
-  }
-
-  async deleteWooOrder(id: number): Promise<void> {
-    await db.delete(wooOrders).where(eq(wooOrders.id, id));
-  }
-
-  async deleteWooOrders(ids: number[]): Promise<void> {
-    await db.delete(wooOrders).where(inArray(wooOrders.id, ids));
-  }
-
-  async getAllWooOrders(locationId?: number): Promise<WooOrder[]> {
-    const { pool } = await import('./db');
-    
-    let whereClause = "WHERE 1=1";
-    const params: any[] = [];
-    
-    if (locationId) {
-      whereClause += ` AND w.location_id = $${params.length + 1}`;
-      params.push(locationId);
-    }
-    
-    const query = `
-      SELECT w.*, l.name as location_name,
-             COALESCE(
-               NULLIF(w.customer_name, ''),
-               TRIM(CONCAT(COALESCE(w.billing_first_name, ''), ' ', COALESCE(w.billing_last_name, ''))),
-               TRIM(CONCAT(COALESCE(w.shipping_first_name, ''), ' ', COALESCE(w.shipping_last_name, ''))),
-               COALESCE(w.customer_email, '')
-             ) as constructed_customer_name
-      FROM woo_orders w
-      LEFT JOIN locations l ON w.location_id = l.id
-      ${whereClause}
-      ORDER BY w.order_date DESC
-    `;
-    
-    const result = await pool.query(query, params);
-    
-    return result.rows.map((row: any) => ({
-      ...row,
-      customerName: row.constructed_customer_name || 'Unknown',
-      locationName: row.location_name
-    }));
-  }
-
-  async getWooOrdersByLocation(locationId: number): Promise<WooOrder[]> {
-    return db.select().from(wooOrders)
-      .where(eq(wooOrders.locationId, locationId))
-      .orderBy(desc(wooOrders.createdAt));
-  }
-
-  async getWooOrdersByDateRange(startDate: string, endDate: string, locationId?: number): Promise<WooOrder[]> {
-    const { pool } = await import('./db');
-    
-    let whereClause = "WHERE w.order_date >= $1 AND w.order_date <= $2";
-    const params: any[] = [startDate, endDate];
-    
-    if (locationId) {
-      whereClause += ` AND w.location_id = $${params.length + 1}`;
-      params.push(locationId);
-    }
-    
-    const query = `
-      SELECT w.*, l.name as location_name,
-             COALESCE(
-               NULLIF(w.customer_name, ''),
-               TRIM(CONCAT(COALESCE(w.billing_first_name, ''), ' ', COALESCE(w.billing_last_name, ''))),
-               TRIM(CONCAT(COALESCE(w.shipping_first_name, ''), ' ', COALESCE(w.shipping_last_name, ''))),
-               COALESCE(w.customer_email, '')
-             ) as constructed_customer_name
-      FROM woo_orders w
-      LEFT JOIN locations l ON w.location_id = l.id
-      ${whereClause}
-      ORDER BY w.order_date DESC
-    `;
-    
-    const result = await pool.query(query, params);
-    
-    return result.rows.map((row: any) => ({
-      ...row,
-      customerName: row.constructed_customer_name || 'Unknown',
-      locationName: row.location_name
-    }));
-  }
-
-  async searchWooOrders(searchTerm: string, locationId?: number): Promise<WooOrder[]> {
-    const { pool } = await import('./db');
-    
-    let whereClause = `WHERE (
-      w.customer_name ILIKE $1 OR 
-      w.customer_email ILIKE $1 OR 
-      w.order_id ILIKE $1 OR 
-      w.woo_order_id ILIKE $1 OR
-      w.billing_first_name ILIKE $1 OR
-      w.billing_last_name ILIKE $1 OR
-      w.shipping_first_name ILIKE $1 OR
-      w.shipping_last_name ILIKE $1
-    )`;
-    const params: any[] = [`%${searchTerm}%`];
-    
-    if (locationId) {
-      whereClause += ` AND w.location_id = $${params.length + 1}`;
-      params.push(locationId);
-    }
-    
-    const query = `
-      SELECT w.*, l.name as location_name,
-             COALESCE(
-               NULLIF(w.customer_name, ''),
-               TRIM(CONCAT(COALESCE(w.billing_first_name, ''), ' ', COALESCE(w.billing_last_name, ''))),
-               TRIM(CONCAT(COALESCE(w.shipping_first_name, ''), ' ', COALESCE(w.shipping_last_name, ''))),
-               COALESCE(w.customer_email, '')
-             ) as constructed_customer_name
-      FROM woo_orders w
-      LEFT JOIN locations l ON w.location_id = l.id
-      ${whereClause}
-      ORDER BY w.order_date DESC
-    `;
-    
-    const result = await pool.query(query, params);
-    
-    return result.rows.map((row: any) => ({
-      ...row,
-      customerName: row.constructed_customer_name || 'Unknown',
-      locationName: row.location_name
-    }));
-  }
 
   async getSyncSettings(platform: string): Promise<SyncSettings | undefined> {
     const [settings] = await db.select().from(syncSettings).where(eq(syncSettings.platform, platform));

@@ -1,6 +1,6 @@
 import type { Express } from "express";
 import { createServer, type Server } from "http";
-import { storage } from "./storage-old";
+import { storage } from "./storage";
 import { startAutoSync, stopAutoSync, restartAutoSync, getSyncStatus } from "./syncManager";
 import session from "express-session";
 import { z } from "zod";
@@ -189,50 +189,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // WooCommerce orders routes
-  app.get('/api/woo-orders', isAuthenticated, async (req, res) => {
-    try {
-      const { locationId, search, startDate, endDate } = req.query;
-      
-      let orders;
-      if (search) {
-        orders = await storage.searchWooOrders(search as string, locationId ? parseInt(locationId as string) : undefined);
-      } else if (startDate && endDate) {
-        orders = await storage.getWooOrdersByDateRange(startDate as string, endDate as string, locationId ? parseInt(locationId as string) : undefined);
-      } else {
-        orders = await storage.getAllWooOrders(locationId ? parseInt(locationId as string) : undefined);
-      }
-      
-      res.json(orders);
-    } catch (error) {
-      console.error("Get WooCommerce orders error:", error);
-      res.status(500).json({ message: "Failed to get WooCommerce orders" });
-    }
-  });
 
-  app.delete('/api/woo-orders/bulk-delete', isAuthenticated, async (req, res) => {
-    try {
-      const { orderIds } = req.body;
-      
-      if (!Array.isArray(orderIds) || orderIds.length === 0) {
-        return res.status(400).json({ message: "Invalid order IDs" });
-      }
-      
-      const validIds = orderIds
-        .filter(id => id !== null && id !== undefined && !isNaN(Number(id)))
-        .map(id => Number(id));
-      
-      if (validIds.length === 0) {
-        return res.status(400).json({ message: "No valid order IDs provided" });
-      }
-      
-      await storage.deleteWooOrders(validIds);
-      res.json({ message: "WooCommerce orders deleted successfully" });
-    } catch (error: any) {
-      console.error("Delete WooCommerce orders error:", error);
-      res.status(500).json({ message: "Failed to delete WooCommerce orders" });
-    }
-  });
 
   // Auto sync settings endpoints
   app.get('/api/sync-settings/:platform', isAuthenticated, async (req, res) => {
