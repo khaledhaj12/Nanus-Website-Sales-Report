@@ -192,36 +192,8 @@ export class DatabaseStorage implements IStorage {
     await db.delete(locations).where(inArray(locations.id, ids));
   }
 
-  async getOrder(id: number): Promise<Order | undefined> {
-    const [order] = await db.select().from(orders).where(eq(orders.id, id));
-    return order || undefined;
-  }
-
-  async getOrderByOrderId(orderId: string): Promise<Order | undefined> {
-    const [order] = await db.select().from(orders).where(eq(orders.orderId, orderId));
-    return order || undefined;
-  }
-
-  async createOrder(insertOrder: InsertOrder): Promise<Order> {
-    const [order] = await db
-      .insert(orders)
-      .values(insertOrder)
-      .returning();
-    return order;
-  }
-
-  async updateOrder(id: number, insertOrder: Partial<InsertOrder>): Promise<Order> {
-    const [order] = await db
-      .update(orders)
-      .set(insertOrder)
-      .where(eq(orders.id, id))
-      .returning();
-    return order;
-  }
-
-  async deleteOrder(id: number): Promise<void> {
-    await db.delete(orders).where(eq(orders.id, id));
-  }
+  // These order functions are no longer used since orders table was dropped
+  // All order operations now use the woo_orders table directly
 
   async deleteOrders(ids: number[]): Promise<void> {
     console.log("Storage deleteOrders called with IDs:", ids);
@@ -232,51 +204,7 @@ export class DatabaseStorage implements IStorage {
     console.log("Delete result:", result);
   }
 
-  async getAllOrders(locationId?: number): Promise<Order[]> {
-    if (locationId) {
-      return db.select().from(orders)
-        .where(eq(orders.locationId, locationId))
-        .orderBy(desc(orders.createdAt));
-    }
-    return db.select().from(orders).orderBy(desc(orders.createdAt));
-  }
-
-  async getOrdersByLocation(locationId: number): Promise<Order[]> {
-    return db.select().from(orders)
-      .where(eq(orders.locationId, locationId))
-      .orderBy(desc(orders.createdAt));
-  }
-
-  async getOrdersByDateRange(startDate: string, endDate: string, locationId?: number): Promise<Order[]> {
-    const query = db.select().from(orders)
-      .where(
-        and(
-          gte(orders.orderDate, startDate),
-          lte(orders.orderDate, endDate),
-          locationId ? eq(orders.locationId, locationId) : undefined
-        )
-      )
-      .orderBy(desc(orders.orderDate));
-    
-    return query;
-  }
-
-  async searchOrders(searchTerm: string, locationId?: number): Promise<Order[]> {
-    const query = db.select().from(orders)
-      .where(
-        and(
-          or(
-            like(orders.customerName, `%${searchTerm}%`),
-            like(orders.customerEmail, `%${searchTerm}%`),
-            like(orders.orderId, `%${searchTerm}%`)
-          ),
-          locationId ? eq(orders.locationId, locationId) : undefined
-        )
-      )
-      .orderBy(desc(orders.orderDate));
-    
-    return query;
-  }
+  // Order functions removed - all order operations now use woo_orders table directly
 
   async getUserLocationAccess(userId: number): Promise<number[]> {
     const access = await db.select().from(userLocationAccess)
