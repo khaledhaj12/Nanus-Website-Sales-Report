@@ -311,56 +311,43 @@ export class DatabaseStorage implements IStorage {
     netDeposit: number;
   }> {
     try {
-      // Get all orders first, then calculate in JavaScript to avoid date type issues
-      let baseQuery = db.select().from(wooOrders);
+      // Use raw SQL to completely bypass the ORM date issues
+      let whereClause = "WHERE 1=1";
+      const params: any[] = [];
       
       if (locationId) {
-        baseQuery = baseQuery.where(eq(wooOrders.locationId, locationId));
+        whereClause += ` AND location_id = $${params.length + 1}`;
+        params.push(locationId);
       }
       
-      const allOrders = await baseQuery;
-      
-      // Filter by month if specified
-      let filteredOrders = allOrders;
       if (month) {
-        filteredOrders = allOrders.filter(order => {
-          try {
-            const orderDate = new Date(order.orderDate);
-            const orderMonth = `${orderDate.getFullYear()}-${(orderDate.getMonth() + 1).toString().padStart(2, '0')}`;
-            return orderMonth === month;
-          } catch {
-            return false;
-          }
-        });
+        whereClause += ` AND TO_CHAR(order_date, 'YYYY-MM') = $${params.length + 1}`;
+        params.push(month);
       }
+      
+      const query = `
+        SELECT 
+          COALESCE(SUM(CASE WHEN status != 'refunded' THEN amount::decimal ELSE 0 END), 0) as total_sales,
+          COALESCE(SUM(CASE WHEN status = 'refunded' THEN amount::decimal ELSE 0 END), 0) as total_refunds,
+          COUNT(CASE WHEN status != 'refunded' THEN 1 END) as total_orders,
+          COALESCE(SUM(CASE WHEN status != 'refunded' THEN amount::decimal * 0.07 ELSE 0 END), 0) as platform_fees,
+          COALESCE(SUM(CASE WHEN status != 'refunded' THEN (amount::decimal * 0.029 + 0.30) ELSE 0 END), 0) as stripe_fees,
+          COALESCE(SUM(CASE WHEN status != 'refunded' THEN (amount::decimal - (amount::decimal * 0.07) - (amount::decimal * 0.029 + 0.30)) ELSE 0 END), 0) as net_deposit
+        FROM woo_orders 
+        ${whereClause}
+      `;
 
-      // Calculate metrics in JavaScript
-      const nonRefundedOrders = filteredOrders.filter(order => order.status !== 'refunded');
-      const refundedOrders = filteredOrders.filter(order => order.status === 'refunded');
-      
-      const totalSales = nonRefundedOrders.reduce((sum, order) => {
-        return sum + parseFloat(order.amount?.toString() || '0');
-      }, 0);
-      
-      const totalRefunds = refundedOrders.reduce((sum, order) => {
-        return sum + parseFloat(order.amount?.toString() || '0');
-      }, 0);
-      
-      const totalOrders = nonRefundedOrders.length;
-      const platformFees = totalSales * 0.07;
-      const stripeFees = nonRefundedOrders.reduce((sum, order) => {
-        const amount = parseFloat(order.amount?.toString() || '0');
-        return sum + (amount * 0.029 + 0.30);
-      }, 0);
-      const netDeposit = totalSales - platformFees - stripeFees;
+      // Use the underlying database connection directly
+      const result = await db.execute(sql.raw(query, params));
+      const row = result.rows[0] as any;
 
       return {
-        totalSales,
-        totalOrders,
-        totalRefunds,
-        platformFees,
-        stripeFees,
-        netDeposit,
+        totalSales: parseFloat(row.total_sales || '0'),
+        totalOrders: parseInt(row.total_orders || '0'),
+        totalRefunds: parseFloat(row.total_refunds || '0'),
+        platformFees: parseFloat(row.platform_fees || '0'),
+        stripeFees: parseFloat(row.stripe_fees || '0'),
+        netDeposit: parseFloat(row.net_deposit || '0'),
       };
     } catch (error) {
       console.error('Dashboard summary error:', error);
