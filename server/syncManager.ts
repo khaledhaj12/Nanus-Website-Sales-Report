@@ -92,8 +92,18 @@ async function performSync(platform: string = 'woocommerce') {
       now.toISOString()
     );
 
-    // Update sync status with order count for the specific platform
+    // Update sync status with order count and completion time for the specific platform
     await storage.updateSyncStats(platform, result.imported);
+    
+    // Update the last sync timestamp
+    await storage.upsertSyncSettings({
+      platform: platform,
+      isActive: settings.isActive,
+      intervalMinutes: settings.intervalMinutes,
+      isRunning: false,
+      lastSyncAt: now,
+      nextSyncAt: nextSync
+    });
 
     console.log(`Auto sync completed: ${result.imported} imported, ${result.skipped} skipped`);
   } catch (error) {
@@ -258,9 +268,10 @@ async function fetchWooCommerceOrders(
   return { imported, skipped };
 }
 
-export function getSyncStatus() {
+export function getSyncStatus(platform: string = 'woocommerce') {
+  const manager = syncManagers.get(platform);
   return {
-    isRunning: syncManager.isRunning,
-    hasInterval: syncManager.intervalId !== null
+    isRunning: manager ? manager.isRunning : false,
+    hasInterval: manager ? manager.intervalId !== null : false
   };
 }
