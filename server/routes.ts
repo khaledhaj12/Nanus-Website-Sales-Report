@@ -1019,14 +1019,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
     let logData = {
       platform: 'woocommerce',
       status: 'error',
-      orderId: null,
-      orderTotal: null,
-      customerName: null,
-      location: null,
-      errorMessage: null,
       payload: req.body,
       headers: req.headers,
-    };
+    } as any;
 
     try {
       console.log('WooCommerce webhook received:', JSON.stringify(req.body, null, 2));

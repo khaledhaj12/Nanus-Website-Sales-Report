@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -29,13 +29,18 @@ export default function Settings({ onMenuClick }: SettingsProps) {
     queryKey: ["/api/webhook-settings/woocommerce"],
   });
 
+  // Load recent webhook logs
+  const { data: webhookLogs = [] } = useQuery({
+    queryKey: ["/api/webhook-logs/woocommerce"],
+  });
+
   // Update local state when settings load
-  useState(() => {
+  React.useEffect(() => {
     if (webhookSettings) {
       setSecretKey(webhookSettings.secretKey || "");
       setIsActive(webhookSettings.isActive !== false);
     }
-  });
+  }, [webhookSettings]);
 
   // Save webhook settings mutation
   const saveSettingsMutation = useMutation({
@@ -93,6 +98,78 @@ export default function Settings({ onMenuClick }: SettingsProps) {
       
       <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <div className="space-y-6">
+          {/* Webhook Request Monitor */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Clock className="h-5 w-5" />
+                Recent Webhook Requests
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              {webhookLogs.length === 0 ? (
+                <p className="text-gray-500 text-center py-4">No webhook requests received yet</p>
+              ) : (
+                <div className="space-y-2">
+                  {webhookLogs.slice(0, 5).map((log: any) => (
+                    <Collapsible key={log.id}>
+                      <CollapsibleTrigger className="w-full p-3 border rounded-lg hover:bg-gray-50 flex items-center justify-between">
+                        <div className="flex items-center gap-3">
+                          {log.status === 'success' && <CheckCircle className="h-5 w-5 text-green-500" />}
+                          {log.status === 'error' && <XCircle className="h-5 w-5 text-red-500" />}
+                          {log.status === 'unauthorized' && <AlertCircle className="h-5 w-5 text-orange-500" />}
+                          
+                          <div className="text-left">
+                            <div className="font-medium">
+                              {new Date(log.receivedAt).toLocaleString()}
+                            </div>
+                            <div className="text-sm text-gray-600">
+                              {log.orderId ? `Order: ${log.orderId}` : 'No Order ID'} • 
+                              {log.orderTotal ? ` Total: $${log.orderTotal}` : ' No Total'} • 
+                              {log.location || 'No Location'}
+                            </div>
+                          </div>
+                        </div>
+                        
+                        <div className="flex items-center gap-2">
+                          <Badge variant={log.status === 'success' ? 'default' : 'destructive'}>
+                            {log.status}
+                          </Badge>
+                          <ChevronRight className="h-4 w-4" />
+                        </div>
+                      </CollapsibleTrigger>
+                      
+                      <CollapsibleContent className="px-3 pb-3">
+                        <div className="border-t pt-3 space-y-3">
+                          {log.errorMessage && (
+                            <div>
+                              <label className="text-sm font-medium text-red-600">Error Message</label>
+                              <p className="text-sm text-red-700 bg-red-50 p-2 rounded">{log.errorMessage}</p>
+                            </div>
+                          )}
+                          
+                          <div>
+                            <label className="text-sm font-medium text-gray-700">Request Headers</label>
+                            <pre className="text-xs bg-gray-100 p-2 rounded mt-1 overflow-auto max-h-32">
+                              {JSON.stringify(log.headers, null, 2)}
+                            </pre>
+                          </div>
+                          
+                          <div>
+                            <label className="text-sm font-medium text-gray-700">Payload</label>
+                            <pre className="text-xs bg-gray-100 p-2 rounded mt-1 overflow-auto max-h-48">
+                              {JSON.stringify(log.payload, null, 2)}
+                            </pre>
+                          </div>
+                        </div>
+                      </CollapsibleContent>
+                    </Collapsible>
+                  ))}
+                </div>
+              )}
+            </CardContent>
+          </Card>
+
           {/* WooCommerce Webhook Configuration */}
           <Card>
             <CardHeader>
