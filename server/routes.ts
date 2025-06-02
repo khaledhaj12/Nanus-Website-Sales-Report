@@ -681,6 +681,27 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  app.get('/api/uploads/:id/download', requireAdmin, async (req, res) => {
+    try {
+      const uploadId = parseInt(req.params.id);
+      const upload = await storage.getFileUpload(uploadId);
+      
+      if (!upload) {
+        return res.status(404).json({ message: "File not found" });
+      }
+
+      // Set headers for file download
+      res.setHeader('Content-Disposition', `attachment; filename="${upload.fileName}"`);
+      res.setHeader('Content-Type', 'application/octet-stream');
+      
+      // Send the file data
+      res.send(upload.fileData);
+    } catch (error) {
+      console.error("Download file error:", error);
+      res.status(500).json({ message: "Failed to download file" });
+    }
+  });
+
   app.delete('/api/uploads', requireAdmin, async (req, res) => {
     try {
       const { ids } = req.body;

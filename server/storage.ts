@@ -55,6 +55,7 @@ export interface IStorage {
   // File upload operations
   createFileUpload(fileUpload: InsertFileUpload): Promise<FileUpload>;
   updateFileUpload(id: number, fileUpload: Partial<InsertFileUpload>): Promise<FileUpload>;
+  getFileUpload(id: number): Promise<FileUpload | undefined>;
   getRecentFileUploads(limit?: number): Promise<FileUpload[]>;
   getAllFileUploads(): Promise<FileUpload[]>;
   deleteFileUploads(ids: number[]): Promise<void>;
@@ -286,6 +287,14 @@ export class DatabaseStorage implements IStorage {
       .where(eq(fileUploads.id, id))
       .returning();
     return fileUpload;
+  }
+
+  async getFileUpload(id: number): Promise<FileUpload | undefined> {
+    const [fileUpload] = await db
+      .select()
+      .from(fileUploads)
+      .where(eq(fileUploads.id, id));
+    return fileUpload || undefined;
   }
 
   async getRecentFileUploads(limit = 10): Promise<FileUpload[]> {
