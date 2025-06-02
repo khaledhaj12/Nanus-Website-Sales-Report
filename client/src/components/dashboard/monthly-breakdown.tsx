@@ -370,10 +370,17 @@ export default function MonthlyBreakdown({
                                 </TableCell>
                                 <TableCell>
                                   <div>
-                                    <div>{order.customerName || 'N/A'}</div>
-                                    {order.cardLast4 && (
+                                    <div>
+                                      {order.customerName || 
+                                       (order.billingFirstName && order.billingLastName 
+                                         ? `${order.billingFirstName} ${order.billingLastName}`.trim()
+                                         : (order.shippingFirstName && order.shippingLastName 
+                                            ? `${order.shippingFirstName} ${order.shippingLastName}`.trim()
+                                            : 'N/A'))}
+                                    </div>
+                                    {(order.billingAddress1 || order.shippingAddress1) && (
                                       <div className="text-sm text-gray-500">
-                                        **{order.cardLast4}
+                                        {order.billingAddress1 || order.shippingAddress1}
                                       </div>
                                     )}
                                   </div>
