@@ -25,6 +25,7 @@ export default function UserModal({ isOpen, onClose, editingUser }: UserModalPro
     phoneNumber: "",
     role: "user",
     locationIds: [] as number[],
+    statusIds: [] as string[],
   });
 
   const { toast } = useToast();
@@ -40,6 +41,11 @@ export default function UserModal({ isOpen, onClose, editingUser }: UserModalPro
     enabled: !!editingUser?.id && isOpen,
   });
 
+  const { data: userStatuses = [] } = useQuery({
+    queryKey: ["/api/users", editingUser?.id, "statuses"],
+    enabled: !!editingUser?.id && isOpen,
+  });
+
   // Initialize form when modal opens or editing user changes
   useEffect(() => {
     if (isOpen && editingUser) {
@@ -52,6 +58,7 @@ export default function UserModal({ isOpen, onClose, editingUser }: UserModalPro
         phoneNumber: editingUser.phoneNumber || "",
         role: editingUser.role || "user",
         locationIds: Array.isArray(userLocations) ? userLocations : [],
+        statusIds: Array.isArray(userStatuses) ? userStatuses : [],
       });
     } else if (isOpen && !editingUser) {
       setFormData({
@@ -63,19 +70,30 @@ export default function UserModal({ isOpen, onClose, editingUser }: UserModalPro
         phoneNumber: "",
         role: "user",
         locationIds: [],
+        statusIds: ["processing", "complete", "refunded"], // Default enabled statuses
       });
     }
   }, [isOpen, editingUser?.id]);
 
   // Update location IDs when they're loaded
   useEffect(() => {
-    if (editingUser && Array.isArray(userLocations) && userLocations.length > 0) {
+    if (editingUser && Array.isArray(userLocations)) {
       setFormData(prev => ({
         ...prev,
         locationIds: userLocations
       }));
     }
   }, [userLocations, editingUser?.id]);
+
+  // Update status IDs when they're loaded
+  useEffect(() => {
+    if (editingUser && Array.isArray(userStatuses)) {
+      setFormData(prev => ({
+        ...prev,
+        statusIds: userStatuses
+      }));
+    }
+  }, [userStatuses, editingUser?.id]);
 
   const createUserMutation = useMutation({
     mutationFn: async (userData: typeof formData) => {

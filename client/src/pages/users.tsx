@@ -6,7 +6,7 @@ import { Badge } from "@/components/ui/badge";
 import Header from "@/components/layout/header";
 import UserModal from "@/components/modals/user-modal";
 import { SortableHeader } from "@/components/ui/sortable-header";
-import { Edit, Plus, MapPin, Trash2 } from "lucide-react";
+import { Edit, Plus, MapPin, Trash2, Shield } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
 
@@ -35,6 +35,65 @@ function UserLocationAccess({ userId, locations }: UserLocationAccessProps) {
             <Badge key={location.id} variant="outline" className="text-xs">
               <MapPin className="mr-1 h-3 w-3" />
               {location.name}
+            </Badge>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+interface UserStatusAccessProps {
+  userId: number;
+}
+
+function UserStatusAccess({ userId }: UserStatusAccessProps) {
+  const { data: userStatuses = [] } = useQuery({
+    queryKey: ["/api/users", userId, "statuses"],
+  });
+
+  const statusDisplayNames: { [key: string]: string } = {
+    'processing': 'Processing',
+    'completed': 'Completed', 
+    'complete': 'Complete',
+    'refunded': 'Refunded',
+    'pending': 'Pending',
+    'cancelled': 'Cancelled',
+    'failed': 'Failed',
+    'on-hold': 'On Hold'
+  };
+
+  const getStatusBadgeColor = (status: string) => {
+    switch (status) {
+      case 'completed':
+      case 'complete':
+        return 'bg-green-100 text-green-800';
+      case 'processing':
+        return 'bg-blue-100 text-blue-800';
+      case 'refunded':
+        return 'bg-orange-100 text-orange-800';
+      case 'cancelled':
+      case 'failed':
+        return 'bg-red-100 text-red-800';
+      case 'pending':
+      case 'on-hold':
+        return 'bg-yellow-100 text-yellow-800';
+      default:
+        return 'bg-gray-100 text-gray-800';
+    }
+  };
+
+  return (
+    <div className="mt-2">
+      <p className="text-xs text-gray-500 mb-1">Status Access:</p>
+      {(userStatuses as string[]).length === 0 ? (
+        <span className="text-xs text-gray-400">All statuses accessible</span>
+      ) : (
+        <div className="flex flex-wrap gap-1">
+          {(userStatuses as string[]).map((status: string) => (
+            <Badge key={status} variant="outline" className={`text-xs ${getStatusBadgeColor(status)}`}>
+              <Shield className="mr-1 h-3 w-3" />
+              {statusDisplayNames[status] || status}
             </Badge>
           ))}
         </div>
@@ -227,7 +286,10 @@ export default function Users({ onMenuClick }: UsersProps) {
                         {user.email || `${user.username}@company.com`} • {getRoleLabel(user.role)}
                       </p>
                       {user.role !== 'admin' && (
-                        <UserLocationAccess userId={user.id} locations={locations as any[]} />
+                        <>
+                          <UserLocationAccess userId={user.id} locations={locations as any[]} />
+                          <UserStatusAccess userId={user.id} />
+                        </>
                       )}
                     </div>
                     <div className="flex items-center space-x-2">
