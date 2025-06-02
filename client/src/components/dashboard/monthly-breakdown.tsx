@@ -136,9 +136,6 @@ export default function MonthlyBreakdown({ data, isLoading }: MonthlyBreakdownPr
                         <h4 className="font-medium text-gray-900 truncate">
                           {formatMonthLabel(monthData.month)}
                         </h4>
-                        <p className="text-xs text-gray-500">
-                          {completedOrders.length} orders • {refundedOrders.length} refunds
-                        </p>
                       </div>
                     </div>
                     
