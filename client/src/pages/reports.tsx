@@ -472,7 +472,7 @@ export default function Reports({ onMenuClick }: ReportsProps) {
                             </TableRow>
                           </TableHeader>
                           <TableBody>
-                            {sortedOrders.map((order: any) => (
+                            {paginatedOrders.map((order: any) => (
                               <TableRow key={order.id}>
                                 {isAdmin && (
                                   <TableCell>
@@ -511,10 +511,10 @@ export default function Reports({ onMenuClick }: ReportsProps) {
 
                       {/* Mobile Card View */}
                       <div className="md:hidden space-y-3">
-                        {isAdmin && sortedOrders.length > 0 && (
+                        {isAdmin && paginatedOrders.length > 0 && (
                           <div className="flex items-center gap-3 p-3 bg-gray-100 rounded-lg">
                             <Checkbox
-                              checked={selectedOrders.length === sortedOrders.length}
+                              checked={selectedOrders.length === paginatedOrders.length && paginatedOrders.length > 0}
                               onCheckedChange={handleSelectAll}
                             />
                             <span className="text-sm text-gray-600">
@@ -523,7 +523,7 @@ export default function Reports({ onMenuClick }: ReportsProps) {
                           </div>
                         )}
                         
-                        {sortedOrders.map((order: any) => (
+                        {paginatedOrders.map((order: any) => (
                           <div key={order.id} className="border rounded-lg p-4 bg-white">
                             <div className="flex justify-between items-start mb-3">
                               <div className="flex items-center gap-3">
@@ -576,6 +576,15 @@ export default function Reports({ onMenuClick }: ReportsProps) {
                           </div>
                         ))}
                       </div>
+                      
+                      {/* Pagination Controls */}
+                      <PaginationControls
+                        currentPage={currentPage}
+                        totalItems={sortedOrders.length}
+                        itemsPerPage={itemsPerPage}
+                        onPageChange={setCurrentPage}
+                        onItemsPerPageChange={handleItemsPerPageChange}
+                      />
                     </>
                   )}
                 </CardContent>
