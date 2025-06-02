@@ -759,6 +759,89 @@ export class DatabaseStorage implements IStorage {
     // This feature isn't implemented yet, so we'll just return
     return;
   }
+
+  async importWooOrders(storeUrl: string, consumerKey: string, consumerSecret: string, startDate: string, endDate: string): Promise<{ imported: number; skipped: number }> {
+    let imported = 0;
+    let skipped = 0;
+    let page = 1;
+    let hasMore = true;
+
+    while (hasMore) {
+      try {
+        const url = `${storeUrl}/wp-json/wc/v3/orders?per_page=100&page=${page}&after=${startDate}&before=${endDate}&consumer_key=${consumerKey}&consumer_secret=${consumerSecret}`;
+        const response = await fetch(url);
+        
+        if (!response.ok) {
+          throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+        }
+        
+        const orders = await response.json();
+        
+        if (!Array.isArray(orders) || orders.length === 0) {
+          hasMore = false;
+          break;
+        }
+
+        for (const order of orders) {
+          try {
+            // Check if order already exists
+            const existingOrder = await this.getWooOrderByWooOrderId(order.id.toString());
+            if (existingOrder) {
+              skipped++;
+              continue;
+            }
+
+            // Create order data
+            const orderData = {
+              wooOrderId: order.id.toString(),
+              status: order.status,
+              currency: order.currency || 'USD',
+              total: order.total || '0',
+              totalTax: order.total_tax || '0',
+              shippingTotal: order.shipping_total || '0',
+              orderDate: new Date(order.date_created),
+              customerNote: order.customer_note || null,
+              billingFirstName: order.billing?.first_name || null,
+              billingLastName: order.billing?.last_name || null,
+              billingAddress1: order.billing?.address_1 || null,
+              billingCity: order.billing?.city || null,
+              billingState: order.billing?.state || null,
+              billingPostcode: order.billing?.postcode || null,
+              billingCountry: order.billing?.country || null,
+              billingEmail: order.billing?.email || null,
+              billingPhone: order.billing?.phone || null,
+              shippingFirstName: order.shipping?.first_name || null,
+              shippingLastName: order.shipping?.last_name || null,
+              shippingAddress1: order.shipping?.address_1 || null,
+              shippingCity: order.shipping?.city || null,
+              shippingState: order.shipping?.state || null,
+              shippingPostcode: order.shipping?.postcode || null,
+              shippingCountry: order.shipping?.country || null,
+              lineItems: JSON.stringify(order.line_items || []),
+              rawData: JSON.stringify(order),
+              locationId: 77 // Default location
+            };
+
+            await this.createWooOrder(orderData);
+            imported++;
+          } catch (orderError) {
+            console.error(`Failed to import order ${order.id}:`, orderError);
+            skipped++;
+          }
+        }
+
+        page++;
+        if (orders.length < 100) {
+          hasMore = false;
+        }
+      } catch (pageError) {
+        console.error(`Failed to fetch page ${page}:`, pageError);
+        hasMore = false;
+      }
+    }
+
+    return { imported, skipped };
+  }
 }
 
 export const storage = new DatabaseStorage();
