@@ -410,8 +410,14 @@ export default function MonthlyBreakdown({
                         {monthData.orders.map((order) => (
                           <div key={order.id} className="bg-white border rounded-lg p-4">
                             <div className="flex justify-between items-start mb-2">
-                              <div className="font-mono text-blue-600 font-medium">
-                                {order.orderId}
+                              <div className="flex items-center space-x-3">
+                                <Checkbox
+                                  checked={selectedOrders.includes(order.id)}
+                                  onCheckedChange={(checked) => handleSelectOrder(order.id, checked === true)}
+                                />
+                                <div className="font-mono text-blue-600 font-medium">
+                                  {order.orderId}
+                                </div>
                               </div>
                               <Badge className={getStatusColor(order.status)}>
                                 {order.status.charAt(0).toUpperCase() + order.status.slice(1)}
