@@ -498,12 +498,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
             let location = null;
             const orderableLocationMeta = order.meta_data?.find((meta: any) => meta.key === '_orderable_location_name')?.value;
             
+            console.log(`Processing order ${order.id}, Store URL: ${storeUrl}`);
+            console.log(`Orderable metadata found: ${orderableLocationMeta || 'None'}`);
+            
             if (orderableLocationMeta) {
               // Use orderable metadata if available
               location = await storage.getLocationByName(orderableLocationMeta);
               if (!location) {
                 location = await storage.createLocation({ name: orderableLocationMeta });
               }
+              console.log(`Using orderable location: ${location.name}`);
             } else {
               // No orderable metadata - assign default location based on store domain
               let defaultLocationName = '';
@@ -517,6 +521,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
                 defaultLocationName = '4407 Chestnut St, Philadelphia';
               }
               
+              console.log(`No orderable metadata, using default location: ${defaultLocationName} for domain: ${storeUrl}`);
+              
               location = await storage.getLocationByName(defaultLocationName);
               if (!location) {
                 location = await storage.createLocation({ 
@@ -524,6 +530,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
                   code: defaultLocationName.toLowerCase().replace(/[^a-z0-9]/g, '_'),
                   isActive: true
                 });
+                console.log(`Created new location: ${location.name}`);
+              } else {
+                console.log(`Using existing location: ${location.name}`);
               }
             }
 
