@@ -204,7 +204,18 @@ export class DatabaseStorage implements IStorage {
     console.log("Delete result:", result);
   }
 
-  // Order functions removed - all order operations now use woo_orders table directly
+  // WooCommerce order functions for import functionality
+  async getWooOrderByWooOrderId(wooOrderId: string): Promise<any> {
+    const result = await db.execute(sql.raw(`SELECT * FROM woo_orders WHERE woo_order_id = '${wooOrderId}' LIMIT 1`));
+    return result.rows[0] || null;
+  }
+
+  async createWooOrder(orderData: any): Promise<any> {
+    const columns = Object.keys(orderData).join(', ');
+    const values = Object.values(orderData).map(v => typeof v === 'string' ? `'${v.replace(/'/g, "''")}'` : v).join(', ');
+    const result = await db.execute(sql.raw(`INSERT INTO woo_orders (${columns}) VALUES (${values}) RETURNING *`));
+    return result.rows[0];
+  }
 
   async getUserLocationAccess(userId: number): Promise<number[]> {
     const access = await db.select().from(userLocationAccess)
@@ -405,8 +416,8 @@ export class DatabaseStorage implements IStorage {
     return result;
   }
 
-  async deleteStoreConnection(id: number): Promise<void> {
-    await db.delete(storeConnections).where(eq(storeConnections.id, id));
+  async deleteStoreConnection(connectionId: string): Promise<void> {
+    await db.delete(storeConnections).where(eq(storeConnections.connectionId, connectionId));
   }
 }
 
