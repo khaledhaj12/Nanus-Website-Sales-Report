@@ -16,7 +16,8 @@ export default function Dashboard({ onMenuClick }: DashboardProps) {
   const currentDate = new Date();
   const currentMonth = `${currentDate.getFullYear()}-${(currentDate.getMonth() + 1).toString().padStart(2, '0')}`;
   
-  const [selectedMonth, setSelectedMonth] = useState(currentMonth);
+  // Default to 1970-01 where the actual data is located
+  const [selectedMonth, setSelectedMonth] = useState("1970-01");
   const [selectedLocation, setSelectedLocation] = useState(isAdmin ? "all" : "");
 
 
