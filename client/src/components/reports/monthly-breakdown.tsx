@@ -18,6 +18,12 @@ interface Order {
   status: string;
   orderDate: string;
   locationName?: string;
+  billingFirstName?: string;
+  billingLastName?: string;
+  billingAddress1?: string;
+  shippingFirstName?: string;
+  shippingLastName?: string;
+  shippingAddress1?: string;
 }
 
 interface MonthData {
@@ -286,7 +292,23 @@ export default function ReportsMonthlyBreakdown({
                                 <TableRow key={order.id}>
                                   <TableCell>{new Date(order.orderDate).toLocaleDateString()}</TableCell>
                                   <TableCell className="font-mono text-blue-600">{order.orderId}</TableCell>
-                                  <TableCell>{order.customerName || 'N/A'}</TableCell>
+                                  <TableCell>
+                                    <div>
+                                      <div>
+                                        {order.customerName || 
+                                         (order.billingFirstName && order.billingLastName 
+                                           ? `${order.billingFirstName} ${order.billingLastName}`.trim()
+                                           : (order.shippingFirstName && order.shippingLastName 
+                                              ? `${order.shippingFirstName} ${order.shippingLastName}`.trim()
+                                              : 'N/A'))}
+                                      </div>
+                                      {(order.billingAddress1 || order.shippingAddress1) && (
+                                        <div className="text-sm text-gray-500">
+                                          {order.billingAddress1 || order.shippingAddress1}
+                                        </div>
+                                      )}
+                                    </div>
+                                  </TableCell>
                                   <TableCell className="font-semibold">{formatCurrency(parseFloat(order.amount))}</TableCell>
                                   <TableCell className="text-red-600">
                                     {order.refundAmount && parseFloat(order.refundAmount) > 0 
@@ -325,7 +347,21 @@ export default function ReportsMonthlyBreakdown({
                                 </div>
                                 <div className="flex justify-between">
                                   <span className="text-gray-500">Customer:</span>
-                                  <span>{order.customerName || 'N/A'}</span>
+                                  <div className="text-right">
+                                    <div>
+                                      {order.customerName || 
+                                       (order.billingFirstName && order.billingLastName 
+                                         ? `${order.billingFirstName} ${order.billingLastName}`.trim()
+                                         : (order.shippingFirstName && order.shippingLastName 
+                                            ? `${order.shippingFirstName} ${order.shippingLastName}`.trim()
+                                            : 'N/A'))}
+                                    </div>
+                                    {(order.billingAddress1 || order.shippingAddress1) && (
+                                      <div className="text-xs text-gray-500">
+                                        {order.billingAddress1 || order.shippingAddress1}
+                                      </div>
+                                    )}
+                                  </div>
                                 </div>
                                 <div className="flex justify-between">
                                   <span className="text-gray-500">Amount:</span>

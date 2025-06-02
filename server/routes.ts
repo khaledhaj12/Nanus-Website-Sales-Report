@@ -965,7 +965,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
                      TRIM(CONCAT(COALESCE(w.billing_first_name, ''), ' ', COALESCE(w.billing_last_name, ''))),
                      TRIM(CONCAT(COALESCE(w.shipping_first_name, ''), ' ', COALESCE(w.shipping_last_name, ''))),
                      COALESCE(w.customer_email, '')
-                   ) as "customerName", 
+                   ) as "customerName",
+                   w.billing_first_name as "billingFirstName",
+                   w.billing_last_name as "billingLastName", 
+                   w.billing_address_1 as "billingAddress1",
+                   w.shipping_first_name as "shippingFirstName",
+                   w.shipping_last_name as "shippingLastName",
+                   w.shipping_address_1 as "shippingAddress1",
                    w.amount, w.status, w.location_id as "locationId",
                    COALESCE(l.name, 'Unknown Location') as "locationName"
             FROM woo_orders w
