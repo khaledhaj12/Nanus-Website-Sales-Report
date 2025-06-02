@@ -679,28 +679,30 @@ export async function registerRoutes(app: Express): Promise<Server> {
           const month = row.month;
           
           // Get orders for this specific month
-          let orderWhereClause = `WHERE TO_CHAR(order_date, 'YYYY-MM') = $1`;
+          let orderWhereClause = `WHERE TO_CHAR(w.order_date, 'YYYY-MM') = $1`;
           const orderParams: any[] = [month];
           
           if (targetLocationId && targetLocationId !== 'all') {
-            orderWhereClause += ` AND location_id = $${orderParams.length + 1}`;
+            orderWhereClause += ` AND w.location_id = $${orderParams.length + 1}`;
             orderParams.push(parseInt(targetLocationId as string));
           }
           
           // Add status filtering to individual orders as well
           if (statusFilter.length > 0) {
             const statusPlaceholders = statusFilter.map((_, index) => `$${orderParams.length + index + 1}`).join(', ');
-            orderWhereClause += ` AND status IN (${statusPlaceholders})`;
+            orderWhereClause += ` AND w.status IN (${statusPlaceholders})`;
             orderParams.push(...statusFilter);
           }
           
           const orderQuery = `
-            SELECT id, woo_order_id as "orderId", order_date as "orderDate", 
-                   customer_name as "customerName", customer_email as "customerEmail",
-                   amount, status, billing_address_1 as "cardLast4", amount as "refundAmount"
-            FROM woo_orders 
+            SELECT w.id, w.woo_order_id as "orderId", w.order_date as "orderDate", 
+                   w.customer_name as "customerName", w.customer_email as "customerEmail",
+                   w.amount, w.status, w.billing_address_1 as "cardLast4", w.amount as "refundAmount",
+                   l.name as "locationName"
+            FROM woo_orders w
+            LEFT JOIN locations l ON w.location_id = l.id
             ${orderWhereClause}
-            ORDER BY order_date DESC
+            ORDER BY w.order_date DESC
           `;
           
           const orderResult = await pool.query(orderQuery, orderParams);
