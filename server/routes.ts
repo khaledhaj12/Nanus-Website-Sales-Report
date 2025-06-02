@@ -1049,12 +1049,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       }
 
-      const auth = Buffer.from(`${settings.consumerKey}:${settings.consumerSecret}`).toString('base64');
-      const testUrl = `${settings.storeUrl.replace(/\/$/, '')}/wp-json/wc/v3/orders?per_page=1`;
+      // Use URL parameters for authentication (more reliable than headers)
+      const testUrl = new URL(`${settings.storeUrl.replace(/\/$/, '')}/wp-json/wc/v3/orders`);
+      testUrl.searchParams.set('per_page', '1');
+      testUrl.searchParams.set('consumer_key', settings.consumerKey);
+      testUrl.searchParams.set('consumer_secret', settings.consumerSecret);
       
-      const response = await fetch(testUrl, {
+      const response = await fetch(testUrl.toString(), {
         headers: {
-          'Authorization': `Basic ${auth}`,
           'Content-Type': 'application/json',
         }
       });
@@ -1094,7 +1096,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       }
 
-      const auth = Buffer.from(`${settings.consumerKey}:${settings.consumerSecret}`).toString('base64');
       let page = 1;
       const perPage = 100;
       let totalImported = 0;
@@ -1106,6 +1107,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         url.searchParams.set('page', page.toString());
         url.searchParams.set('orderby', 'date');
         url.searchParams.set('order', 'desc');
+        url.searchParams.set('consumer_key', settings.consumerKey);
+        url.searchParams.set('consumer_secret', settings.consumerSecret);
         
         if (startDate) {
           url.searchParams.set('after', `${startDate}T00:00:00`);
@@ -1116,7 +1119,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
         const response = await fetch(url.toString(), {
           headers: {
-            'Authorization': `Basic ${auth}`,
             'Content-Type': 'application/json',
           }
         });
