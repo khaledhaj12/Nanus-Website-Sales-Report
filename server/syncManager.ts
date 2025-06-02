@@ -150,11 +150,21 @@ async function fetchWooCommerceOrders(
           continue;
         }
 
-        // Get or create location from metadata
-        const locationName = order.meta_data?.find((meta: any) => meta.key === '_orderable_location_name')?.value || 'Unknown Location';
-        let location = await storage.getLocationByName(locationName);
-        if (!location) {
-          location = await storage.createLocation({ name: locationName });
+        // Only assign location if orderable metadata exists
+        let location = null;
+        const orderableLocationMeta = order.meta_data?.find((meta: any) => meta.key === '_orderable_location_name')?.value;
+        
+        if (orderableLocationMeta) {
+          location = await storage.getLocationByName(orderableLocationMeta);
+          if (!location) {
+            location = await storage.createLocation({ name: orderableLocationMeta });
+          }
+        } else {
+          // Create or get "Unknown Location" for orders without orderable metadata
+          location = await storage.getLocationByName('Unknown Location');
+          if (!location) {
+            location = await storage.createLocation({ name: 'Unknown Location' });
+          }
         }
 
         // Extract comprehensive order data
@@ -208,7 +218,7 @@ async function fetchWooCommerceOrders(
           billingCountry: order.billing?.country || null,
           
           // Metadata and notes
-          locationMeta: locationName,
+          locationMeta: orderableLocationMeta || 'Unknown Location',
           orderNotes: order.customer_note || null,
           customerNote: order.customer_note || null,
           

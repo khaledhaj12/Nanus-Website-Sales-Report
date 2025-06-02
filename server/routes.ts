@@ -55,6 +55,49 @@ export async function registerRoutes(app: Express): Promise<Server> {
     });
   });
 
+  // User routes
+  app.get('/api/users', isAuthenticated, async (req, res) => {
+    try {
+      const users = await storage.getAllUsers();
+      res.json(users);
+    } catch (error) {
+      console.error("Get users error:", error);
+      res.status(500).json({ message: "Failed to get users" });
+    }
+  });
+
+  app.post('/api/users', isAuthenticated, async (req, res) => {
+    try {
+      const user = await storage.createUser(req.body);
+      res.json(user);
+    } catch (error) {
+      console.error("Create user error:", error);
+      res.status(500).json({ message: "Failed to create user" });
+    }
+  });
+
+  app.put('/api/users/:id', isAuthenticated, async (req, res) => {
+    try {
+      const userId = parseInt(req.params.id);
+      const user = await storage.updateUser(userId, req.body);
+      res.json(user);
+    } catch (error) {
+      console.error("Update user error:", error);
+      res.status(500).json({ message: "Failed to update user" });
+    }
+  });
+
+  app.delete('/api/users/:id', isAuthenticated, async (req, res) => {
+    try {
+      const userId = parseInt(req.params.id);
+      await storage.deleteUser(userId);
+      res.json({ message: "User deleted successfully" });
+    } catch (error) {
+      console.error("Delete user error:", error);
+      res.status(500).json({ message: "Failed to delete user" });
+    }
+  });
+
   // Location routes
   app.get('/api/locations', isAuthenticated, async (req, res) => {
     try {
@@ -210,11 +253,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
               continue;
             }
 
-            // Get or create location from metadata
-            const locationName = order.meta_data?.find((meta: any) => meta.key === '_orderable_location_name')?.value || 'Unknown Location';
-            let location = await storage.getLocationByName(locationName);
-            if (!location) {
-              location = await storage.createLocation({ name: locationName });
+            // Only assign location if orderable metadata exists
+            let location = null;
+            const orderableLocationMeta = order.meta_data?.find((meta: any) => meta.key === '_orderable_location_name')?.value;
+            
+            if (orderableLocationMeta) {
+              location = await storage.getLocationByName(orderableLocationMeta);
+              if (!location) {
+                location = await storage.createLocation({ name: orderableLocationMeta });
+              }
+            } else {
+              // Create or get "Unknown Location" for orders without orderable metadata
+              location = await storage.getLocationByName('Unknown Location');
+              if (!location) {
+                location = await storage.createLocation({ name: 'Unknown Location' });
+              }
             }
 
             // Create order data
@@ -256,7 +309,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
               billingState: order.billing?.state || null,
               billingPostcode: order.billing?.postcode || null,
               billingCountry: order.billing?.country || null,
-              locationMeta: locationName,
+              locationMeta: orderableLocationMeta || 'Unknown Location',
               orderNotes: order.customer_note || null,
               customerNote: order.customer_note || null,
               lineItems: JSON.stringify(order.line_items || []),

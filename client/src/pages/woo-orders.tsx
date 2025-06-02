@@ -1,435 +1,625 @@
 import { useState, useMemo } from "react";
-import { useQuery, useMutation } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Input } from "@/components/ui/input";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Badge } from "@/components/ui/badge";
-import Header from "@/components/layout/header";
-import { SortableHeader } from "@/components/ui/sortable-header";
-import { MonthRangePicker } from "@/components/ui/month-range-picker";
-import PaginationControls from "@/components/ui/pagination-controls";
-import { formatCurrency } from "@/lib/feeCalculations";
-import { useAuth } from "@/hooks/useAuth";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { useToast } from "@/hooks/use-toast";
-import { apiRequest, queryClient } from "@/lib/queryClient";
-import { Trash2, Search, ShoppingBag } from "lucide-react";
+import { apiRequest } from "@/lib/queryClient";
+import { 
+  Search, 
+  Download, 
+  Filter, 
+  Settings, 
+  Calendar,
+  ChevronUp,
+  ChevronDown,
+  Upload,
+  MapPin,
+  Mail,
+  Phone,
+  CreditCard,
+  Package,
+  Eye,
+  EyeOff
+} from "lucide-react";
+import { format } from "date-fns";
 
-interface WooOrdersProps {
-  onMenuClick: () => void;
+interface WooOrder {
+  id: number;
+  wooOrderId: string;
+  orderId: string;
+  locationId: number;
+  customerName: string;
+  firstName: string;
+  lastName: string;
+  customerEmail: string;
+  customerPhone: string;
+  customerId: string;
+  amount: string;
+  subtotal: string;
+  shippingTotal: string;
+  taxTotal: string;
+  discountTotal: string;
+  refundAmount: string;
+  status: string;
+  orderDate: string;
+  wooOrderNumber: string;
+  paymentMethod: string;
+  paymentMethodTitle: string;
+  currency: string;
+  shippingFirstName: string;
+  shippingLastName: string;
+  shippingAddress1: string;
+  shippingAddress2: string;
+  shippingCity: string;
+  shippingState: string;
+  shippingPostcode: string;
+  shippingCountry: string;
+  billingFirstName: string;
+  billingLastName: string;
+  billingAddress1: string;
+  billingAddress2: string;
+  billingCity: string;
+  billingState: string;
+  billingPostcode: string;
+  billingCountry: string;
+  locationMeta: string;
+  orderNotes: string;
+  customerNote: string;
 }
 
-export default function WooOrders({ onMenuClick }: WooOrdersProps) {
-  const { isAdmin } = useAuth();
-  const currentDate = new Date();
-  const currentMonth = `${currentDate.getFullYear()}-${(currentDate.getMonth() + 1).toString().padStart(2, '0')}`;
+interface Location {
+  id: number;
+  name: string;
+}
+
+interface ImportFormData {
+  storeUrl: string;
+  consumerKey: string;
+  consumerSecret: string;
+  startDate: string;
+  endDate: string;
+}
+
+const COLUMN_DEFINITIONS = [
+  { key: 'wooOrderNumber', label: 'Order #', width: 'w-24' },
+  { key: 'orderDate', label: 'Date', width: 'w-32' },
+  { key: 'customerName', label: 'Customer', width: 'w-48' },
+  { key: 'customerEmail', label: 'Email', width: 'w-48' },
+  { key: 'customerPhone', label: 'Phone', width: 'w-32' },
+  { key: 'amount', label: 'Total', width: 'w-24' },
+  { key: 'status', label: 'Status', width: 'w-28' },
+  { key: 'paymentMethodTitle', label: 'Payment', width: 'w-32' },
+  { key: 'locationMeta', label: 'Location', width: 'w-32' },
+  { key: 'shippingCity', label: 'Shipping City', width: 'w-32' },
+  { key: 'shippingState', label: 'Shipping State', width: 'w-28' },
+  { key: 'billingCity', label: 'Billing City', width: 'w-32' },
+  { key: 'billingState', label: 'Billing State', width: 'w-28' },
+  { key: 'currency', label: 'Currency', width: 'w-20' },
+  { key: 'subtotal', label: 'Subtotal', width: 'w-24' },
+  { key: 'shippingTotal', label: 'Shipping', width: 'w-24' },
+  { key: 'taxTotal', label: 'Tax', width: 'w-20' },
+  { key: 'discountTotal', label: 'Discount', width: 'w-24' },
+  { key: 'orderNotes', label: 'Notes', width: 'w-48' }
+];
+
+const DEFAULT_VISIBLE_COLUMNS = [
+  'wooOrderNumber', 'orderDate', 'customerName', 'customerEmail', 
+  'amount', 'status', 'paymentMethodTitle', 'locationMeta'
+];
+
+export default function WooOrders() {
+  const { toast } = useToast();
+  const queryClient = useQueryClient();
   
-  const [startMonth, setStartMonth] = useState(currentMonth);
-  const [endMonth, setEndMonth] = useState(currentMonth);
-  const [selectedLocation, setSelectedLocation] = useState(isAdmin ? "all" : "");
-  const [searchQuery, setSearchQuery] = useState("");
-  const [selectedOrders, setSelectedOrders] = useState<number[]>([]);
+  // State management
+  const [searchTerm, setSearchTerm] = useState("");
+  const [selectedLocation, setSelectedLocation] = useState<string>("all");
   const [sortBy, setSortBy] = useState<string>('orderDate');
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
-  const [currentPage, setCurrentPage] = useState(1);
-  const [itemsPerPage, setItemsPerPage] = useState(25);
-  const { toast } = useToast();
+  const [visibleColumns, setVisibleColumns] = useState<string[]>(DEFAULT_VISIBLE_COLUMNS);
+  const [showImportForm, setShowImportForm] = useState(false);
+  const [importData, setImportData] = useState<ImportFormData>({
+    storeUrl: '',
+    consumerKey: '',
+    consumerSecret: '',
+    startDate: '',
+    endDate: ''
+  });
 
-  const { data: locations = [] } = useQuery({
+  // Fetch data
+  const { data: orders = [], isLoading, refetch } = useQuery({
+    queryKey: ["/api/woo-orders", selectedLocation, searchTerm],
+    queryFn: () => {
+      const params = new URLSearchParams();
+      if (selectedLocation !== "all") params.append("locationId", selectedLocation);
+      if (searchTerm) params.append("search", searchTerm);
+      const queryString = params.toString();
+      return queryString ? `/api/woo-orders?${queryString}` : "/api/woo-orders";
+    }
+  });
+
+  const { data: locations = [] } = useQuery<Location[]>({
     queryKey: ["/api/locations"],
   });
 
-  const isSingleMonth = startMonth === endMonth;
-
-  // Query for WooCommerce orders
-  const { data: rawWooOrders = [] } = useQuery({
-    queryKey: ["/api/woo-orders", selectedLocation, startMonth, endMonth, searchQuery],
-    queryFn: async () => {
-      const params = new URLSearchParams();
-      if (selectedLocation && selectedLocation !== "all") {
-        params.append("location", selectedLocation);
-      }
-      if (searchQuery) {
-        params.append("search", searchQuery);
-      }
-      if (startMonth) {
-        params.append("startMonth", startMonth);
-      }
-      if (endMonth) {
-        params.append("endMonth", endMonth);
-      }
-      
-      const response = await fetch(`/api/woo-orders?${params}`, {
-        credentials: "include",
-      });
-      
-      if (!response.ok) {
-        throw new Error("Failed to fetch WooCommerce orders");
-      }
-      
-      return response.json();
-    },
+  const { data: apiSettings } = useQuery({
+    queryKey: ['/api/rest-api-settings/woocommerce'],
   });
 
-  // Apply sorting and pagination to orders
-  const sortedOrders = useMemo(() => {
-    const sorted = [...rawWooOrders].sort((a: any, b: any) => {
-      let aValue = a[sortBy];
-      let bValue = b[sortBy];
-
-      // Handle specific field types
-      if (sortBy === 'amount' || sortBy === 'refundAmount') {
-        aValue = parseFloat(aValue || '0');
-        bValue = parseFloat(bValue || '0');
-      } else if (sortBy === 'orderDate') {
-        aValue = new Date(aValue).getTime();
-        bValue = new Date(bValue).getTime();
-      } else if (typeof aValue === 'string') {
-        aValue = aValue.toLowerCase();
-        bValue = bValue?.toLowerCase() || '';
-      }
-
-      if (aValue < bValue) return sortOrder === 'asc' ? -1 : 1;
-      if (aValue > bValue) return sortOrder === 'asc' ? 1 : -1;
-      return 0;
-    });
-
-    return sorted;
-  }, [rawWooOrders, sortBy, sortOrder]);
-
-  // Paginate the sorted orders
-  const paginatedOrders = useMemo(() => {
-    const startIndex = (currentPage - 1) * itemsPerPage;
-    return sortedOrders.slice(startIndex, startIndex + itemsPerPage);
-  }, [sortedOrders, currentPage, itemsPerPage]);
-
-  // Reset to first page when filters change
-  const handleItemsPerPageChange = (newItemsPerPage: number) => {
-    setItemsPerPage(newItemsPerPage);
-    setCurrentPage(1);
-  };
-
-  // Delete orders mutation (admin only)
-  const deleteOrdersMutation = useMutation({
-    mutationFn: async (orderIds: number[]) => {
-      await apiRequest("DELETE", "/api/woo-orders/bulk-delete", { orderIds });
+  // Import mutation
+  const importMutation = useMutation({
+    mutationFn: async (data: ImportFormData) => {
+      return await apiRequest('/api/import-woo-orders', 'POST', data);
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/woo-orders"] });
-      queryClient.invalidateQueries({ queryKey: ["/api/dashboard/summary"] });
-      queryClient.invalidateQueries({ queryKey: ["/api/dashboard/monthly-breakdown"] });
-      setSelectedOrders([]);
+    onSuccess: (response: any) => {
       toast({
-        title: "Success",
-        description: `Deleted ${selectedOrders.length} WooCommerce order(s)`,
+        title: "Import Successful",
+        description: response.message || `${response.imported || 0} orders imported`,
       });
+      setShowImportForm(false);
+      refetch();
     },
-    onError: () => {
+    onError: (error: any) => {
       toast({
-        title: "Error",
-        description: "Failed to delete orders",
+        title: "Import Failed",
+        description: error.message || "Failed to import orders",
         variant: "destructive",
       });
     },
   });
 
-  const handleSort = (key: string) => {
-    if (sortBy === key) {
+  // Sorting and filtering
+  const filteredAndSortedOrders = useMemo(() => {
+    if (!Array.isArray(orders)) return [];
+
+    let filtered = [...orders];
+
+    // Apply search filter
+    if (searchTerm) {
+      const term = searchTerm.toLowerCase();
+      filtered = filtered.filter(order => 
+        order.customerName?.toLowerCase().includes(term) ||
+        order.customerEmail?.toLowerCase().includes(term) ||
+        order.wooOrderNumber?.toLowerCase().includes(term) ||
+        order.orderId?.toLowerCase().includes(term) ||
+        order.locationMeta?.toLowerCase().includes(term)
+      );
+    }
+
+    // Apply location filter
+    if (selectedLocation !== "all") {
+      filtered = filtered.filter(order => order.locationId === parseInt(selectedLocation));
+    }
+
+    // Apply sorting
+    filtered.sort((a, b) => {
+      let aValue: any = a[sortBy as keyof WooOrder];
+      let bValue: any = b[sortBy as keyof WooOrder];
+
+      // Handle different data types
+      if (sortBy === 'orderDate') {
+        aValue = new Date(aValue).getTime();
+        bValue = new Date(bValue).getTime();
+      } else if (sortBy === 'amount' || sortBy === 'subtotal' || sortBy === 'taxTotal') {
+        aValue = parseFloat(aValue || '0');
+        bValue = parseFloat(bValue || '0');
+      } else {
+        aValue = String(aValue || '').toLowerCase();
+        bValue = String(bValue || '').toLowerCase();
+      }
+
+      if (sortOrder === 'asc') {
+        return aValue > bValue ? 1 : -1;
+      } else {
+        return aValue < bValue ? 1 : -1;
+      }
+    });
+
+    return filtered;
+  }, [orders, searchTerm, selectedLocation, sortBy, sortOrder]);
+
+  const handleSort = (column: string) => {
+    if (sortBy === column) {
       setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc');
     } else {
-      setSortBy(key);
+      setSortBy(column);
       setSortOrder('asc');
     }
   };
 
-  const handleSelectOrder = (orderId: number) => {
-    if (!isAdmin) return;
-    
-    setSelectedOrders(prev => 
-      prev.includes(orderId) 
-        ? prev.filter(id => id !== orderId)
-        : [...prev, orderId]
+  const handleColumnToggle = (column: string) => {
+    setVisibleColumns(prev => 
+      prev.includes(column) 
+        ? prev.filter(col => col !== column)
+        : [...prev, column]
     );
   };
 
-  const handleSelectAll = () => {
-    if (!isAdmin) return;
+  const handleImport = (e: React.FormEvent) => {
+    e.preventDefault();
     
-    if (selectedOrders.length === paginatedOrders.length && paginatedOrders.length > 0) {
-      setSelectedOrders([]);
-    } else {
-      setSelectedOrders(paginatedOrders.map((order: any) => order.id));
+    // Use saved API settings if available and form fields are empty
+    const finalData = {
+      storeUrl: importData.storeUrl || apiSettings?.storeUrl || '',
+      consumerKey: importData.consumerKey || apiSettings?.consumerKey || '',
+      consumerSecret: importData.consumerSecret || apiSettings?.consumerSecret || '',
+      startDate: importData.startDate,
+      endDate: importData.endDate
+    };
+
+    if (!finalData.storeUrl || !finalData.consumerKey || !finalData.consumerSecret) {
+      toast({
+        title: "Missing Credentials",
+        description: "Please configure your WooCommerce API credentials in Settings first.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    importMutation.mutate(finalData);
+  };
+
+  const getStatusBadge = (status: string) => {
+    const statusColors: Record<string, string> = {
+      'completed': 'bg-green-100 text-green-800',
+      'processing': 'bg-blue-100 text-blue-800', 
+      'on-hold': 'bg-yellow-100 text-yellow-800',
+      'cancelled': 'bg-red-100 text-red-800',
+      'refunded': 'bg-gray-100 text-gray-800',
+      'failed': 'bg-red-100 text-red-800',
+      'pending': 'bg-orange-100 text-orange-800'
+    };
+
+    return (
+      <Badge className={statusColors[status] || 'bg-gray-100 text-gray-800'}>
+        {status}
+      </Badge>
+    );
+  };
+
+  const formatCurrency = (amount: string, currency: string = 'USD') => {
+    return new Intl.NumberFormat('en-US', {
+      style: 'currency',
+      currency: currency
+    }).format(parseFloat(amount || '0'));
+  };
+
+  const formatDate = (dateString: string) => {
+    return format(new Date(dateString), 'MMM dd, yyyy');
+  };
+
+  const renderCellContent = (order: WooOrder, column: string) => {
+    switch (column) {
+      case 'orderDate':
+        return formatDate(order.orderDate);
+      case 'amount':
+      case 'subtotal':
+      case 'shippingTotal':
+      case 'taxTotal':
+      case 'discountTotal':
+        return formatCurrency(order[column as keyof WooOrder] as string, order.currency);
+      case 'status':
+        return getStatusBadge(order.status);
+      case 'customerName':
+        return (
+          <div className="flex items-center gap-2">
+            <div>
+              <div className="font-medium">{order.customerName || 'N/A'}</div>
+              {order.customerId && (
+                <div className="text-xs text-gray-500">ID: {order.customerId}</div>
+              )}
+            </div>
+          </div>
+        );
+      case 'customerEmail':
+        return order.customerEmail ? (
+          <div className="flex items-center gap-1 text-sm">
+            <Mail className="h-3 w-3 text-gray-400" />
+            {order.customerEmail}
+          </div>
+        ) : 'N/A';
+      case 'customerPhone':
+        return order.customerPhone ? (
+          <div className="flex items-center gap-1 text-sm">
+            <Phone className="h-3 w-3 text-gray-400" />
+            {order.customerPhone}
+          </div>
+        ) : 'N/A';
+      case 'locationMeta':
+        return (
+          <div className="flex items-center gap-1 text-sm">
+            <MapPin className="h-3 w-3 text-gray-400" />
+            {order.locationMeta}
+          </div>
+        );
+      case 'paymentMethodTitle':
+        return order.paymentMethodTitle ? (
+          <div className="flex items-center gap-1 text-sm">
+            <CreditCard className="h-3 w-3 text-gray-400" />
+            {order.paymentMethodTitle}
+          </div>
+        ) : 'N/A';
+      default:
+        return order[column as keyof WooOrder] || 'N/A';
     }
   };
 
-  const handleDeleteSelected = () => {
-    if (selectedOrders.length === 0) return;
-    deleteOrdersMutation.mutate(selectedOrders);
-  };
+  if (isLoading) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-100 dark:from-gray-900 dark:via-gray-800 dark:to-gray-900">
+        <div className="container mx-auto px-4 py-6 sm:py-8">
+          <div className="animate-pulse space-y-4">
+            <div className="h-8 bg-gray-200 rounded w-1/4"></div>
+            <div className="h-64 bg-gray-200 rounded"></div>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <Header 
-        title="WooCommerce Orders" 
-        onMenuClick={onMenuClick}
-        selectedLocation={selectedLocation}
-        onLocationChange={setSelectedLocation}
-        showFilters={isAdmin}
-      />
-      
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <Card>
-          <CardHeader>
-            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-              <div className="flex items-center gap-2">
-                <ShoppingBag className="h-5 w-5 text-blue-600" />
-                <CardTitle>WooCommerce Orders</CardTitle>
-              </div>
-              
-              <div className="flex flex-wrap items-center gap-4">
-                <MonthRangePicker
-                  startMonth={startMonth}
-                  endMonth={endMonth}
-                  onStartMonthChange={setStartMonth}
-                  onEndMonthChange={setEndMonth}
-                />
-                
-                <div className="relative">
-                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
-                  <Input
-                    placeholder="Search orders..."
-                    value={searchQuery}
-                    onChange={(e) => setSearchQuery(e.target.value)}
-                    className="pl-10 w-64"
-                  />
-                </div>
-              </div>
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-100 dark:from-gray-900 dark:via-gray-800 dark:to-gray-900">
+      <div className="container mx-auto px-4 py-6 sm:py-8">
+        {/* Header */}
+        <div className="mb-8">
+          <div className="flex items-center gap-3 mb-4">
+            <div className="p-2 bg-gradient-to-r from-purple-600 to-pink-600 rounded-lg">
+              <Package className="h-6 w-6 text-white" />
             </div>
+            <div>
+              <h1 className="text-2xl sm:text-3xl font-bold bg-gradient-to-r from-gray-900 to-gray-700 dark:from-white dark:to-gray-300 bg-clip-text text-transparent">
+                WooCommerce Orders
+              </h1>
+              <p className="text-gray-600 dark:text-gray-400 text-sm sm:text-base">
+                Manage and view your imported WooCommerce orders
+              </p>
+            </div>
+          </div>
+        </div>
+
+        {/* Controls */}
+        <Card className="mb-6 border-0 shadow-xl bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm">
+          <CardHeader className="pb-4">
+            <CardTitle className="text-lg">Order Management</CardTitle>
           </CardHeader>
-          
           <CardContent>
-            {paginatedOrders.length === 0 ? (
-              <div className="text-center py-8 text-gray-500">
-                No WooCommerce orders found for the selected filters.
-              </div>
-            ) : (
-              <>
-                {/* Admin Controls */}
-                {isAdmin && selectedOrders.length > 0 && (
-                  <div className="mb-4 p-3 bg-blue-50 rounded-lg flex items-center justify-between">
-                    <span className="text-sm text-blue-800">
-                      {selectedOrders.length} order(s) selected
-                    </span>
-                    <Button
-                      variant="destructive"
-                      size="sm"
-                      onClick={handleDeleteSelected}
-                      disabled={deleteOrdersMutation.isPending}
-                    >
-                      <Trash2 className="h-4 w-4 mr-2" />
-                      Delete Selected
-                    </Button>
-                  </div>
-                )}
-
-                {/* Desktop Table View */}
-                <div className="hidden md:block overflow-x-auto">
-                  <Table>
-                    <TableHeader>
-                      <TableRow>
-                        {isAdmin && (
-                          <TableHead className="w-12">
-                            <Checkbox
-                              checked={selectedOrders.length === paginatedOrders.length && paginatedOrders.length > 0}
-                              onCheckedChange={handleSelectAll}
-                            />
-                          </TableHead>
-                        )}
-                        <SortableHeader 
-                          sortKey="orderDate" 
-                          currentSort={sortBy} 
-                          currentOrder={sortOrder} 
-                          onSort={handleSort}
-                        >
-                          Date
-                        </SortableHeader>
-                        <SortableHeader 
-                          sortKey="wooOrderNumber" 
-                          currentSort={sortBy} 
-                          currentOrder={sortOrder} 
-                          onSort={handleSort}
-                        >
-                          WooCommerce #
-                        </SortableHeader>
-                        <SortableHeader 
-                          sortKey="customerName" 
-                          currentSort={sortBy} 
-                          currentOrder={sortOrder} 
-                          onSort={handleSort}
-                        >
-                          Customer
-                        </SortableHeader>
-                        <SortableHeader 
-                          sortKey="amount" 
-                          currentSort={sortBy} 
-                          currentOrder={sortOrder} 
-                          onSort={handleSort}
-                        >
-                          Amount
-                        </SortableHeader>
-                        <SortableHeader 
-                          sortKey="refundAmount" 
-                          currentSort={sortBy} 
-                          currentOrder={sortOrder} 
-                          onSort={handleSort}
-                        >
-                          Refund
-                        </SortableHeader>
-                        <SortableHeader 
-                          sortKey="status" 
-                          currentSort={sortBy} 
-                          currentOrder={sortOrder} 
-                          onSort={handleSort}
-                        >
-                          Status
-                        </SortableHeader>
-                        <SortableHeader 
-                          sortKey="paymentMethod" 
-                          currentSort={sortBy} 
-                          currentOrder={sortOrder} 
-                          onSort={handleSort}
-                        >
-                          Payment
-                        </SortableHeader>
-                        {isAdmin && (
-                          <TableHead>Location</TableHead>
-                        )}
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {paginatedOrders.map((order: any) => (
-                        <TableRow key={order.id}>
-                          {isAdmin && (
-                            <TableCell>
-                              <Checkbox
-                                checked={selectedOrders.includes(order.id)}
-                                onCheckedChange={() => handleSelectOrder(order.id)}
-                              />
-                            </TableCell>
-                          )}
-                          <TableCell>{new Date(order.orderDate).toLocaleDateString()}</TableCell>
-                          <TableCell className="font-mono text-sm">{order.wooOrderNumber}</TableCell>
-                          <TableCell>{order.customerName || order.firstName || "N/A"}</TableCell>
-                          <TableCell className="font-medium">{formatCurrency(parseFloat(order.amount))}</TableCell>
-                          <TableCell className="text-red-600">
-                            {order.refundAmount && parseFloat(order.refundAmount) > 0 ? 
-                              formatCurrency(parseFloat(order.refundAmount)) : "-"}
-                          </TableCell>
-                          <TableCell>
-                            <Badge variant={
-                              order.status === "completed" ? "default" :
-                              order.status === "processing" ? "secondary" :
-                              order.status === "refunded" ? "destructive" :
-                              order.status === "cancelled" ? "outline" : "secondary"
-                            }>
-                              {order.status}
-                            </Badge>
-                          </TableCell>
-                          <TableCell className="capitalize">{order.paymentMethod || "N/A"}</TableCell>
-                          {isAdmin && (
-                            <TableCell>
-                              {Array.isArray(locations) && locations.find((loc: any) => loc.id === order.locationId)?.name || "Unknown"}
-                            </TableCell>
-                          )}
-                        </TableRow>
-                      ))}
-                    </TableBody>
-                  </Table>
-                </div>
-
-                {/* Mobile Card View */}
-                <div className="md:hidden space-y-3">
-                  {isAdmin && paginatedOrders.length > 0 && (
-                    <div className="flex items-center gap-3 p-3 bg-gray-100 rounded-lg">
-                      <Checkbox
-                        checked={selectedOrders.length === paginatedOrders.length && paginatedOrders.length > 0}
-                        onCheckedChange={handleSelectAll}
-                      />
-                      <span className="text-sm text-gray-600">
-                        Select All ({selectedOrders.length} of {sortedOrders.length} selected)
-                      </span>
-                    </div>
-                  )}
-                  
-                  {paginatedOrders.map((order: any) => (
-                    <div key={order.id} className="border rounded-lg p-4 bg-white">
-                      <div className="flex justify-between items-start mb-3">
-                        <div className="flex items-center gap-3">
-                          {isAdmin && (
-                            <Checkbox
-                              checked={selectedOrders.includes(order.id)}
-                              onCheckedChange={() => handleSelectOrder(order.id)}
-                            />
-                          )}
-                          <div>
-                            <p className="font-medium">#{order.wooOrderNumber}</p>
-                            <p className="text-sm text-gray-500">{new Date(order.orderDate).toLocaleDateString()}</p>
-                          </div>
-                        </div>
-                        <Badge variant={
-                          order.status === "completed" ? "default" :
-                          order.status === "processing" ? "secondary" :
-                          order.status === "refunded" ? "destructive" :
-                          order.status === "cancelled" ? "outline" : "secondary"
-                        }>
-                          {order.status}
-                        </Badge>
-                      </div>
-                      
-                      <div className="space-y-2 text-sm">
-                        <div className="flex justify-between">
-                          <span className="text-gray-500">Customer:</span>
-                          <span>{order.customerName || order.firstName || "N/A"}</span>
-                        </div>
-                        <div className="flex justify-between">
-                          <span className="text-gray-500">Amount:</span>
-                          <span className="font-medium">{formatCurrency(parseFloat(order.amount))}</span>
-                        </div>
-                        {order.refundAmount && parseFloat(order.refundAmount) > 0 && (
-                          <div className="flex justify-between">
-                            <span className="text-gray-500">Refund:</span>
-                            <span className="text-red-600">{formatCurrency(parseFloat(order.refundAmount))}</span>
-                          </div>
-                        )}
-                        <div className="flex justify-between">
-                          <span className="text-gray-500">Payment:</span>
-                          <span className="capitalize">{order.paymentMethod || "N/A"}</span>
-                        </div>
-                        {isAdmin && (
-                          <div className="flex justify-between">
-                            <span className="text-gray-500">Location:</span>
-                            <span>{Array.isArray(locations) && locations.find((loc: any) => loc.id === order.locationId)?.name || "Unknown"}</span>
-                          </div>
-                        )}
-                      </div>
-                    </div>
-                  ))}
-                </div>
-                
-                {/* Pagination Controls */}
-                <PaginationControls
-                  currentPage={currentPage}
-                  totalItems={sortedOrders.length}
-                  itemsPerPage={itemsPerPage}
-                  onPageChange={setCurrentPage}
-                  onItemsPerPageChange={handleItemsPerPageChange}
+            <div className="flex flex-col sm:flex-row gap-4 items-start sm:items-center">
+              {/* Search */}
+              <div className="relative flex-1 min-w-64">
+                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+                <Input
+                  placeholder="Search orders..."
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  className="pl-10"
                 />
-              </>
-            )}
+              </div>
+
+              {/* Location Filter */}
+              <Select value={selectedLocation} onValueChange={setSelectedLocation}>
+                <SelectTrigger className="w-48">
+                  <SelectValue placeholder="All Locations" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Locations</SelectItem>
+                  {locations.map((location) => (
+                    <SelectItem key={location.id} value={location.id.toString()}>
+                      {location.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+
+              {/* Column Visibility */}
+              <Popover>
+                <PopoverTrigger asChild>
+                  <Button variant="outline" className="gap-2">
+                    <Settings className="h-4 w-4" />
+                    Columns
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-64" align="end">
+                  <div className="space-y-2">
+                    <h4 className="font-medium text-sm">Show/Hide Columns</h4>
+                    <div className="grid gap-2 max-h-64 overflow-auto">
+                      {COLUMN_DEFINITIONS.map((col) => (
+                        <div key={col.key} className="flex items-center space-x-2">
+                          <Checkbox
+                            id={col.key}
+                            checked={visibleColumns.includes(col.key)}
+                            onCheckedChange={() => handleColumnToggle(col.key)}
+                          />
+                          <Label htmlFor={col.key} className="text-sm">
+                            {col.label}
+                          </Label>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                </PopoverContent>
+              </Popover>
+
+              {/* Import Button */}
+              <Button 
+                onClick={() => setShowImportForm(true)}
+                className="bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700"
+              >
+                <Upload className="h-4 w-4 mr-2" />
+                Import Orders
+              </Button>
+            </div>
           </CardContent>
         </Card>
+
+        {/* Orders Table */}
+        <Card className="border-0 shadow-xl bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm">
+          <CardHeader>
+            <CardTitle className="flex items-center justify-between">
+              <span>Orders ({filteredAndSortedOrders.length})</span>
+              <Button variant="outline" size="sm">
+                <Download className="h-4 w-4 mr-2" />
+                Export
+              </Button>
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="overflow-x-auto">
+              <table className="w-full">
+                <thead>
+                  <tr className="border-b">
+                    {COLUMN_DEFINITIONS
+                      .filter(col => visibleColumns.includes(col.key))
+                      .map((col) => (
+                        <th 
+                          key={col.key}
+                          className={`text-left p-3 font-medium text-gray-600 dark:text-gray-400 cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-700 ${col.width}`}
+                          onClick={() => handleSort(col.key)}
+                        >
+                          <div className="flex items-center gap-1">
+                            {col.label}
+                            {sortBy === col.key && (
+                              sortOrder === 'asc' 
+                                ? <ChevronUp className="h-4 w-4" />
+                                : <ChevronDown className="h-4 w-4" />
+                            )}
+                          </div>
+                        </th>
+                      ))}
+                  </tr>
+                </thead>
+                <tbody>
+                  {filteredAndSortedOrders.map((order) => (
+                    <tr key={order.id} className="border-b hover:bg-gray-50 dark:hover:bg-gray-700/50">
+                      {COLUMN_DEFINITIONS
+                        .filter(col => visibleColumns.includes(col.key))
+                        .map((col) => (
+                          <td key={col.key} className={`p-3 ${col.width}`}>
+                            {renderCellContent(order, col.key)}
+                          </td>
+                        ))}
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+
+              {filteredAndSortedOrders.length === 0 && (
+                <div className="text-center py-12">
+                  <Package className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+                  <h3 className="text-lg font-medium text-gray-900 dark:text-gray-100 mb-2">
+                    No orders found
+                  </h3>
+                  <p className="text-gray-600 dark:text-gray-400 mb-4">
+                    {searchTerm || selectedLocation !== "all" 
+                      ? "Try adjusting your search or filters"
+                      : "Import your first WooCommerce orders to get started"
+                    }
+                  </p>
+                  {!searchTerm && selectedLocation === "all" && (
+                    <Button onClick={() => setShowImportForm(true)}>
+                      <Upload className="h-4 w-4 mr-2" />
+                      Import Orders
+                    </Button>
+                  )}
+                </div>
+              )}
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Import Form Modal */}
+        {showImportForm && (
+          <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
+            <Card className="w-full max-w-md">
+              <CardHeader>
+                <CardTitle>Import WooCommerce Orders</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <form onSubmit={handleImport} className="space-y-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="store-url">Store URL</Label>
+                    <Input
+                      id="store-url"
+                      type="url"
+                      placeholder={apiSettings?.storeUrl || "https://yourstore.com"}
+                      value={importData.storeUrl}
+                      onChange={(e) => setImportData({...importData, storeUrl: e.target.value})}
+                    />
+                    {apiSettings?.storeUrl && (
+                      <p className="text-xs text-gray-500">Using saved: {apiSettings.storeUrl}</p>
+                    )}
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="consumer-key">Consumer Key</Label>
+                    <Input
+                      id="consumer-key"
+                      type="password"
+                      placeholder={apiSettings?.consumerKey ? "Using saved credentials" : "ck_..."}
+                      value={importData.consumerKey}
+                      onChange={(e) => setImportData({...importData, consumerKey: e.target.value})}
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="consumer-secret">Consumer Secret</Label>
+                    <Input
+                      id="consumer-secret"
+                      type="password"
+                      placeholder={apiSettings?.consumerSecret ? "Using saved credentials" : "cs_..."}
+                      value={importData.consumerSecret}
+                      onChange={(e) => setImportData({...importData, consumerSecret: e.target.value})}
+                    />
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="start-date">Start Date</Label>
+                      <Input
+                        id="start-date"
+                        type="date"
+                        value={importData.startDate}
+                        onChange={(e) => setImportData({...importData, startDate: e.target.value})}
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="end-date">End Date</Label>
+                      <Input
+                        id="end-date"
+                        type="date"
+                        value={importData.endDate}
+                        onChange={(e) => setImportData({...importData, endDate: e.target.value})}
+                      />
+                    </div>
+                  </div>
+
+                  <div className="flex gap-2 pt-4">
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={() => setShowImportForm(false)}
+                      className="flex-1"
+                    >
+                      Cancel
+                    </Button>
+                    <Button
+                      type="submit"
+                      disabled={importMutation.isPending}
+                      className="flex-1"
+                    >
+                      {importMutation.isPending ? "Importing..." : "Import"}
+                    </Button>
+                  </div>
+                </form>
+              </CardContent>
+            </Card>
+          </div>
+        )}
       </div>
     </div>
   );
