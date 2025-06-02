@@ -800,6 +800,177 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // SEPARATE REPORTS ENDPOINTS - completely independent from dashboard
+  app.get('/api/reports/summary', isAuthenticated, async (req, res) => {
+    try {
+      const { locationId, location, statuses } = req.query;
+      const { pool } = await import('./db');
+      
+      let whereClause = "WHERE 1=1";
+      const params: any[] = [];
+      
+      // Handle location filtering for reports
+      const targetLocationId = location || locationId;
+      if (targetLocationId && targetLocationId !== 'all') {
+        whereClause += ` AND location_id = $${params.length + 1}`;
+        params.push(parseInt(targetLocationId as string));
+      }
+      
+      // Handle status filtering for reports - apply ALL statuses when none specified
+      if (statuses && Array.isArray(statuses) && statuses.length > 0) {
+        const statusFilter = statuses as string[];
+        const statusPlaceholders = statusFilter.map((_, index) => `$${params.length + index + 1}`).join(', ');
+        whereClause += ` AND status IN (${statusPlaceholders})`;
+        params.push(...statusFilter);
+      } else if (statuses && !Array.isArray(statuses)) {
+        whereClause += ` AND status = $${params.length + 1}`;
+        params.push(statuses);
+      }
+      // No default status filtering - show ALL orders when no filter applied
+      
+      const query = `
+        SELECT 
+          COALESCE(SUM(amount::decimal), 0) as total_sales,
+          COUNT(*) as total_orders,
+          COALESCE(SUM(CASE WHEN status = 'refunded' THEN amount::decimal ELSE 0 END), 0) as total_refunds,
+          COALESCE(SUM(amount::decimal * 0.07), 0) as platform_fees,
+          COALESCE(SUM(amount::decimal * 0.029 + 0.30), 0) as stripe_fees,
+          COALESCE(SUM(amount::decimal - (amount::decimal * 0.07) - (amount::decimal * 0.029 + 0.30)), 0) as net_deposit
+        FROM woo_orders 
+        ${whereClause}
+      `;
+      
+      const result = await pool.query(query, params);
+      const summary = result.rows[0];
+      
+      res.json(summary);
+    } catch (error) {
+      console.error("Reports summary error:", error);
+      res.status(500).json({ message: "Failed to get reports summary" });
+    }
+  });
+
+  app.get('/api/reports/monthly-breakdown', isAuthenticated, async (req, res) => {
+    try {
+      const { year, locationId, location, startMonth, endMonth, statuses } = req.query;
+      const { pool } = await import('./db');
+      
+      let whereClause = "WHERE 1=1";
+      const params: any[] = [];
+      
+      // Initialize status filter at the top level scope
+      let statusFilter: string[] = [];
+      
+      // Handle location parameter for reports
+      const targetLocationId = location || locationId;
+      if (targetLocationId && targetLocationId !== 'all') {
+        whereClause += ` AND location_id = $${params.length + 1}`;
+        params.push(parseInt(targetLocationId as string));
+      }
+      
+      // Handle date filtering
+      if (startMonth && endMonth) {
+        const startDate = `${startMonth}-01`;
+        const [endYear, endMonthNum] = (endMonth as string).split('-');
+        const lastDay = new Date(parseInt(endYear), parseInt(endMonthNum), 0).getDate();
+        const endDate = `${endMonth}-${lastDay.toString().padStart(2, '0')}`;
+        
+        whereClause += ` AND order_date >= $${params.length + 1} AND order_date <= $${params.length + 2}`;
+        params.push(startDate);
+        params.push(endDate);
+      } else if (year) {
+        const currentYear = parseInt(year as string);
+        whereClause += ` AND EXTRACT(YEAR FROM order_date) = $${params.length + 1}`;
+        params.push(currentYear);
+      }
+      
+      // Handle status filtering for reports - NO default filtering
+      if (statuses && Array.isArray(statuses) && statuses.length > 0) {
+        statusFilter = statuses as string[];
+        const statusPlaceholders = statusFilter.map((_, index) => `$${params.length + index + 1}`).join(', ');
+        whereClause += ` AND status IN (${statusPlaceholders})`;
+        params.push(...statusFilter);
+      } else if (statuses && !Array.isArray(statuses)) {
+        statusFilter = [statuses as string];
+        whereClause += ` AND status = $${params.length + 1}`;
+        params.push(statuses);
+      }
+      
+      const query = `
+        SELECT 
+          TO_CHAR(order_date, 'YYYY-MM') as month,
+          COALESCE(SUM(amount::decimal), 0) as total_sales,
+          COUNT(*) as total_orders,
+          COALESCE(SUM(CASE WHEN status = 'refunded' THEN amount::decimal ELSE 0 END), 0) as total_refunds,
+          COALESCE(SUM(amount::decimal - (amount::decimal * 0.07) - (amount::decimal * 0.029 + 0.30)), 0) as net_amount
+        FROM woo_orders 
+        ${whereClause}
+        GROUP BY TO_CHAR(order_date, 'YYYY-MM')
+        ORDER BY month DESC
+      `;
+
+      const result = await pool.query(query, params);
+      
+      // Capture statusFilter for use in nested function
+      const capturedStatusFilter = statusFilter;
+      
+      // Fetch individual orders for each month
+      const breakdown = await Promise.all(
+        result.rows.map(async (row: any) => {
+          const month = row.month;
+          
+          // Get orders for this specific month
+          let orderWhereClause = `WHERE TO_CHAR(w.order_date, 'YYYY-MM') = $1`;
+          const orderParams: any[] = [month];
+          
+          if (targetLocationId && targetLocationId !== 'all') {
+            orderWhereClause += ` AND w.location_id = $${orderParams.length + 1}`;
+            orderParams.push(parseInt(targetLocationId as string));
+          }
+          
+          // Add status filtering to individual orders as well
+          if (capturedStatusFilter.length > 0) {
+            const statusPlaceholders = capturedStatusFilter.map((_, index) => `$${orderParams.length + index + 1}`).join(', ');
+            orderWhereClause += ` AND w.status IN (${statusPlaceholders})`;
+            orderParams.push(...capturedStatusFilter);
+          }
+          
+          const orderQuery = `
+            SELECT w.id, w.woo_order_id as "orderId", w.order_date as "orderDate", 
+                   COALESCE(
+                     NULLIF(w.customer_name, ''),
+                     TRIM(CONCAT(COALESCE(w.billing_first_name, ''), ' ', COALESCE(w.billing_last_name, ''))),
+                     TRIM(CONCAT(COALESCE(w.shipping_first_name, ''), ' ', COALESCE(w.shipping_last_name, ''))),
+                     COALESCE(w.customer_email, '')
+                   ) as "customerName", 
+                   w.amount, w.status, w.location_id as "locationId",
+                   COALESCE(l.name, 'Unknown Location') as "locationName"
+            FROM woo_orders w
+            LEFT JOIN locations l ON w.location_id = l.id
+            ${orderWhereClause}
+            ORDER BY w.order_date DESC
+          `;
+          
+          const orderResult = await pool.query(orderQuery, orderParams);
+          
+          return {
+            month: row.month,
+            totalSales: parseFloat(row.total_sales),
+            totalOrders: parseInt(row.total_orders),
+            totalRefunds: parseFloat(row.total_refunds),
+            netAmount: parseFloat(row.net_amount),
+            orders: orderResult.rows
+          };
+        })
+      );
+      
+      res.json(breakdown);
+    } catch (error) {
+      console.error("Reports monthly breakdown error:", error);
+      res.status(500).json({ message: "Failed to get reports monthly breakdown" });
+    }
+  });
+
   app.post('/api/store-connections', isAuthenticated, async (req, res) => {
     try {
       const connection = await storage.createStoreConnection(req.body);

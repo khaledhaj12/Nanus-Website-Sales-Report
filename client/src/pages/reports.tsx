@@ -21,14 +21,14 @@ export default function Reports({ onMenuClick }: ReportsProps) {
   const [startMonth, setStartMonth] = useState(currentMonth);
   const [endMonth, setEndMonth] = useState(currentMonth);
   const [selectedLocation, setSelectedLocation] = useState("all");
-  const [selectedStatuses, setSelectedStatuses] = useState(["processing", "completed", "refunded"]);
+  const [selectedStatuses, setSelectedStatuses] = useState([]);
 
   const { data: locations = [] } = useQuery({
     queryKey: ["/api/locations"],
   });
 
   const { data: summaryData, isLoading: isSummaryLoading } = useQuery({
-    queryKey: ["/api/dashboard/summary", { location: selectedLocation, startMonth, endMonth, statuses: selectedStatuses }],
+    queryKey: ["/api/reports/summary", { location: selectedLocation, startMonth, endMonth, statuses: selectedStatuses }],
     queryFn: async () => {
       const params = new URLSearchParams();
       if (selectedLocation && selectedLocation !== "all") {
@@ -44,14 +44,14 @@ export default function Reports({ onMenuClick }: ReportsProps) {
         params.append("statuses", status);
       });
       
-      const url = `/api/dashboard/summary?${params.toString()}`;
+      const url = `/api/reports/summary?${params.toString()}`;
       const response = await fetch(url);
       return response.json();
     },
   });
 
   const { data: monthlyData = [], isLoading: isMonthlyLoading } = useQuery({
-    queryKey: ["/api/dashboard/monthly-breakdown", { location: selectedLocation, startMonth, endMonth, statuses: selectedStatuses }],
+    queryKey: ["/api/reports/monthly-breakdown", { location: selectedLocation, startMonth, endMonth, statuses: selectedStatuses }],
     queryFn: async () => {
       const params = new URLSearchParams();
       if (selectedLocation && selectedLocation !== "all") {
@@ -67,7 +67,7 @@ export default function Reports({ onMenuClick }: ReportsProps) {
         params.append("statuses", status);
       });
       
-      const url = `/api/dashboard/monthly-breakdown?${params.toString()}`;
+      const url = `/api/reports/monthly-breakdown?${params.toString()}`;
       const response = await fetch(url);
       return response.json();
     },
