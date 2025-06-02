@@ -61,6 +61,12 @@ export default function Settings() {
     isActive: true
   });
 
+  // Import form state
+  const [importForm, setImportForm] = useState<ImportFormData>({
+    startDate: '',
+    endDate: ''
+  });
+
   // Fetch sync settings
   const { data: syncData } = useQuery({
     queryKey: ['/api/sync-settings/woocommerce'],
@@ -159,6 +165,90 @@ export default function Settings() {
   const handleApiSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     updateApiMutation.mutate(apiSettings);
+  };
+
+  // Test connection mutation
+  const testConnectionMutation = useMutation({
+    mutationFn: async () => {
+      return await apiRequest('POST', '/api/test-woo-connection', {
+        storeUrl: apiSettings.storeUrl,
+        consumerKey: apiSettings.consumerKey,
+        consumerSecret: apiSettings.consumerSecret
+      });
+    },
+    onSuccess: (response: any) => {
+      toast({
+        title: "Connection Successful",
+        description: response.message || "Successfully connected to your WooCommerce store",
+      });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Connection Failed",
+        description: error.message || "Unable to connect to WooCommerce store",
+        variant: "destructive",
+      });
+    },
+  });
+
+  // Manual import mutation
+  const manualImportMutation = useMutation({
+    mutationFn: async () => {
+      return await apiRequest('POST', '/api/import-woo-orders', {
+        storeUrl: apiSettings.storeUrl,
+        consumerKey: apiSettings.consumerKey,
+        consumerSecret: apiSettings.consumerSecret,
+        startDate: importForm.startDate,
+        endDate: importForm.endDate
+      });
+    },
+    onSuccess: (response: any) => {
+      toast({
+        title: "Import Successful",
+        description: response.message || `${response.imported || 0} orders imported`,
+      });
+      setImportForm({ startDate: '', endDate: '' });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Import Failed",
+        description: error.message || "Failed to import orders",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const handleTestConnection = () => {
+    if (!apiSettings.storeUrl || !apiSettings.consumerKey || !apiSettings.consumerSecret) {
+      toast({
+        title: "Missing Information",
+        description: "Please fill in all API credentials before testing",
+        variant: "destructive",
+      });
+      return;
+    }
+    testConnectionMutation.mutate();
+  };
+
+  const handleManualImport = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!apiSettings.storeUrl || !apiSettings.consumerKey || !apiSettings.consumerSecret) {
+      toast({
+        title: "Missing API Credentials",
+        description: "Please configure your WooCommerce API settings first",
+        variant: "destructive",
+      });
+      return;
+    }
+    if (!importForm.startDate || !importForm.endDate) {
+      toast({
+        title: "Missing Date Range",
+        description: "Please select both start and end dates for import",
+        variant: "destructive",
+      });
+      return;
+    }
+    manualImportMutation.mutate();
   };
 
   const formatTimeUntilNext = (seconds: number) => {
@@ -373,7 +463,7 @@ export default function Settings() {
                     />
                   </div>
 
-                  <div className="pt-4">
+                  <div className="pt-4 space-y-3">
                     <Button 
                       type="submit" 
                       disabled={updateApiMutation.isPending}
@@ -391,7 +481,92 @@ export default function Settings() {
                         </>
                       )}
                     </Button>
+                    
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={handleTestConnection}
+                      disabled={testConnectionMutation.isPending}
+                      className="w-full border-green-600 text-green-600 hover:bg-green-50 dark:hover:bg-green-900/20"
+                    >
+                      {testConnectionMutation.isPending ? (
+                        <>
+                          <RefreshCw className="w-4 h-4 mr-2 animate-spin" />
+                          Testing Connection...
+                        </>
+                      ) : (
+                        <>
+                          <Zap className="w-4 h-4 mr-2" />
+                          Test API Connection
+                        </>
+                      )}
+                    </Button>
                   </div>
+                </form>
+              </CardContent>
+            </Card>
+
+            {/* Manual Import Card */}
+            <Card className="border-0 shadow-xl bg-gradient-to-r from-orange-50 to-red-50 dark:from-orange-900/20 dark:to-red-900/20 backdrop-blur-sm">
+              <CardHeader className="pb-4">
+                <CardTitle className="flex items-center gap-3 text-lg">
+                  <Download className="h-5 w-5 text-orange-600" />
+                  Manual Import
+                </CardTitle>
+                <CardDescription>
+                  Import orders from a specific date range for immediate synchronization
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <form onSubmit={handleManualImport} className="space-y-4">
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="start-date">Start Date</Label>
+                      <Input
+                        id="start-date"
+                        type="date"
+                        value={importForm.startDate}
+                        onChange={(e) => setImportForm({...importForm, startDate: e.target.value})}
+                        className="border-orange-200 focus:border-orange-500 focus:ring-orange-500/20"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="end-date">End Date</Label>
+                      <Input
+                        id="end-date"
+                        type="date"
+                        value={importForm.endDate}
+                        onChange={(e) => setImportForm({...importForm, endDate: e.target.value})}
+                        className="border-orange-200 focus:border-orange-500 focus:ring-orange-500/20"
+                      />
+                    </div>
+                  </div>
+
+                  <Alert>
+                    <AlertCircle className="h-4 w-4" />
+                    <AlertDescription>
+                      Import will fetch orders from your WooCommerce store within the selected date range. 
+                      Existing orders will be skipped automatically.
+                    </AlertDescription>
+                  </Alert>
+
+                  <Button
+                    type="submit"
+                    disabled={manualImportMutation.isPending}
+                    className="w-full bg-gradient-to-r from-orange-600 to-red-600 hover:from-orange-700 hover:to-red-700"
+                  >
+                    {manualImportMutation.isPending ? (
+                      <>
+                        <RefreshCw className="w-4 h-4 mr-2 animate-spin" />
+                        Importing Orders...
+                      </>
+                    ) : (
+                      <>
+                        <Download className="w-4 h-4 mr-2" />
+                        Import Orders
+                      </>
+                    )}
+                  </Button>
                 </form>
               </CardContent>
             </Card>

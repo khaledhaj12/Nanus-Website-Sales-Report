@@ -119,6 +119,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  app.delete('/api/locations', isAuthenticated, async (req, res) => {
+    try {
+      const { ids } = req.body;
+      if (!Array.isArray(ids) || ids.length === 0) {
+        return res.status(400).json({ message: "Invalid location IDs" });
+      }
+      
+      await storage.deleteLocations(ids);
+      res.json({ message: "Locations deleted successfully" });
+    } catch (error: any) {
+      console.error("Delete locations error:", error);
+      res.status(500).json({ message: "Failed to delete locations" });
+    }
+  });
+
   // WooCommerce orders routes
   app.get('/api/woo-orders', isAuthenticated, async (req, res) => {
     try {
