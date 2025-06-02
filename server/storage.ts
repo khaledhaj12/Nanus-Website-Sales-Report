@@ -5,6 +5,7 @@ import {
   userLocationAccess,
   userStatusAccess,
   syncSettings,
+  storeConnections,
   restApiSettings,
   recaptchaSettings,
   type User,
@@ -15,6 +16,8 @@ import {
   type InsertOrder,
   type SyncSettings,
   type InsertSyncSettings,
+  type StoreConnection,
+  type InsertStoreConnection,
   type RestApiSettings,
   type InsertRestApiSettings,
   type RecaptchaSettings,
@@ -98,6 +101,11 @@ export interface IStorage {
   // reCAPTCHA settings operations
   getRecaptchaSettings(): Promise<RecaptchaSettings | undefined>;
   upsertRecaptchaSettings(settings: InsertRecaptchaSettings): Promise<RecaptchaSettings>;
+  
+  // Store connections operations
+  getAllStoreConnections(): Promise<StoreConnection[]>;
+  createStoreConnection(connection: InsertStoreConnection): Promise<StoreConnection>;
+  deleteStoreConnection(id: number): Promise<void>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -445,6 +453,22 @@ export class DatabaseStorage implements IStorage {
         .returning();
       return result;
     }
+  }
+
+  async getAllStoreConnections(): Promise<StoreConnection[]> {
+    return await db.select().from(storeConnections);
+  }
+
+  async createStoreConnection(connection: InsertStoreConnection): Promise<StoreConnection> {
+    const [result] = await db
+      .insert(storeConnections)
+      .values(connection)
+      .returning();
+    return result;
+  }
+
+  async deleteStoreConnection(id: number): Promise<void> {
+    await db.delete(storeConnections).where(eq(storeConnections.id, id));
   }
 }
 
