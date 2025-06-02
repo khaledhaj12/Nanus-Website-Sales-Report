@@ -672,6 +672,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       let whereClause = "WHERE 1=1";
       const params: any[] = [];
       
+      // Initialize status filter at the top level scope
+      let statusFilter: string[] = [];
+      
       // Handle location parameter (can be 'location' or 'locationId')
       const targetLocationId = location || locationId;
       if (targetLocationId && targetLocationId !== 'all') {
@@ -699,12 +702,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       // Handle status filtering - only apply filter if statuses are explicitly provided
       if (statuses && Array.isArray(statuses) && statuses.length > 0) {
-        const statusFilter = statuses as string[];
+        statusFilter = statuses as string[];
         const statusPlaceholders = statusFilter.map((_, index) => `$${params.length + index + 1}`).join(', ');
         whereClause += ` AND status IN (${statusPlaceholders})`;
         params.push(...statusFilter);
       } else if (statuses && !Array.isArray(statuses)) {
         // Single status provided
+        statusFilter = [statuses as string];
         whereClause += ` AND status = $${params.length + 1}`;
         params.push(statuses);
       }
@@ -723,6 +727,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       `;
 
       const result = await pool.query(query, params);
+      
+      // Capture statusFilter for use in nested function
+      const capturedStatusFilter = statusFilter;
       
       // Fetch individual orders for each month
       const breakdown = await Promise.all(
