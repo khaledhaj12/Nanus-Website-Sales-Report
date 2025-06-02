@@ -88,15 +88,8 @@ async function performSync() {
       now.toISOString()
     );
 
-    // Update sync status
-    await storage.upsertSyncSettings({
-      platform: 'woocommerce',
-      isActive: settings.isActive,
-      intervalMinutes: settings.intervalMinutes,
-      isRunning: false,
-      lastSyncAt: now,
-      nextSyncAt: nextSync
-    });
+    // Update sync status with order count
+    await storage.updateSyncStats('woocommerce', result.imported);
 
     console.log(`Auto sync completed: ${result.imported} imported, ${result.skipped} skipped`);
   } catch (error) {

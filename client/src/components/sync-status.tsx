@@ -17,7 +17,7 @@ interface SyncInfo {
 }
 
 export default function SyncStatus({ platform }: SyncStatusProps) {
-  const { data: syncInfo, isLoading } = useQuery({
+  const { data: syncInfo, isLoading } = useQuery<SyncInfo>({
     queryKey: [`/api/sync-status/${platform}`],
     refetchInterval: 10000, // Refresh every 10 seconds
   });

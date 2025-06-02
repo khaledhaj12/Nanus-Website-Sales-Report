@@ -263,6 +263,35 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Get detailed sync status
+  app.get('/api/sync-status/:platform', isAuthenticated, async (req, res) => {
+    try {
+      const { platform } = req.params;
+      const settings = await storage.getSyncSettings(platform);
+      
+      if (!settings) {
+        return res.json({
+          isActive: false,
+          intervalMinutes: 5,
+          lastSyncAt: null,
+          lastOrderCount: 0,
+          isRunning: false,
+        });
+      }
+
+      res.json({
+        isActive: settings.isActive || false,
+        intervalMinutes: settings.intervalMinutes || 5,
+        lastSyncAt: settings.lastSyncAt,
+        lastOrderCount: settings.lastOrderCount || 0,
+        isRunning: settings.isRunning || false,
+      });
+    } catch (error) {
+      console.error("Error fetching sync status:", error);
+      res.status(500).json({ error: "Failed to fetch sync status" });
+    }
+  });
+
   app.post('/api/sync-settings', isAuthenticated, async (req, res) => {
     try {
       const { platform, isActive, intervalMinutes } = req.body;

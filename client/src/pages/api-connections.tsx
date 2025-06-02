@@ -12,6 +12,7 @@ import { apiRequest } from "@/lib/queryClient";
 import { Clock, RefreshCw, AlertCircle, CheckCircle, Settings2, Zap, Globe, Shield, Info, Download, Plus, X } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Alert, AlertDescription } from "@/components/ui/alert";
+import SyncStatus from "@/components/sync-status";
 
 interface SyncSettings {
   platform: string;
@@ -333,42 +334,21 @@ function ConnectionSettings({ connectionId, platform }: ConnectionSettingsProps)
 
   return (
     <div className="space-y-6">
-      {/* Sync Status Card */}
+      {/* Enhanced Sync Status Display */}
+      <SyncStatus platform={platformId} />
+
+      {/* Sync Control Card */}
       <Card>
         <CardHeader>
-          <div className="flex items-center justify-between">
-            <div className="flex items-center space-x-2">
-              <Zap className="h-5 w-5 text-blue-600" />
-              <CardTitle>Auto Sync Status</CardTitle>
-            </div>
-            <div className="flex items-center space-x-2">
-              {syncStatus?.isRunning ? (
-                <Badge variant="default" className="bg-green-500">
-                  <RefreshCw className="h-3 w-3 mr-1 animate-spin" />
-                  Active
-                </Badge>
-              ) : (
-                <Badge variant="secondary">
-                  <AlertCircle className="h-3 w-3 mr-1" />
-                  Stopped
-                </Badge>
-              )}
-            </div>
-          </div>
+          <CardTitle className="flex items-center gap-2">
+            <Settings2 className="h-5 w-5" />
+            Sync Control
+          </CardTitle>
           <CardDescription>
-            Automatically sync new orders from WooCommerce every {syncSettings.intervalMinutes} minutes
+            Start or stop automatic sync and configure settings
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
-          {syncStatus?.isRunning && (
-            <Alert>
-              <Clock className="h-4 w-4" />
-              <AlertDescription>
-                Next sync in: <strong>{formatNextSyncTime(syncStatus.nextSyncIn)}</strong>
-              </AlertDescription>
-            </Alert>
-          )}
-          
           <div className="flex flex-col sm:flex-row gap-3">
             <Button
               onClick={handleToggleSync}
