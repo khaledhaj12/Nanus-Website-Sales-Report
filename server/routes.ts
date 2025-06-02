@@ -311,10 +311,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // reCAPTCHA settings endpoints
-  app.get('/api/recaptcha-settings', isAuthenticated, async (req, res) => {
+  app.get('/api/recaptcha-settings', async (req, res) => {
     try {
       const settings = await storage.getRecaptchaSettings();
-      res.json(settings || { siteKey: '', secretKey: '', isActive: false });
+      // Only return public settings (not the secret key)
+      if (settings) {
+        res.json({ 
+          siteKey: settings.siteKey, 
+          isEnabled: settings.isActive 
+        });
+      } else {
+        res.json({ siteKey: '', isEnabled: false });
+      }
     } catch (error) {
       console.error("Get reCAPTCHA settings error:", error);
       res.status(500).json({ message: "Failed to get reCAPTCHA settings" });
