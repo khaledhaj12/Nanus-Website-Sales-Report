@@ -82,49 +82,69 @@ export const orders = pgTable("orders", {
   updatedAt: timestamp("updated_at").defaultNow(),
 });
 
-// File uploads table
-export const fileUploads = pgTable("file_uploads", {
-  id: serial("id").primaryKey(),
-  fileName: varchar("file_name", { length: 255 }).notNull(),
-  fileSize: integer("file_size").notNull(),
-  fileData: text("file_data").notNull(), // Store as base64 encoded string
-  recordsProcessed: integer("records_processed").notNull().default(0),
-  status: varchar("status", { length: 50 }).notNull().default("processing"), // processing, completed, failed
-  uploadedBy: integer("uploaded_by").notNull().references(() => users.id),
-  createdAt: timestamp("created_at").defaultNow(),
-});
 
-// Notes table (admin only)
-export const notes = pgTable("notes", {
-  id: serial("id").primaryKey(),
-  title: varchar("title", { length: 255 }).notNull(),
-  content: text("content").notNull(),
-  createdBy: integer("created_by").notNull().references(() => users.id),
-  createdAt: timestamp("created_at").defaultNow(),
-  updatedAt: timestamp("updated_at").defaultNow(),
-});
 
-// WooCommerce orders table
+// WooCommerce orders table - comprehensive data capture
 export const wooOrders = pgTable("woo_orders", {
   id: serial("id").primaryKey(),
   wooOrderId: varchar("woo_order_id", { length: 50 }).notNull().unique(),
   orderId: varchar("order_id", { length: 255 }).notNull(),
   locationId: integer("location_id").references(() => locations.id),
+  
+  // Customer information
   customerName: varchar("customer_name", { length: 255 }),
   firstName: varchar("first_name", { length: 255 }),
   lastName: varchar("last_name", { length: 255 }),
   customerEmail: varchar("customer_email", { length: 255 }),
+  customerPhone: varchar("customer_phone", { length: 50 }),
+  customerId: varchar("customer_id", { length: 50 }),
+  
+  // Order financial details
   amount: decimal("amount", { precision: 10, scale: 2 }).notNull(),
+  subtotal: decimal("subtotal", { precision: 10, scale: 2 }).default('0'),
+  shippingTotal: decimal("shipping_total", { precision: 10, scale: 2 }).default('0'),
+  taxTotal: decimal("tax_total", { precision: 10, scale: 2 }).default('0'),
+  discountTotal: decimal("discount_total", { precision: 10, scale: 2 }).default('0'),
   refundAmount: decimal("refund_amount", { precision: 10, scale: 2 }).default('0'),
+  
+  // Order details
   status: varchar("status", { length: 50 }).notNull(),
   orderDate: timestamp("order_date").notNull(),
   wooOrderNumber: varchar("woo_order_number", { length: 50 }),
   paymentMethod: varchar("payment_method", { length: 100 }),
-  shippingTotal: decimal("shipping_total", { precision: 10, scale: 2 }).default('0'),
-  taxTotal: decimal("tax_total", { precision: 10, scale: 2 }).default('0'),
+  paymentMethodTitle: varchar("payment_method_title", { length: 255 }),
+  currency: varchar("currency", { length: 10 }).default('USD'),
+  
+  // Shipping information
+  shippingFirstName: varchar("shipping_first_name", { length: 255 }),
+  shippingLastName: varchar("shipping_last_name", { length: 255 }),
+  shippingAddress1: varchar("shipping_address_1", { length: 255 }),
+  shippingAddress2: varchar("shipping_address_2", { length: 255 }),
+  shippingCity: varchar("shipping_city", { length: 100 }),
+  shippingState: varchar("shipping_state", { length: 100 }),
+  shippingPostcode: varchar("shipping_postcode", { length: 20 }),
+  shippingCountry: varchar("shipping_country", { length: 10 }),
+  
+  // Billing information
+  billingFirstName: varchar("billing_first_name", { length: 255 }),
+  billingLastName: varchar("billing_last_name", { length: 255 }),
+  billingAddress1: varchar("billing_address_1", { length: 255 }),
+  billingAddress2: varchar("billing_address_2", { length: 255 }),
+  billingCity: varchar("billing_city", { length: 100 }),
+  billingState: varchar("billing_state", { length: 100 }),
+  billingPostcode: varchar("billing_postcode", { length: 20 }),
+  billingCountry: varchar("billing_country", { length: 10 }),
+  
+  // Metadata and notes
   locationMeta: varchar("location_meta", { length: 255 }),
   orderNotes: text("order_notes"),
+  customerNote: text("customer_note"),
+  
+  // Raw data storage
+  lineItems: text("line_items"), // JSON string of products/items
+  metaData: text("meta_data"), // JSON string of all metadata
   rawData: text("raw_data"), // Store full WooCommerce order data as JSON
+  
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });
@@ -169,8 +189,6 @@ export const restApiSettings = pgTable("rest_api_settings", {
 // Relations
 export const usersRelations = relations(users, ({ many }) => ({
   locationAccess: many(userLocationAccess),
-  fileUploads: many(fileUploads),
-  notes: many(notes),
 }));
 
 export const locationsRelations = relations(locations, ({ many }) => ({
@@ -197,19 +215,7 @@ export const ordersRelations = relations(orders, ({ one }) => ({
   }),
 }));
 
-export const fileUploadsRelations = relations(fileUploads, ({ one }) => ({
-  uploadedByUser: one(users, {
-    fields: [fileUploads.uploadedBy],
-    references: [users.id],
-  }),
-}));
 
-export const notesRelations = relations(notes, ({ one }) => ({
-  user: one(users, {
-    fields: [notes.createdBy],
-    references: [users.id],
-  }),
-}));
 
 export const wooOrdersRelations = relations(wooOrders, ({ one }) => ({
   location: one(locations, {

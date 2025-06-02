@@ -154,8 +154,8 @@ export default function Settings({ onMenuClick }: SettingsProps) {
     },
     onSuccess: (data: any) => {
       toast({
-        title: "Import Successful",
-        description: data.message || `${data.imported || 0} orders imported, ${data.skipped || 0} skipped`,
+        title: "Import Successful", 
+        description: data.message,
         variant: "default",
       });
       

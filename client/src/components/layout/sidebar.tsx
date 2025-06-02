@@ -7,13 +7,11 @@ import { Button } from "@/components/ui/button";
 import {
   BarChart3,
   MapPin,
-  Upload,
   Users,
   PieChart,
   LogOut,
   Menu,
   X,
-  StickyNote,
   ShoppingBag,
   Settings,
 } from "lucide-react";
@@ -32,8 +30,6 @@ const navigationItems = [
   { id: "woo-orders", label: "WooCommerce", icon: ShoppingBag },
   { id: "locations", label: "Locations", icon: MapPin },
   { id: "users", label: "User Access", icon: Users, adminOnly: true },
-  { id: "upload", label: "Upload Data", icon: Upload, adminOnly: true },
-  { id: "notes", label: "Notes", icon: StickyNote, adminOnly: true },
   { id: "settings", label: "Settings", icon: Settings, adminOnly: true },
 ];
 

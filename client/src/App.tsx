@@ -14,8 +14,7 @@ import Reports from "@/pages/reports";
 import WooOrders from "@/pages/woo-orders";
 import Locations from "@/pages/locations";
 import Users from "@/pages/users";
-import Upload from "@/pages/upload";
-import Notes from "@/pages/notes";
+
 import Settings from "@/pages/settings";
 import NotFound from "@/pages/not-found";
 
@@ -86,10 +85,6 @@ function AppRouter() {
         return <Locations {...commonProps} />;
       case "users":
         return isAdmin ? <Users {...commonProps} /> : <Dashboard {...commonProps} />;
-      case "upload":
-        return isAdmin ? <Upload {...commonProps} /> : <Dashboard {...commonProps} />;
-      case "notes":
-        return isAdmin ? <Notes {...commonProps} /> : <Dashboard {...commonProps} />;
       case "settings":
         return isAdmin ? <Settings {...commonProps} /> : <Dashboard {...commonProps} />;
       default:
