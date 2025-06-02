@@ -105,6 +105,8 @@ function ConnectionSettings({ connectionId, platform }: ConnectionSettingsProps)
 
   // Initialize settings from API data - only populate if data exists, otherwise keep defaults
   useEffect(() => {
+    if (syncDataLoading) return; // Don't run while loading
+    
     if (syncData && typeof syncData === 'object' && 'platform' in syncData && syncData.platform) {
       setSyncSettings(prev => ({
         ...prev,
@@ -120,9 +122,11 @@ function ConnectionSettings({ connectionId, platform }: ConnectionSettingsProps)
         intervalMinutes: 5
       });
     }
-  }, [syncData, platformId]);
+  }, [syncData, platformId, syncDataLoading]);
 
   useEffect(() => {
+    if (apiDataLoading) return; // Don't run while loading
+    
     if (apiData && typeof apiData === 'object' && 'platform' in apiData && apiData.platform) {
       setApiSettings(prev => ({
         ...prev,
@@ -142,7 +146,7 @@ function ConnectionSettings({ connectionId, platform }: ConnectionSettingsProps)
         isActive: true
       });
     }
-  }, [apiData, platformId]);
+  }, [apiData, platformId, apiDataLoading]);
 
   // Mutations
   const updateSyncSettingsMutation = useMutation({
