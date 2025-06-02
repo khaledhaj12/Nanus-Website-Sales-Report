@@ -166,7 +166,9 @@ export default function Dashboard({ onMenuClick }: DashboardProps) {
                               status === "completed" && "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200",
                               status === "refunded" && "bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200",
                               status === "pending" && "bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200",
-                              status === "cancelled" && "bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-200"
+                              status === "cancelled" && "bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-200",
+                              status === "checkout-draft" && "bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-200",
+                              status === "on-hold" && "bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200"
                             )}
                           >
                             {status}
@@ -189,7 +191,7 @@ export default function Dashboard({ onMenuClick }: DashboardProps) {
                     <CommandInput placeholder="Search status..." className="h-9" />
                     <CommandEmpty>No status found.</CommandEmpty>
                     <CommandGroup className="p-2">
-                      {["processing", "completed", "pending", "on-hold", "cancelled", "refunded", "failed"].map((status) => (
+                      {["processing", "completed", "pending", "on-hold", "cancelled", "refunded", "failed", "checkout-draft"].map((status) => (
                         <CommandItem
                           key={status}
                           value={status}
