@@ -1,5 +1,6 @@
 import { useState, useMemo } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -78,19 +79,24 @@ interface Location {
   name: string;
 }
 
+interface ImportFormData {
+  storeUrl: string;
+  consumerKey: string;
+  consumerSecret: string;
+  startDate: string;
+  endDate: string;
+}
+
 const COLUMN_DEFINITIONS = [
-  { key: 'wooOrderNumber', label: 'Order #', width: 'w-28' },
+  { key: 'wooOrderNumber', label: 'Order #', width: 'w-24' },
   { key: 'orderDate', label: 'Date', width: 'w-32' },
   { key: 'customerName', label: 'Customer', width: 'w-48' },
   { key: 'customerEmail', label: 'Email', width: 'w-48' },
-  { key: 'customerPhone', label: 'Phone', width: 'w-36' },
-  { key: 'amount', label: 'Amount', width: 'w-24' },
+  { key: 'customerPhone', label: 'Phone', width: 'w-32' },
+  { key: 'amount', label: 'Total', width: 'w-24' },
   { key: 'status', label: 'Status', width: 'w-28' },
-  { key: 'paymentMethodTitle', label: 'Payment Method', width: 'w-36' },
-  { key: 'locationMeta', label: 'Location', width: 'w-48' },
-  { key: 'refundAmount', label: 'Refund', width: 'w-24' },
-  { key: 'wooOrderId', label: 'WooCommerce ID', width: 'w-32' },
-  { key: 'customerId', label: 'Customer ID', width: 'w-28' },
+  { key: 'paymentMethodTitle', label: 'Payment', width: 'w-32' },
+  { key: 'locationMeta', label: 'Location', width: 'w-32' },
   { key: 'shippingCity', label: 'Shipping City', width: 'w-32' },
   { key: 'shippingState', label: 'Shipping State', width: 'w-28' },
   { key: 'billingCity', label: 'Billing City', width: 'w-32' },
@@ -120,15 +126,6 @@ export default function WooOrders() {
   const [visibleColumns, setVisibleColumns] = useState<string[]>(DEFAULT_VISIBLE_COLUMNS);
   const [selectedOrders, setSelectedOrders] = useState<number[]>([]);
 
-  // Fetch data
-  const { data: orders = [], isLoading } = useQuery({
-    queryKey: ["/api/woo-orders"],
-  });
-
-  const { data: locations = [] } = useQuery({
-    queryKey: ["/api/locations"],
-  });
-
   // Multi-select handlers
   const handleSelectOrder = (orderId: number) => {
     setSelectedOrders(prev => 
@@ -140,7 +137,7 @@ export default function WooOrders() {
 
   const handleSelectAll = () => {
     setSelectedOrders(prev => 
-      prev.length === filteredAndSortedOrders.length ? [] : filteredAndSortedOrders.map((order: any) => order.id)
+      prev.length === orders.length ? [] : orders.map(order => order.id)
     );
   };
 
@@ -152,9 +149,7 @@ export default function WooOrders() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ orderIds })
       });
-      if (!response.ok) {
-        throw new Error('Failed to delete orders');
-      }
+      if (!response.ok) throw new Error('Failed to delete orders');
       return response.json();
     },
     onSuccess: () => {
@@ -171,14 +166,42 @@ export default function WooOrders() {
         description: error.message || "Failed to delete orders",
         variant: "destructive",
       });
-    },
+    }
   });
 
   const handleDeleteSelected = () => {
-    if (selectedOrders.length > 0) {
+    if (selectedOrders.length === 0) return;
+    if (confirm(`Are you sure you want to delete ${selectedOrders.length} selected orders? This action cannot be undone.`)) {
       deleteOrdersMutation.mutate(selectedOrders);
     }
   };
+
+  // Fetch data
+  const { data: orders = [], isLoading, refetch } = useQuery({
+    queryKey: ["/api/woo-orders", selectedLocation, searchTerm],
+    queryFn: async () => {
+      const params = new URLSearchParams();
+      if (selectedLocation !== "all") params.append("locationId", selectedLocation);
+      if (searchTerm) params.append("search", searchTerm);
+      
+      const url = params.toString() ? `/api/woo-orders?${params.toString()}` : "/api/woo-orders";
+      const response = await fetch(url);
+      
+      if (!response.ok) {
+        throw new Error(`Failed to fetch orders: ${response.status} ${response.statusText}`);
+      }
+      
+      return response.json();
+    }
+  });
+
+  const { data: locations = [] } = useQuery<Location[]>({
+    queryKey: ["/api/locations"],
+  });
+
+
+
+
 
   // Sorting and filtering
   const filteredAndSortedOrders = useMemo(() => {
@@ -246,6 +269,8 @@ export default function WooOrders() {
         : [...prev, column]
     );
   };
+
+
 
   const getStatusBadge = (status: string) => {
     const statusColors: Record<string, string> = {
@@ -334,8 +359,8 @@ export default function WooOrders() {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-gray-50">
-        <div className="p-6 max-w-7xl mx-auto space-y-6">
+      <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-100 dark:from-gray-900 dark:via-gray-800 dark:to-gray-900">
+        <div className="container mx-auto px-4 py-6 sm:py-8">
           <div className="animate-pulse space-y-4">
             <div className="h-8 bg-gray-200 rounded w-1/4"></div>
             <div className="h-64 bg-gray-200 rounded"></div>
@@ -360,68 +385,70 @@ export default function WooOrders() {
 
         {/* Controls */}
         <div className="bg-white p-4 rounded-lg shadow-sm border space-y-4">
-          <div className="flex flex-col lg:flex-row gap-4 items-start lg:items-center justify-between">
-            {/* Left side controls */}
-            <div className="flex flex-col sm:flex-row gap-4 items-start sm:items-center flex-1">
-              {/* Search */}
-              <div className="relative flex-1 min-w-64 max-w-md">
-                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
-                <Input
-                  placeholder="Search orders..."
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                  className="pl-10"
-                />
+            <div className="flex flex-col lg:flex-row gap-4 items-start lg:items-center justify-between">
+              {/* Left side controls */}
+              <div className="flex flex-col sm:flex-row gap-4 items-start sm:items-center flex-1">
+                {/* Search */}
+                <div className="relative flex-1 min-w-64 max-w-md">
+                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+                  <Input
+                    placeholder="Search orders..."
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                    className="pl-10"
+                  />
+                </div>
+
+                {/* Location Filter */}
+                <Select value={selectedLocation} onValueChange={setSelectedLocation}>
+                  <SelectTrigger className="w-48">
+                    <SelectValue placeholder="All Locations" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All Locations</SelectItem>
+                    {locations.map((location) => (
+                      <SelectItem key={location.id} value={location.id.toString()}>
+                        {location.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
 
-              {/* Location Filter */}
-              <Select value={selectedLocation} onValueChange={setSelectedLocation}>
-                <SelectTrigger className="w-48">
-                  <SelectValue placeholder="All Locations" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All Locations</SelectItem>
-                  {locations.map((location) => (
-                    <SelectItem key={location.id} value={location.id.toString()}>
-                      {location.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-
-            {/* Right side controls */}
-            <div className="flex flex-col sm:flex-row gap-4 items-start sm:items-center">
-              {/* Column Visibility */}
-              <Popover>
-                <PopoverTrigger asChild>
-                  <Button variant="outline" className="gap-2">
-                    <Settings className="h-4 w-4" />
-                    Columns
-                  </Button>
-                </PopoverTrigger>
-                <PopoverContent className="w-64" align="end">
-                  <div className="space-y-2">
-                    <h4 className="font-medium text-sm">Show/Hide Columns</h4>
-                    <div className="grid gap-2 max-h-64 overflow-auto">
-                      {COLUMN_DEFINITIONS.map((col) => (
-                        <div key={col.key} className="flex items-center space-x-2">
-                          <Checkbox
-                            id={col.key}
-                            checked={visibleColumns.includes(col.key)}
-                            onCheckedChange={() => handleColumnToggle(col.key)}
-                          />
-                          <Label htmlFor={col.key} className="text-sm">
-                            {col.label}
-                          </Label>
-                        </div>
-                      ))}
+              {/* Right side controls */}
+              <div className="flex flex-col sm:flex-row gap-4 items-start sm:items-center">
+                {/* Column Visibility */}
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <Button variant="outline" className="gap-2">
+                      <Settings className="h-4 w-4" />
+                      Columns
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-64" align="end">
+                    <div className="space-y-2">
+                      <h4 className="font-medium text-sm">Show/Hide Columns</h4>
+                      <div className="grid gap-2 max-h-64 overflow-auto">
+                        {COLUMN_DEFINITIONS.map((col) => (
+                          <div key={col.key} className="flex items-center space-x-2">
+                            <Checkbox
+                              id={col.key}
+                              checked={visibleColumns.includes(col.key)}
+                              onCheckedChange={() => handleColumnToggle(col.key)}
+                            />
+                            <Label htmlFor={col.key} className="text-sm">
+                              {col.label}
+                            </Label>
+                          </div>
+                        ))}
+                      </div>
                     </div>
-                  </div>
-                </PopoverContent>
-              </Popover>
+                  </PopoverContent>
+                </Popover>
+
+
+              </div>
             </div>
-          </div>
         </div>
 
         {/* Orders Table */}
@@ -450,11 +477,63 @@ export default function WooOrders() {
           </div>
           <div className="p-4">
             <div className="overflow-x-auto">
-              {filteredAndSortedOrders.length === 0 ? (
+              <table className="w-full">
+                <thead>
+                  <tr className="border-b">
+                    <th className="w-12 p-3">
+                      <Checkbox
+                        checked={selectedOrders.length === filteredAndSortedOrders.length && filteredAndSortedOrders.length > 0}
+                        onCheckedChange={handleSelectAll}
+                      />
+                    </th>
+                    {COLUMN_DEFINITIONS
+                      .filter(col => visibleColumns.includes(col.key))
+                      .map((col) => (
+                        <th 
+                          key={col.key}
+                          className={`text-left p-3 font-medium text-gray-600 dark:text-gray-400 cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-700 ${col.width}`}
+                          onClick={() => handleSort(col.key)}
+                        >
+                          <div className="flex items-center gap-1">
+                            {col.label}
+                            {sortBy === col.key && (
+                              sortOrder === 'asc' 
+                                ? <ChevronUp className="h-4 w-4" />
+                                : <ChevronDown className="h-4 w-4" />
+                            )}
+                          </div>
+                        </th>
+                      ))}
+                  </tr>
+                </thead>
+                <tbody>
+                  {filteredAndSortedOrders.map((order) => (
+                    <tr key={order.id} className="border-b hover:bg-gray-50 dark:hover:bg-gray-700/50">
+                      <td className="w-12 p-3">
+                        <Checkbox
+                          checked={selectedOrders.includes(order.id)}
+                          onCheckedChange={() => handleSelectOrder(order.id)}
+                        />
+                      </td>
+                      {COLUMN_DEFINITIONS
+                        .filter(col => visibleColumns.includes(col.key))
+                        .map((col) => (
+                          <td key={col.key} className={`p-3 ${col.width}`}>
+                            {renderCellContent(order, col.key)}
+                          </td>
+                        ))}
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+
+              {filteredAndSortedOrders.length === 0 && (
                 <div className="text-center py-12">
                   <Package className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-                  <h3 className="text-lg font-medium text-gray-900 mb-2">No orders found</h3>
-                  <p className="text-gray-500 mb-4">
+                  <h3 className="text-lg font-medium text-gray-900 dark:text-gray-100 mb-2">
+                    No orders found
+                  </h3>
+                  <p className="text-gray-600 dark:text-gray-400 mb-4">
                     {searchTerm || selectedLocation !== "all" 
                       ? "Try adjusting your search or filters"
                       : "Import your first WooCommerce orders to get started"
@@ -467,65 +546,11 @@ export default function WooOrders() {
                     </Button>
                   )}
                 </div>
-              ) : (
-                <table className="w-full">
-                  <thead>
-                    <tr className="border-b">
-                      <th className="w-12 p-3">
-                        <Checkbox
-                          checked={selectedOrders.length === filteredAndSortedOrders.length && filteredAndSortedOrders.length > 0}
-                          onCheckedChange={handleSelectAll}
-                        />
-                      </th>
-                      {visibleColumns.map((columnKey) => {
-                        const column = COLUMN_DEFINITIONS.find(c => c.key === columnKey);
-                        if (!column) return null;
-                        
-                        return (
-                          <th 
-                            key={columnKey} 
-                            className={`text-left p-3 cursor-pointer hover:bg-gray-50 ${column.width}`}
-                            onClick={() => handleSort(columnKey)}
-                          >
-                            <div className="flex items-center gap-2">
-                              <span className="font-medium text-gray-900">{column.label}</span>
-                              {sortBy === columnKey && (
-                                <div className="text-gray-400">
-                                  {sortOrder === 'asc' ? (
-                                    <ChevronUp className="h-4 w-4" />
-                                  ) : (
-                                    <ChevronDown className="h-4 w-4" />
-                                  )}
-                                </div>
-                              )}
-                            </div>
-                          </th>
-                        );
-                      })}
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {filteredAndSortedOrders.map((order) => (
-                      <tr key={order.id} className="border-b hover:bg-gray-50">
-                        <td className="p-3">
-                          <Checkbox
-                            checked={selectedOrders.includes(order.id)}
-                            onCheckedChange={() => handleSelectOrder(order.id)}
-                          />
-                        </td>
-                        {visibleColumns.map((columnKey) => (
-                          <td key={columnKey} className="p-3 text-sm">
-                            {renderCellContent(order, columnKey)}
-                          </td>
-                        ))}
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
               )}
             </div>
           </div>
         </div>
+
       </div>
     </div>
   );
