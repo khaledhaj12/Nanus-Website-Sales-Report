@@ -176,7 +176,7 @@ export default function Reports({ onMenuClick }: ReportsProps) {
   // Delete orders mutation (admin only)
   const deleteOrdersMutation = useMutation({
     mutationFn: async (orderIds: number[]) => {
-      await apiRequest("DELETE", "/api/orders", { ids: orderIds });
+      await apiRequest("DELETE", "/api/orders/bulk-delete", { orderIds });
     },
     onSuccess: () => {
       // Invalidate all orders queries with any parameters
