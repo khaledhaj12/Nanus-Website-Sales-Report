@@ -17,10 +17,12 @@ import Users from "@/pages/users";
 
 import ApiConnections from "@/pages/api-connections";
 import Recaptcha from "@/pages/recaptcha";
+import FooterSettings from "@/pages/footer-settings";
 import NotFound from "@/pages/not-found";
 
 // Layout
 import Sidebar from "@/components/layout/sidebar";
+import Footer from "@/components/layout/footer";
 
 function AppRouter() {
   const { isAuthenticated, isLoading, isAdmin } = useAuth();
@@ -89,6 +91,8 @@ function AppRouter() {
         return isAdmin ? <ApiConnections /> : <Dashboard {...commonProps} />;
       case "recaptcha":
         return isAdmin ? <Recaptcha /> : <Dashboard {...commonProps} />;
+      case "footer":
+        return isAdmin ? <FooterSettings /> : <Dashboard {...commonProps} />;
       default:
         return <Dashboard {...commonProps} />;
     }

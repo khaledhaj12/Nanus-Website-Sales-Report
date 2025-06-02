@@ -49,10 +49,10 @@ export default function FooterSettings() {
   };
 
   // Initialize form with fetched data using useEffect
-  React.useEffect(() => {
+  useEffect(() => {
     if (footerSettings && !isLoading) {
-      setCustomCode(footerSettings.customCode || '');
-      setIsEnabled(footerSettings.isEnabled !== false);
+      setCustomCode((footerSettings as any).customCode || '');
+      setIsEnabled((footerSettings as any).isEnabled !== false);
     }
   }, [footerSettings, isLoading]);
 

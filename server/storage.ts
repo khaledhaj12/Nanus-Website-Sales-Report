@@ -109,6 +109,10 @@ export interface IStorage {
   getAllStoreConnections(): Promise<StoreConnection[]>;
   createStoreConnection(connection: InsertStoreConnection): Promise<StoreConnection>;
   deleteStoreConnection(id: number): Promise<void>;
+  
+  // Footer settings operations
+  getFooterSettings(): Promise<FooterSettings | undefined>;
+  upsertFooterSettings(settings: InsertFooterSettings): Promise<FooterSettings>;
 }
 
 export class DatabaseStorage implements IStorage {
