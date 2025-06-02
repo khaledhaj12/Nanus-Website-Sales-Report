@@ -71,8 +71,8 @@ function calculateNetAmount(amount: number): number {
   return amount - platformFee - stripeFee;
 }
 
-// SSE connections for progress updates
-const sseConnections = new Map<number, any>();
+// Progress tracking for uploads
+const uploadProgress = new Map<number, any>();
 
 // File processing functions
 async function processCSVFile(buffer: Buffer, uploadId: number, userId: number): Promise<void> {
@@ -107,18 +107,14 @@ async function processXLSXFile(buffer: Buffer, uploadId: number, userId: number)
 async function processOrderData(data: any[], uploadId: number, userId: number): Promise<void> {
   let processedCount = 0;
   const totalRecords = data.length;
-  const sseConnection = sseConnections.get(userId);
   
-  // Send initial progress
-  if (sseConnection) {
-    sseConnection.write(`data: ${JSON.stringify({
-      type: 'processing_progress',
-      uploadId,
-      progress: 0,
-      totalRecords,
-      processedRecords: 0
-    })}\n\n`);
-  }
+  // Store progress data for potential API queries
+  uploadProgress.set(uploadId, {
+    progress: 0,
+    totalRecords,
+    processedRecords: 0,
+    status: 'processing'
+  });
   
   // Group orders by Order ID to handle duplicates (refunds)
   const orderGroups = new Map<string, any[]>();
@@ -215,17 +211,13 @@ async function processOrderData(data: any[], uploadId: number, userId: number): 
         processedCount++;
       }
       
-      // Send progress update
-      if (ws) {
-        const progress = Math.round((processedCount / totalRecords) * 100);
-        ws.send(JSON.stringify({
-          type: 'processing_progress',
-          uploadId,
-          progress,
-          totalRecords,
-          processedRecords: processedCount
-        }));
-      }
+      // Update progress tracking
+      uploadProgress.set(uploadId, {
+        progress: Math.round((processedCount / totalRecords) * 100),
+        totalRecords,
+        processedRecords: processedCount,
+        status: 'processing'
+      });
     } catch (error) {
       console.error('Error processing row:', error);
     }
@@ -880,28 +872,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  const httpServer = createServer(app);
-  
-  // Set up WebSocket server for real-time progress updates
-  const wss = new WebSocketServer({ server: httpServer });
-  
-  wss.on('connection', (ws, req) => {
-    // Extract user ID from session or query params
-    const url = new URL(req.url!, `http://${req.headers.host}`);
-    const userId = parseInt(url.searchParams.get('userId') || '0');
-    
-    if (userId > 0) {
-      wsConnections.set(userId, ws);
-      console.log(`WebSocket connected for user ${userId}`);
-    }
-    
-    ws.on('close', () => {
-      if (userId > 0) {
-        wsConnections.delete(userId);
-        console.log(`WebSocket disconnected for user ${userId}`);
-      }
-    });
+  // Progress endpoint for checking upload progress
+  app.get('/api/progress/:uploadId', (req, res) => {
+    const uploadId = parseInt(req.params.uploadId);
+    const progress = uploadProgress.get(uploadId) || { progress: 0, status: 'not_found' };
+    res.json(progress);
   });
-  
+
+  const httpServer = createServer(app);
   return httpServer;
 }

@@ -34,35 +34,19 @@ export default function Upload({ onMenuClick }: UploadProps) {
     queryKey: ["/api/uploads/all"],
   });
 
-  // WebSocket connection for real-time progress updates
+  // Simulated processing progress for better user experience
   useEffect(() => {
-    if (!user?.id) return;
+    if (uploadStatus === 'processing') {
+      const interval = setInterval(() => {
+        setProcessingProgress(prev => {
+          if (prev >= 95) return prev;
+          return prev + Math.random() * 10;
+        });
+      }, 500);
 
-    const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-    const wsUrl = `${protocol}//${window.location.host}?userId=${user.id}`;
-    const ws = new WebSocket(wsUrl);
-
-    ws.onmessage = (event) => {
-      try {
-        const data = JSON.parse(event.data);
-        if (data.type === 'processing_progress') {
-          setProcessingProgress(data.progress);
-          setProcessedRecords(data.processedRecords);
-          setTotalRecords(data.totalRecords);
-        }
-      } catch (error) {
-        console.error('Error parsing WebSocket message:', error);
-      }
-    };
-
-    ws.onclose = () => {
-      console.log('WebSocket connection closed');
-    };
-
-    return () => {
-      ws.close();
-    };
-  }, [user?.id]);
+      return () => clearInterval(interval);
+    }
+  }, [uploadStatus]);
 
   const uploadMutation = useMutation({
     mutationFn: async (file: File) => {
