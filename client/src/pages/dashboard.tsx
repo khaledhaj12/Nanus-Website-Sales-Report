@@ -26,7 +26,7 @@ export default function Dashboard({ onMenuClick }: DashboardProps) {
   const [startMonth, setStartMonth] = useState(currentMonth);
   const [endMonth, setEndMonth] = useState(currentMonth);
   const [selectedLocation, setSelectedLocation] = useState(isAdmin ? "all" : "");
-  const [selectedStatuses, setSelectedStatuses] = useState<string[]>([]);
+  const [selectedStatuses, setSelectedStatuses] = useState<string[]>(["processing", "completed", "refunded"]);
 
   const { data: locations = [] } = useQuery({
     queryKey: ["/api/locations"],
