@@ -773,8 +773,10 @@ export class DatabaseStorage implements IStorage {
         
         if (!response.ok) {
           const errorText = await response.text();
-          console.error(`WooCommerce API Error ${response.status}: ${errorText}`);
-          throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+          console.error(`WooCommerce API Error ${response.status}: ${response.statusText}`);
+          console.error(`Error details: ${errorText}`);
+          console.error(`Request URL: ${url.replace(consumerKey, 'XXX').replace(consumerSecret, 'XXX')}`);
+          throw new Error(`HTTP ${response.status}: ${response.statusText} - ${errorText}`);
         }
         
         const orders = await response.json();
