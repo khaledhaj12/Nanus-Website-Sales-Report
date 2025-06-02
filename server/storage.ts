@@ -184,9 +184,17 @@ export class DatabaseStorage implements IStorage {
   }
 
   async deleteLocations(ids: number[]): Promise<void> {
-    // First delete all orders that reference these locations
+    // Check if any locations have associated orders
     const idsString = ids.join(', ');
-    await db.execute(sql.raw(`DELETE FROM woo_orders WHERE location_id IN (${idsString})`));
+    const result = await db.execute(sql.raw(`SELECT DISTINCT location_id FROM woo_orders WHERE location_id IN (${idsString})`));
+    
+    if (result.rows.length > 0) {
+      const usedLocationIds = result.rows.map((row: any) => row.location_id);
+      throw new Error(`Cannot delete locations with existing orders. Location IDs: ${usedLocationIds.join(', ')}`);
+    }
+
+    // First delete user location access records for these locations
+    await db.delete(userLocationAccess).where(inArray(userLocationAccess.locationId, ids));
     
     // Then delete the locations
     await db.delete(locations).where(inArray(locations.id, ids));
