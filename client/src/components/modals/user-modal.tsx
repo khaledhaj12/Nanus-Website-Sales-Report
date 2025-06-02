@@ -97,8 +97,21 @@ export default function UserModal({ isOpen, onClose, editingUser }: UserModalPro
 
   const createUserMutation = useMutation({
     mutationFn: async (userData: typeof formData) => {
-      const response = await apiRequest("POST", "/api/users", userData);
-      return response.json();
+      const { locationIds, statusIds, ...userDetails } = userData;
+      const response = await apiRequest("POST", "/api/users", userDetails);
+      const user = await response.json();
+      
+      // Set location access if not admin
+      if (userData.role !== 'admin' && locationIds.length > 0) {
+        await apiRequest("POST", `/api/users/${user.id}/locations`, { locationIds });
+      }
+      
+      // Set status access if not admin
+      if (userData.role !== 'admin' && statusIds.length > 0) {
+        await apiRequest("POST", `/api/users/${user.id}/statuses`, { statuses: statusIds });
+      }
+      
+      return user;
     },
     onSuccess: () => {
       toast({
@@ -119,8 +132,21 @@ export default function UserModal({ isOpen, onClose, editingUser }: UserModalPro
 
   const updateUserMutation = useMutation({
     mutationFn: async (userData: any) => {
-      const response = await apiRequest("PUT", `/api/users/${editingUser.id}`, userData);
-      return response.json();
+      const { locationIds, statusIds, ...userDetails } = userData;
+      const response = await apiRequest("PUT", `/api/users/${editingUser.id}`, userDetails);
+      const user = await response.json();
+      
+      // Update location access if not admin
+      if (userData.role !== 'admin') {
+        await apiRequest("POST", `/api/users/${editingUser.id}/locations`, { locationIds: locationIds || [] });
+      }
+      
+      // Update status access if not admin
+      if (userData.role !== 'admin') {
+        await apiRequest("POST", `/api/users/${editingUser.id}/statuses`, { statuses: statusIds || [] });
+      }
+      
+      return user;
     },
     onSuccess: () => {
       toast({
@@ -145,6 +171,15 @@ export default function UserModal({ isOpen, onClose, editingUser }: UserModalPro
       locationIds: checked
         ? [...prev.locationIds, locationId]
         : prev.locationIds.filter(id => id !== locationId)
+    }));
+  };
+
+  const handleStatusChange = (status: string, checked: boolean) => {
+    setFormData(prev => ({
+      ...prev,
+      statusIds: checked
+        ? [...prev.statusIds, status]
+        : prev.statusIds.filter(s => s !== status)
     }));
   };
 
@@ -284,6 +319,39 @@ export default function UserModal({ isOpen, onClose, editingUser }: UserModalPro
               {(!Array.isArray(locations) || locations.length === 0) && (
                 <p className="text-sm text-gray-500">No locations available</p>
               )}
+            </div>
+          </div>
+
+          <div>
+            <Label>Order Status Access</Label>
+            <p className="text-sm text-gray-500 mb-2">Select which order statuses this user can view. Leave empty for all statuses.</p>
+            <div className="space-y-2 mt-2 max-h-32 overflow-y-auto">
+              {[
+                { id: 'processing', label: 'Processing' },
+                { id: 'complete', label: 'Complete' },
+                { id: 'completed', label: 'Completed' },
+                { id: 'refunded', label: 'Refunded' },
+                { id: 'pending', label: 'Pending' },
+                { id: 'cancelled', label: 'Cancelled' },
+                { id: 'failed', label: 'Failed' },
+                { id: 'on-hold', label: 'On Hold' }
+              ].map((status) => (
+                <div key={status.id} className="flex items-center space-x-2">
+                  <Checkbox
+                    id={`status-${status.id}`}
+                    checked={formData.statusIds.includes(status.id)}
+                    onCheckedChange={(checked) => 
+                      handleStatusChange(status.id, checked as boolean)
+                    }
+                  />
+                  <Label 
+                    htmlFor={`status-${status.id}`}
+                    className="text-sm font-normal"
+                  >
+                    {status.label}
+                  </Label>
+                </div>
+              ))}
             </div>
           </div>
           
