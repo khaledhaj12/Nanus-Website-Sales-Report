@@ -8,6 +8,7 @@ import csv from "csv-parser";
 import { Readable } from "stream";
 import { z } from "zod";
 import { insertUserSchema, insertOrderSchema } from "@shared/schema";
+import { WebSocketServer } from "ws";
 
 // Configure multer for file uploads
 const upload = multer({
@@ -72,6 +73,9 @@ function calculateNetAmount(amount: number): number {
   return amount - platformFee - stripeFee;
 }
 
+// WebSocket connections for progress updates
+const wsConnections = new Map<number, any>();
+
 // File processing functions
 async function processCSVFile(buffer: Buffer, uploadId: number, userId: number): Promise<void> {
   const csvData: any[] = [];
@@ -104,6 +108,19 @@ async function processXLSXFile(buffer: Buffer, uploadId: number, userId: number)
 
 async function processOrderData(data: any[], uploadId: number, userId: number): Promise<void> {
   let processedCount = 0;
+  const totalRecords = data.length;
+  const ws = wsConnections.get(userId);
+  
+  // Send initial progress
+  if (ws) {
+    ws.send(JSON.stringify({
+      type: 'processing_progress',
+      uploadId,
+      progress: 0,
+      totalRecords,
+      processedRecords: 0
+    }));
+  }
   
   // Group orders by Order ID to handle duplicates (refunds)
   const orderGroups = new Map<string, any[]>();
@@ -198,6 +215,18 @@ async function processOrderData(data: any[], uploadId: number, userId: number): 
       if (!existingOrder) {
         await storage.createOrder(orderData);
         processedCount++;
+      }
+      
+      // Send progress update
+      if (ws) {
+        const progress = Math.round((processedCount / totalRecords) * 100);
+        ws.send(JSON.stringify({
+          type: 'processing_progress',
+          uploadId,
+          progress,
+          totalRecords,
+          processedRecords: processedCount
+        }));
       }
     } catch (error) {
       console.error('Error processing row:', error);
