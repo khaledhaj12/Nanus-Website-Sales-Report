@@ -14,6 +14,7 @@ import {
   X,
   ShoppingBag,
   Globe,
+  Shield,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 

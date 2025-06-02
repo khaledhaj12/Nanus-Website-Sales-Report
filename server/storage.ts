@@ -419,6 +419,33 @@ export class DatabaseStorage implements IStorage {
       .returning();
     return result;
   }
+
+  async getRecaptchaSettings(): Promise<RecaptchaSettings | undefined> {
+    const [settings] = await db.select().from(recaptchaSettings).limit(1);
+    return settings || undefined;
+  }
+
+  async upsertRecaptchaSettings(settings: InsertRecaptchaSettings): Promise<RecaptchaSettings> {
+    const existing = await this.getRecaptchaSettings();
+    
+    if (existing) {
+      const [result] = await db
+        .update(recaptchaSettings)
+        .set({
+          ...settings,
+          updatedAt: new Date(),
+        })
+        .where(eq(recaptchaSettings.id, existing.id))
+        .returning();
+      return result;
+    } else {
+      const [result] = await db
+        .insert(recaptchaSettings)
+        .values(settings)
+        .returning();
+      return result;
+    }
+  }
 }
 
 export const storage = new DatabaseStorage();

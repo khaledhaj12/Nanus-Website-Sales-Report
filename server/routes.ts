@@ -283,6 +283,60 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // reCAPTCHA settings endpoints
+  app.get('/api/recaptcha-settings', isAuthenticated, async (req, res) => {
+    try {
+      const settings = await storage.getRecaptchaSettings();
+      res.json(settings || { siteKey: '', secretKey: '', isActive: false });
+    } catch (error) {
+      console.error("Get reCAPTCHA settings error:", error);
+      res.status(500).json({ message: "Failed to get reCAPTCHA settings" });
+    }
+  });
+
+  app.post('/api/recaptcha-settings', isAuthenticated, async (req, res) => {
+    try {
+      const settings = await storage.upsertRecaptchaSettings(req.body);
+      res.json({ success: true, settings });
+    } catch (error) {
+      console.error("Update reCAPTCHA settings error:", error);
+      res.status(500).json({ message: "Failed to update reCAPTCHA settings" });
+    }
+  });
+
+  // Verify reCAPTCHA token
+  app.post('/api/verify-recaptcha', async (req, res) => {
+    try {
+      const { token } = req.body;
+      
+      if (!token) {
+        return res.status(400).json({ success: false, message: "reCAPTCHA token is required" });
+      }
+
+      const settings = await storage.getRecaptchaSettings();
+      if (!settings || !settings.isActive) {
+        return res.json({ success: true, message: "reCAPTCHA is disabled" });
+      }
+
+      const verifyUrl = `https://www.google.com/recaptcha/api/siteverify`;
+      const response = await axios.post(verifyUrl, null, {
+        params: {
+          secret: settings.secretKey,
+          response: token
+        }
+      });
+
+      if (response.data.success) {
+        res.json({ success: true, message: "reCAPTCHA verification successful" });
+      } else {
+        res.status(400).json({ success: false, message: "reCAPTCHA verification failed" });
+      }
+    } catch (error) {
+      console.error("reCAPTCHA verification error:", error);
+      res.status(500).json({ success: false, message: "reCAPTCHA verification error" });
+    }
+  });
+
   // Test WooCommerce connection endpoint
   app.post('/api/test-woo-connection', isAuthenticated, async (req, res) => {
     try {
