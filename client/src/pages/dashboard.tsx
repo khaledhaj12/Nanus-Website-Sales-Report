@@ -59,12 +59,17 @@ export default function Dashboard({ onMenuClick }: DashboardProps) {
 
   // Fetch monthly breakdown
   const { data: monthlyData = [], isLoading: monthlyLoading } = useQuery({
-    queryKey: ["/api/dashboard/monthly-breakdown", { year: currentDate.getFullYear(), location: selectedLocation }],
+    queryKey: ["/api/dashboard/monthly-breakdown", { startMonth, endMonth, location: selectedLocation }],
     queryFn: async () => {
       const params = new URLSearchParams();
-      params.append("year", currentDate.getFullYear().toString());
       if (selectedLocation && selectedLocation !== "all") {
         params.append("location", selectedLocation);
+      }
+      if (startMonth) {
+        params.append("startMonth", startMonth);
+      }
+      if (endMonth) {
+        params.append("endMonth", endMonth);
       }
       
       const response = await fetch(`/api/dashboard/monthly-breakdown?${params}`, {

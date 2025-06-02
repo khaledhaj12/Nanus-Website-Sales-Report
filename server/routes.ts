@@ -603,16 +603,35 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.get('/api/dashboard/monthly-breakdown', isAuthenticated, async (req, res) => {
     try {
-      const { year, locationId } = req.query;
+      const { year, locationId, location, startMonth, endMonth } = req.query;
       const { pool } = await import('./db');
       
-      const currentYear = year ? parseInt(year as string) : new Date().getFullYear();
-      let whereClause = `WHERE EXTRACT(YEAR FROM order_date) = $1`;
-      const params: any[] = [currentYear];
+      let whereClause = "WHERE 1=1";
+      const params: any[] = [];
       
-      if (locationId && locationId !== 'all') {
+      // Handle location parameter (can be 'location' or 'locationId')
+      const targetLocationId = location || locationId;
+      if (targetLocationId && targetLocationId !== 'all') {
         whereClause += ` AND location_id = $${params.length + 1}`;
-        params.push(parseInt(locationId as string));
+        params.push(parseInt(targetLocationId as string));
+      }
+      
+      // Handle date filtering - prioritize startMonth/endMonth over year
+      if (startMonth && endMonth) {
+        // Date range filtering
+        const startDate = `${startMonth}-01`;
+        const [endYear, endMonthNum] = (endMonth as string).split('-');
+        const lastDay = new Date(parseInt(endYear), parseInt(endMonthNum), 0).getDate();
+        const endDate = `${endMonth}-${lastDay.toString().padStart(2, '0')}`;
+        
+        whereClause += ` AND order_date >= $${params.length + 1} AND order_date <= $${params.length + 2}`;
+        params.push(startDate);
+        params.push(endDate);
+      } else if (year) {
+        // Year filtering (for backward compatibility)
+        const currentYear = parseInt(year as string);
+        whereClause += ` AND EXTRACT(YEAR FROM order_date) = $${params.length + 1}`;
+        params.push(currentYear);
       }
       
       const query = `
@@ -639,9 +658,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
           let orderWhereClause = `WHERE TO_CHAR(order_date, 'YYYY-MM') = $1`;
           const orderParams: any[] = [month];
           
-          if (locationId && locationId !== 'all') {
+          if (targetLocationId && targetLocationId !== 'all') {
             orderWhereClause += ` AND location_id = $${orderParams.length + 1}`;
-            orderParams.push(parseInt(locationId as string));
+            orderParams.push(parseInt(targetLocationId as string));
           }
           
           const orderQuery = `
