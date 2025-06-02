@@ -264,7 +264,7 @@ export default function MonthlyBreakdown({
                       </div>
                       <div>
                         <p className="text-xs text-gray-500 mb-1">Platform</p>
-                        <p className="font-medium text-yellow-600">{formatCurrency(monthData.totalSales * 0.07)}</p>
+                        <p className="font-medium text-yellow-600">{formatCurrency((monthData.totalSales * 0.07) - (monthData.totalRefunds * 0.07))}</p>
                       </div>
                       <div>
                         <p className="text-xs text-gray-500 mb-1">Stripe</p>
