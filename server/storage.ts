@@ -7,6 +7,7 @@ import {
   notes,
   wooOrders,
   webhookSettings,
+  webhookLogs,
   type User,
   type InsertUser,
   type Location,
@@ -21,6 +22,8 @@ import {
   type InsertWooOrder,
   type WebhookSettings,
   type InsertWebhookSettings,
+  type WebhookLog,
+  type InsertWebhookLog,
   type UserLocationAccess,
 } from "@shared/schema";
 import { db } from "./db";

@@ -6,10 +6,11 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import Header from "@/components/layout/header";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
-import { Copy, Settings as SettingsIcon, Webhook, Info, ExternalLink, Save } from "lucide-react";
+import { Copy, Settings as SettingsIcon, Webhook, Info, ExternalLink, Save, ChevronDown, ChevronRight, CheckCircle, XCircle, AlertCircle, Clock } from "lucide-react";
 
 interface SettingsProps {
   onMenuClick: () => void;

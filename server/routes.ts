@@ -1001,14 +1001,42 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Get webhook logs endpoint
+  app.get('/api/webhook-logs/:platform', requireAdmin, async (req, res) => {
+    try {
+      const { platform } = req.params;
+      const { limit } = req.query;
+      const logs = await storage.getRecentWebhookLogs(platform, parseInt(limit as string) || 20);
+      res.json(logs);
+    } catch (error) {
+      console.error("Get webhook logs error:", error);
+      res.status(500).json({ message: "Failed to get webhook logs" });
+    }
+  });
+
   // WooCommerce webhook endpoint
   app.post('/api/webhook/woocommerce', async (req, res) => {
+    let logData = {
+      platform: 'woocommerce',
+      status: 'error',
+      orderId: null,
+      orderTotal: null,
+      customerName: null,
+      location: null,
+      errorMessage: null,
+      payload: req.body,
+      headers: req.headers,
+    };
+
     try {
       console.log('WooCommerce webhook received:', JSON.stringify(req.body, null, 2));
       
       // Get stored webhook settings
       const webhookSettings = await storage.getWebhookSettings('woocommerce');
       if (!webhookSettings || !webhookSettings.isActive) {
+        logData.status = 'unauthorized';
+        logData.errorMessage = 'Webhook not configured or inactive';
+        await storage.createWebhookLog(logData);
         console.log('WooCommerce webhook not configured or inactive');
         return res.status(401).json({ error: 'Webhook not configured' });
       }
@@ -1017,14 +1045,24 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const providedSecret = req.headers['x-wc-webhook-signature'] || req.headers['x-webhook-secret'];
       
       if (!providedSecret || providedSecret !== webhookSettings.secretKey) {
+        logData.status = 'unauthorized';
+        logData.errorMessage = 'Invalid or missing webhook secret';
+        await storage.createWebhookLog(logData);
         console.log('Invalid or missing webhook secret');
         return res.status(401).json({ error: 'Unauthorized: Invalid webhook secret' });
       }
       
       const orderData = req.body;
       
+      // Extract order info for logging
+      logData.orderId = orderData?.id?.toString() || orderData?.number?.toString() || null;
+      logData.orderTotal = orderData?.total || null;
+      logData.customerName = `${orderData?.billing?.first_name || ''} ${orderData?.billing?.last_name || ''}`.trim() || null;
+      
       // Validate that this is a proper WooCommerce order webhook
       if (!orderData.id || !orderData.number) {
+        logData.errorMessage = 'Invalid webhook data - missing required order fields';
+        await storage.createWebhookLog(logData);
         console.log('Invalid webhook data - missing required order fields');
         return res.status(400).json({ error: 'Invalid webhook data' });
       }
@@ -1107,8 +1145,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
         await storage.createWooOrder(wooOrderData);
       }
       
+      // Log successful webhook processing
+      logData.status = 'success';
+      logData.location = locationName || 'Default Location';
+      await storage.createWebhookLog(logData);
+      
       res.status(200).json({ success: true, message: 'Order processed successfully' });
     } catch (error) {
+      logData.status = 'error';
+      logData.errorMessage = error.message;
+      await storage.createWebhookLog(logData);
       console.error('WooCommerce webhook error:', error);
       res.status(500).json({ error: 'Failed to process webhook' });
     }
