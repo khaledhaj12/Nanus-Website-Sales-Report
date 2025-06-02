@@ -768,33 +768,8 @@ export class DatabaseStorage implements IStorage {
 
     while (hasMore) {
       try {
-        // Create URL with proper authentication
-        const baseUrl = `${storeUrl}/wp-json/wc/v3/orders`;
-        const params = new URLSearchParams({
-          per_page: '100',
-          page: page.toString(),
-          consumer_key: consumerKey,
-          consumer_secret: consumerSecret
-        });
-        
-        // Add date filters if provided
-        if (startDate) {
-          params.append('after', `${startDate}T00:00:00`);
-        }
-        if (endDate) {
-          params.append('before', `${endDate}T23:59:59`);
-        }
-        
-        const url = `${baseUrl}?${params.toString()}`;
-        console.log(`Fetching orders from: ${baseUrl}?${params.toString().replace(consumerKey, 'XXX').replace(consumerSecret, 'XXX')}`);
-        
-        const response = await fetch(url, {
-          method: 'GET',
-          headers: {
-            'Content-Type': 'application/json',
-            'User-Agent': 'WooCommerce-Import/1.0'
-          }
-        });
+        const url = `${storeUrl}/wp-json/wc/v3/orders?per_page=100&page=${page}&consumer_key=${consumerKey}&consumer_secret=${consumerSecret}`;
+        const response = await fetch(url);
         
         if (!response.ok) {
           const errorText = await response.text();
