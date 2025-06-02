@@ -656,7 +656,8 @@ export class DatabaseStorage implements IStorage {
       .onConflictDoUpdate({
         target: webhookSettings.platform,
         set: {
-          ...settings,
+          secretKey: settings.secretKey,
+          isActive: settings.isActive,
           updatedAt: new Date(),
         },
       })

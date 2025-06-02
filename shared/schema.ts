@@ -132,7 +132,7 @@ export const wooOrders = pgTable("woo_orders", {
 // Webhook settings table
 export const webhookSettings = pgTable("webhook_settings", {
   id: serial("id").primaryKey(),
-  platform: varchar("platform", { length: 50 }).notNull(), // 'woocommerce'
+  platform: varchar("platform", { length: 50 }).notNull().unique(), // 'woocommerce'
   secretKey: varchar("secret_key", { length: 255 }).notNull(),
   isActive: boolean("is_active").default(true),
   createdAt: timestamp("created_at").defaultNow(),
