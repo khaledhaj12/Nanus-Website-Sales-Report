@@ -628,6 +628,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const fileUpload = await storage.createFileUpload({
         fileName: req.file.originalname,
         fileSize: req.file.size,
+        fileData: req.file.buffer.toString('base64'),
         uploadedBy: userId,
         status: 'processing',
         recordsProcessed: 0,
@@ -694,8 +695,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.setHeader('Content-Disposition', `attachment; filename="${upload.fileName}"`);
       res.setHeader('Content-Type', 'application/octet-stream');
       
-      // Send the file data
-      res.send(upload.fileData);
+      // Decode base64 file data and send as buffer
+      const fileBuffer = Buffer.from(upload.fileData, 'base64');
+      res.send(fileBuffer);
     } catch (error) {
       console.error("Download file error:", error);
       res.status(500).json({ message: "Failed to download file" });

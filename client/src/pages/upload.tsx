@@ -9,7 +9,7 @@ import Header from "@/components/layout/header";
 import { useToast } from "@/hooks/use-toast";
 import { formatFileSize, getFileIcon, validateFileType, validateFileSize } from "@/lib/fileUtils";
 import { apiRequest } from "@/lib/queryClient";
-import { CloudUpload, FileText, Trash2, Download, Clock } from "lucide-react";
+import { CloudUpload, FileText, Trash2, Download, Clock, CheckCircle, AlertCircle } from "lucide-react";
 
 interface UploadProps {
   onMenuClick: () => void;
@@ -18,6 +18,9 @@ interface UploadProps {
 export default function Upload({ onMenuClick }: UploadProps) {
   const [dragActive, setDragActive] = useState(false);
   const [selectedFiles, setSelectedFiles] = useState<number[]>([]);
+  const [uploadProgress, setUploadProgress] = useState(0);
+  const [uploadStatus, setUploadStatus] = useState<'idle' | 'uploading' | 'processing' | 'completed' | 'error'>('idle');
+  const [uploadFileName, setUploadFileName] = useState('');
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { toast } = useToast();
   const queryClient = useQueryClient();
@@ -32,35 +35,63 @@ export default function Upload({ onMenuClick }: UploadProps) {
 
   const uploadMutation = useMutation({
     mutationFn: async (file: File) => {
-      // Show upload starting notification
-      toast({
-        title: "Upload Started",
-        description: `Uploading ${file.name}...`,
-      });
+      setUploadFileName(file.name);
+      setUploadStatus('uploading');
+      setUploadProgress(0);
 
       const formData = new FormData();
       formData.append('file', file);
-      
-      const response = await fetch('/api/upload', {
-        method: 'POST',
-        body: formData,
-        credentials: 'include',
+
+      return new Promise((resolve, reject) => {
+        const xhr = new XMLHttpRequest();
+        
+        // Track upload progress
+        xhr.upload.addEventListener('progress', (event) => {
+          if (event.lengthComputable) {
+            const percentComplete = (event.loaded / event.total) * 100;
+            setUploadProgress(Math.round(percentComplete));
+          }
+        });
+
+        xhr.addEventListener('load', () => {
+          if (xhr.status >= 200 && xhr.status < 300) {
+            setUploadStatus('processing');
+            setUploadProgress(100);
+            
+            try {
+              const response = JSON.parse(xhr.responseText);
+              resolve(response);
+            } catch (e) {
+              reject(new Error('Failed to parse response'));
+            }
+          } else {
+            try {
+              const errorData = JSON.parse(xhr.responseText);
+              reject(new Error(errorData.message || 'Upload failed'));
+            } catch (e) {
+              reject(new Error('Upload failed'));
+            }
+          }
+        });
+
+        xhr.addEventListener('error', () => {
+          reject(new Error('Network error occurred'));
+        });
+
+        xhr.withCredentials = true;
+        xhr.open('POST', '/api/upload');
+        xhr.send(formData);
       });
-      
-      if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.message || 'Upload failed');
-      }
-      
-      return response.json();
     },
     onSuccess: (data, file) => {
+      setUploadStatus('completed');
       toast({
         title: "Upload Completed",
         description: `${file.name} has been processed successfully`,
       });
       // Refresh the data
       queryClient.invalidateQueries({ queryKey: ["/api/uploads/recent"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/uploads/all"] });
       queryClient.invalidateQueries({ queryKey: ["/api/dashboard/summary"] });
       queryClient.invalidateQueries({ queryKey: ["/api/locations"] });
       
@@ -68,13 +99,28 @@ export default function Upload({ onMenuClick }: UploadProps) {
       if (fileInputRef.current) {
         fileInputRef.current.value = '';
       }
+      
+      // Reset progress after 2 seconds
+      setTimeout(() => {
+        setUploadStatus('idle');
+        setUploadProgress(0);
+        setUploadFileName('');
+      }, 2000);
     },
     onError: (error, file) => {
+      setUploadStatus('error');
       toast({
         title: "Upload Failed",
         description: `Failed to upload ${file.name}: ${error.message}`,
         variant: "destructive",
       });
+      
+      // Reset progress after 3 seconds
+      setTimeout(() => {
+        setUploadStatus('idle');
+        setUploadProgress(0);
+        setUploadFileName('');
+      }, 3000);
     },
   });
 
@@ -89,6 +135,7 @@ export default function Upload({ onMenuClick }: UploadProps) {
       });
       setSelectedFiles([]);
       queryClient.invalidateQueries({ queryKey: ["/api/uploads/recent"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/uploads/all"] });
     },
     onError: (error) => {
       toast({
@@ -187,16 +234,55 @@ export default function Upload({ onMenuClick }: UploadProps) {
               onDragOver={handleDrag}
               onDrop={handleDrop}
             >
-              {uploadMutation.isPending ? (
-                <>
-                  <div className="animate-spin rounded-full h-16 w-16 border-b-2 border-blue-600 mx-auto mb-4"></div>
-                  <h4 className="text-lg font-medium text-gray-900 mb-2">
-                    Processing your file...
+              {uploadStatus !== 'idle' ? (
+                <div className="max-w-md mx-auto">
+                  {/* Status Icon */}
+                  <div className="flex justify-center mb-4">
+                    {uploadStatus === 'uploading' && (
+                      <div className="animate-spin rounded-full h-16 w-16 border-b-2 border-blue-600"></div>
+                    )}
+                    {uploadStatus === 'processing' && (
+                      <div className="animate-pulse">
+                        <div className="bg-blue-600 rounded-full h-16 w-16 flex items-center justify-center">
+                          <FileText className="h-8 w-8 text-white" />
+                        </div>
+                      </div>
+                    )}
+                    {uploadStatus === 'completed' && (
+                      <CheckCircle className="h-16 w-16 text-green-600" />
+                    )}
+                    {uploadStatus === 'error' && (
+                      <AlertCircle className="h-16 w-16 text-red-600" />
+                    )}
+                  </div>
+
+                  {/* Status Text */}
+                  <h4 className="text-lg font-medium text-gray-900 mb-2 text-center">
+                    {uploadStatus === 'uploading' && `Uploading ${uploadFileName}...`}
+                    {uploadStatus === 'processing' && `Processing ${uploadFileName}...`}
+                    {uploadStatus === 'completed' && `Upload Completed!`}
+                    {uploadStatus === 'error' && `Upload Failed`}
                   </h4>
-                  <p className="text-gray-600 mb-4">
-                    Please wait while we process and import your data
+
+                  {/* Progress Bar */}
+                  <div className="w-full bg-gray-200 rounded-full h-3 mb-4">
+                    <div 
+                      className={`h-3 rounded-full transition-all duration-300 ${
+                        uploadStatus === 'completed' ? 'bg-green-600' : 
+                        uploadStatus === 'error' ? 'bg-red-600' : 'bg-blue-600'
+                      }`}
+                      style={{ width: `${uploadProgress}%` }}
+                    ></div>
+                  </div>
+
+                  {/* Status Description */}
+                  <p className="text-gray-600 text-center text-sm">
+                    {uploadStatus === 'uploading' && `${uploadProgress}% uploaded`}
+                    {uploadStatus === 'processing' && 'Importing data and calculating fees...'}
+                    {uploadStatus === 'completed' && 'File has been successfully processed'}
+                    {uploadStatus === 'error' && 'Please try again or check your file format'}
                   </p>
-                </>
+                </div>
               ) : (
                 <>
                   <CloudUpload className="mx-auto h-16 w-16 text-gray-400 mb-4" />
