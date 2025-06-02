@@ -99,14 +99,17 @@ function AppRouter() {
   };
 
   return (
-    <div className="flex h-screen bg-slate-50">
-      <Sidebar
-        activeSection={activeSection}
-        onSectionChange={handleSectionChange}
-        isOpen={sidebarOpen}
-        onToggle={toggleSidebar}
-      />
-      {renderPage()}
+    <div className="flex flex-col h-screen bg-slate-50">
+      <div className="flex flex-1">
+        <Sidebar
+          activeSection={activeSection}
+          onSectionChange={handleSectionChange}
+          isOpen={sidebarOpen}
+          onToggle={toggleSidebar}
+        />
+        {renderPage()}
+      </div>
+      <Footer />
     </div>
   );
 }
