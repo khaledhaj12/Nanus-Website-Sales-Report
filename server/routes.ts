@@ -494,20 +494,36 @@ export async function registerRoutes(app: Express): Promise<Server> {
               continue;
             }
 
-            // Only assign location if orderable metadata exists
+            // Location assignment logic with domain-based defaults
             let location = null;
             const orderableLocationMeta = order.meta_data?.find((meta: any) => meta.key === '_orderable_location_name')?.value;
             
             if (orderableLocationMeta) {
+              // Use orderable metadata if available
               location = await storage.getLocationByName(orderableLocationMeta);
               if (!location) {
                 location = await storage.createLocation({ name: orderableLocationMeta });
               }
             } else {
-              // Create or get "Unknown Location" for orders without orderable metadata
-              location = await storage.getLocationByName('Unknown Location');
+              // No orderable metadata - assign default location based on store domain
+              let defaultLocationName = '';
+              
+              if (storeUrl.includes('delaware.nanushotchicken.co')) {
+                defaultLocationName = '414 North Union St, Wilmington DE';
+              } else if (storeUrl.includes('drexel.nanushotchicken.co')) {
+                defaultLocationName = '3301 Market St, Philadelphia';
+              } else {
+                // Main store or any other domain
+                defaultLocationName = '4407 Chestnut St, Philadelphia';
+              }
+              
+              location = await storage.getLocationByName(defaultLocationName);
               if (!location) {
-                location = await storage.createLocation({ name: 'Unknown Location' });
+                location = await storage.createLocation({ 
+                  name: defaultLocationName,
+                  code: defaultLocationName.toLowerCase().replace(/[^a-z0-9]/g, '_'),
+                  isActive: true
+                });
               }
             }
 
