@@ -188,8 +188,6 @@ export default function Dashboard({ onMenuClick }: DashboardProps) {
                 </PopoverTrigger>
                 <PopoverContent className="w-[280px] p-0" align="start">
                   <Command>
-                    <CommandInput placeholder="Search status..." className="h-9" />
-                    <CommandEmpty>No status found.</CommandEmpty>
                     <CommandGroup className="p-2">
                       {["processing", "completed", "pending", "on-hold", "cancelled", "refunded", "failed", "checkout-draft"].map((status) => (
                         <CommandItem
