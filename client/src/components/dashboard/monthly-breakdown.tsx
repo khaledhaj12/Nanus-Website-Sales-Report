@@ -89,6 +89,24 @@ export default function MonthlyBreakdown({
     },
   });
 
+  // Selection handlers
+  const handleSelectOrder = (orderId: number, checked: boolean) => {
+    if (checked) {
+      setSelectedOrders(prev => [...prev, orderId]);
+    } else {
+      setSelectedOrders(prev => prev.filter(id => id !== orderId));
+    }
+  };
+
+  const handleSelectAll = (monthOrders: Order[], checked: boolean) => {
+    const orderIds = monthOrders.map(order => order.id);
+    if (checked) {
+      setSelectedOrders(prev => [...new Set([...prev, ...orderIds])]);
+    } else {
+      setSelectedOrders(prev => prev.filter(id => !orderIds.includes(id)));
+    }
+  };
+
   const handleSort = (field: string) => {
     if (sortField === field) {
       setSortDirection(sortDirection === "asc" ? "desc" : "asc");
@@ -272,6 +290,12 @@ export default function MonthlyBreakdown({
                         <Table>
                           <TableHeader>
                             <TableRow>
+                              <TableHead className="w-12">
+                                <Checkbox
+                                  checked={monthData.orders.length > 0 && monthData.orders.every(order => selectedOrders.includes(order.id))}
+                                  onCheckedChange={(checked) => handleSelectAll(monthData.orders, checked === true)}
+                                />
+                              </TableHead>
                               <TableHead className="cursor-pointer hover:bg-gray-50" onClick={() => handleSort('orderDate')}>
                                 <div className="flex items-center space-x-1">
                                   <span>Date</span>
@@ -332,6 +356,12 @@ export default function MonthlyBreakdown({
                           <TableBody>
                             {getSortedOrders(monthData.orders).map((order) => (
                               <TableRow key={order.id}>
+                                <TableCell>
+                                  <Checkbox
+                                    checked={selectedOrders.includes(order.id)}
+                                    onCheckedChange={(checked) => handleSelectOrder(order.id, checked === true)}
+                                  />
+                                </TableCell>
                                 <TableCell>
                                   {new Date(order.orderDate).toLocaleDateString('en-US', { timeZone: 'UTC' })}
                                 </TableCell>
