@@ -810,6 +810,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const { locationId, location, statuses } = req.query;
       const { pool } = await import('./db');
       
+      console.log("Reports summary query params:", { locationId, location, statuses });
+      
       let whereClause = "WHERE 1=1";
       const params: any[] = [];
       
@@ -844,8 +846,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
         ${whereClause}
       `;
       
+      console.log("Reports summary query:", query);
+      console.log("Reports summary params:", params);
+      
       const result = await pool.query(query, params);
       const summary = result.rows[0];
+      
+      console.log("Reports summary result:", summary);
       
       res.json(summary);
     } catch (error) {
