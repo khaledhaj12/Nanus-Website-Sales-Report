@@ -259,44 +259,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post('/api/import-historical', isAuthenticated, async (req, res) => {
-    try {
-      const { startDate, endDate, platform = 'woocommerce' } = req.body;
-      
-      // Get API settings for the specific platform
-      const apiSettings = await storage.getRestApiSettings(platform);
-      if (!apiSettings || !apiSettings.consumerKey || !apiSettings.consumerSecret || !apiSettings.storeUrl) {
-        return res.status(400).json({ 
-          success: false, 
-          message: "WooCommerce API credentials not configured" 
-        });
-      }
 
-      // Import orders for the specified date range
-      console.log(`Starting import with: URL=${apiSettings.storeUrl}, StartDate=${startDate}, EndDate=${endDate}`);
-      const result = await storage.importWooOrders(
-        apiSettings.storeUrl,
-        apiSettings.consumerKey,
-        apiSettings.consumerSecret,
-        startDate,
-        endDate
-      );
-      console.log(`Import result: ${JSON.stringify(result)}`);
-
-      res.json({ 
-        success: true, 
-        message: `Historical import completed: ${result.imported} orders imported, ${result.skipped} skipped`,
-        imported: result.imported,
-        skipped: result.skipped
-      });
-    } catch (error) {
-      console.error("Import historical orders error:", error);
-      res.status(500).json({ 
-        success: false, 
-        message: "Failed to import historical orders" 
-      });
-    }
-  });
 
   // REST API settings endpoints
   app.get('/api/rest-api-settings/:platform', isAuthenticated, async (req, res) => {
