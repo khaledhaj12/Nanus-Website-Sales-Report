@@ -800,8 +800,10 @@ export class DatabaseStorage implements IStorage {
             // Look for orderable location in meta data
             if (order.meta_data && Array.isArray(order.meta_data)) {
               const orderableLocationMeta = order.meta_data.find((meta: any) => 
-                meta.key === 'orderable_location' || 
+                meta.key === '_orderable_location_name' || 
+                meta.key === 'orderable_location_name' ||
                 meta.key === '_orderable_location' ||
+                meta.key === 'orderable_location' ||
                 meta.key === 'store_location' ||
                 meta.key === '_store_location'
               );
