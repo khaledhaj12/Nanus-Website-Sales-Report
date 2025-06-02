@@ -671,6 +671,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  app.get('/api/uploads/all', requireAdmin, async (req, res) => {
+    try {
+      const uploads = await storage.getAllFileUploads();
+      res.json(uploads);
+    } catch (error) {
+      console.error("All uploads error:", error);
+      res.status(500).json({ message: "Failed to fetch all uploads" });
+    }
+  });
+
   app.delete('/api/uploads', requireAdmin, async (req, res) => {
     try {
       const { ids } = req.body;

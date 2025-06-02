@@ -9,7 +9,7 @@ import Header from "@/components/layout/header";
 import { useToast } from "@/hooks/use-toast";
 import { formatFileSize, getFileIcon, validateFileType, validateFileSize } from "@/lib/fileUtils";
 import { apiRequest } from "@/lib/queryClient";
-import { CloudUpload, FileText, Trash2 } from "lucide-react";
+import { CloudUpload, FileText, Trash2, Download, Clock } from "lucide-react";
 
 interface UploadProps {
   onMenuClick: () => void;
@@ -24,6 +24,10 @@ export default function Upload({ onMenuClick }: UploadProps) {
 
   const { data: recentUploads = [], isLoading } = useQuery({
     queryKey: ["/api/uploads/recent"],
+  });
+
+  const { data: allUploads = [], isLoading: historyLoading } = useQuery({
+    queryKey: ["/api/uploads/all"],
   });
 
   const uploadMutation = useMutation({
@@ -314,6 +318,215 @@ export default function Upload({ onMenuClick }: UploadProps) {
                     </TableBody>
                   </Table>
                 </div>
+              )}
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Upload History Section */}
+        <Card className="mt-6">
+          <CardHeader>
+            <div className="flex justify-between items-center">
+              <div>
+                <CardTitle className="flex items-center">
+                  <Clock className="mr-2 h-5 w-5" />
+                  Upload History
+                </CardTitle>
+                <p className="text-sm text-gray-600">Complete history of all uploaded files</p>
+              </div>
+              {selectedFiles.length > 0 && (
+                <Button
+                  variant="destructive"
+                  onClick={() => {
+                    if (confirm(`Are you sure you want to delete ${selectedFiles.length} file(s)? This action cannot be undone.`)) {
+                      deleteFilesMutation.mutate(selectedFiles);
+                    }
+                  }}
+                  disabled={deleteFilesMutation.isPending}
+                >
+                  <Trash2 className="h-4 w-4 mr-2" />
+                  Delete Selected ({selectedFiles.length})
+                </Button>
+              )}
+            </div>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-4">
+              {historyLoading ? (
+                <div className="space-y-4">
+                  {[1, 2, 3, 4, 5].map(i => (
+                    <div key={i} className="animate-pulse">
+                      <div className="h-16 bg-gray-200 rounded"></div>
+                    </div>
+                  ))}
+                </div>
+              ) : (allUploads as any[]).length === 0 ? (
+                <div className="text-center py-8">
+                  <FileText className="mx-auto h-12 w-12 text-gray-400 mb-2" />
+                  <p className="text-gray-500">No upload history found</p>
+                </div>
+              ) : (
+                <>
+                  {/* Desktop Table View */}
+                  <div className="hidden md:block border rounded-lg overflow-hidden">
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead className="w-12">
+                            <Checkbox
+                              checked={(allUploads as any[]).length > 0 && selectedFiles.length === (allUploads as any[]).length}
+                              onCheckedChange={(checked) => {
+                                if (checked) {
+                                  setSelectedFiles((allUploads as any[]).map((upload: any) => upload.id));
+                                } else {
+                                  setSelectedFiles([]);
+                                }
+                              }}
+                            />
+                          </TableHead>
+                          <TableHead>File Name</TableHead>
+                          <TableHead>Upload Date</TableHead>
+                          <TableHead>Size</TableHead>
+                          <TableHead>Records</TableHead>
+                          <TableHead>Status</TableHead>
+                          <TableHead>Actions</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {(allUploads as any[]).map((upload: any) => (
+                          <TableRow key={upload.id}>
+                            <TableCell>
+                              <Checkbox
+                                checked={selectedFiles.includes(upload.id)}
+                                onCheckedChange={(checked) => {
+                                  if (checked) {
+                                    setSelectedFiles([...selectedFiles, upload.id]);
+                                  } else {
+                                    setSelectedFiles(selectedFiles.filter(id => id !== upload.id));
+                                  }
+                                }}
+                              />
+                            </TableCell>
+                            <TableCell>
+                              <div className="flex items-center">
+                                <i className={`${getFileIcon(upload.fileName)} text-green-600 mr-3 text-xl`} />
+                                <span className="font-medium">{upload.fileName}</span>
+                              </div>
+                            </TableCell>
+                            <TableCell>
+                              {new Date(upload.createdAt).toLocaleDateString()}
+                            </TableCell>
+                            <TableCell>
+                              {formatFileSize(upload.fileSize)}
+                            </TableCell>
+                            <TableCell>
+                              {upload.recordsProcessed}
+                            </TableCell>
+                            <TableCell>
+                              <Badge className={getStatusBadgeStyle(upload.status)}>
+                                {upload.status.charAt(0).toUpperCase() + upload.status.slice(1)}
+                              </Badge>
+                            </TableCell>
+                            <TableCell>
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => {
+                                  // Create download link for the file
+                                  const link = document.createElement('a');
+                                  link.href = `/api/uploads/${upload.id}/download`;
+                                  link.download = upload.fileName;
+                                  document.body.appendChild(link);
+                                  link.click();
+                                  document.body.removeChild(link);
+                                }}
+                              >
+                                <Download className="h-4 w-4" />
+                              </Button>
+                            </TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  </div>
+
+                  {/* Mobile Card View */}
+                  <div className="md:hidden space-y-3">
+                    <div className="flex items-center gap-3 p-3 bg-gray-100 rounded-lg">
+                      <Checkbox
+                        checked={(allUploads as any[]).length > 0 && selectedFiles.length === (allUploads as any[]).length}
+                        onCheckedChange={(checked) => {
+                          if (checked) {
+                            setSelectedFiles((allUploads as any[]).map((upload: any) => upload.id));
+                          } else {
+                            setSelectedFiles([]);
+                          }
+                        }}
+                      />
+                      <span className="text-sm text-gray-600">
+                        Select All ({selectedFiles.length} of {(allUploads as any[]).length} selected)
+                      </span>
+                    </div>
+                    
+                    {(allUploads as any[]).map((upload: any) => (
+                      <div key={upload.id} className="border rounded-lg p-4 bg-white">
+                        <div className="flex justify-between items-start mb-3">
+                          <div className="flex items-center gap-3">
+                            <Checkbox
+                              checked={selectedFiles.includes(upload.id)}
+                              onCheckedChange={(checked) => {
+                                if (checked) {
+                                  setSelectedFiles([...selectedFiles, upload.id]);
+                                } else {
+                                  setSelectedFiles(selectedFiles.filter(id => id !== upload.id));
+                                }
+                              }}
+                            />
+                            <div>
+                              <div className="flex items-center">
+                                <i className={`${getFileIcon(upload.fileName)} text-green-600 mr-2 text-lg`} />
+                                <span className="font-medium text-sm">{upload.fileName}</span>
+                              </div>
+                              <div className="text-xs text-gray-500 mt-1">
+                                {new Date(upload.createdAt).toLocaleDateString()}
+                              </div>
+                            </div>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <Badge className={getStatusBadgeStyle(upload.status)}>
+                              {upload.status.charAt(0).toUpperCase() + upload.status.slice(1)}
+                            </Badge>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => {
+                                const link = document.createElement('a');
+                                link.href = `/api/uploads/${upload.id}/download`;
+                                link.download = upload.fileName;
+                                document.body.appendChild(link);
+                                link.click();
+                                document.body.removeChild(link);
+                              }}
+                            >
+                              <Download className="h-4 w-4" />
+                            </Button>
+                          </div>
+                        </div>
+                        
+                        <div className="grid grid-cols-2 gap-4 text-sm">
+                          <div>
+                            <span className="text-gray-500">Size:</span>
+                            <div>{formatFileSize(upload.fileSize)}</div>
+                          </div>
+                          <div>
+                            <span className="text-gray-500">Records:</span>
+                            <div>{upload.recordsProcessed}</div>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </>
               )}
             </div>
           </CardContent>

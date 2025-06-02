@@ -56,6 +56,7 @@ export interface IStorage {
   createFileUpload(fileUpload: InsertFileUpload): Promise<FileUpload>;
   updateFileUpload(id: number, fileUpload: Partial<InsertFileUpload>): Promise<FileUpload>;
   getRecentFileUploads(limit?: number): Promise<FileUpload[]>;
+  getAllFileUploads(): Promise<FileUpload[]>;
   deleteFileUploads(ids: number[]): Promise<void>;
   
   // User location access
@@ -293,6 +294,13 @@ export class DatabaseStorage implements IStorage {
       .from(fileUploads)
       .orderBy(desc(fileUploads.createdAt))
       .limit(limit);
+  }
+
+  async getAllFileUploads(): Promise<FileUpload[]> {
+    return await db
+      .select()
+      .from(fileUploads)
+      .orderBy(desc(fileUploads.createdAt));
   }
 
   async deleteFileUploads(ids: number[]): Promise<void> {
