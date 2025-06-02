@@ -204,68 +204,38 @@ export class DatabaseStorage implements IStorage {
     console.log("Delete result:", result);
   }
 
-  // WooCommerce order functions for import functionality
+  // WooCommerce order functions using raw SQL (working approach)
   async getWooOrderByWooOrderId(wooOrderId: string): Promise<any> {
-    const result = await db.execute(sql.raw(`SELECT * FROM woo_orders WHERE woo_order_id = '${wooOrderId}' LIMIT 1`));
+    const result = await db.execute(sql`SELECT * FROM woo_orders WHERE woo_order_id = ${wooOrderId} LIMIT 1`);
     return result.rows[0] || null;
   }
 
   async createWooOrder(orderData: any): Promise<any> {
-    // Convert camelCase field names to snake_case to match database columns
-    const fieldMapping: Record<string, string> = {
-      wooOrderId: 'woo_order_id',
-      orderId: 'order_id',
-      locationId: 'location_id',
-      customerName: 'customer_name',
-      firstName: 'first_name',
-      lastName: 'last_name',
-      customerEmail: 'customer_email',
-      customerPhone: 'customer_phone',
-      customerId: 'customer_id',
-      refundAmount: 'refund_amount',
-      orderDate: 'order_date',
-      wooOrderNumber: 'woo_order_number',
-      paymentMethod: 'payment_method',
-      shippingTotal: 'shipping_total',
-      taxTotal: 'tax_total',
-      discountTotal: 'discount_total',
-      paymentMethodTitle: 'payment_method_title',
-      shippingFirstName: 'shipping_first_name',
-      shippingLastName: 'shipping_last_name',
-      shippingAddress1: 'shipping_address_1',
-      shippingAddress2: 'shipping_address_2',
-      shippingCity: 'shipping_city',
-      shippingState: 'shipping_state',
-      shippingPostcode: 'shipping_postcode',
-      shippingCountry: 'shipping_country',
-      billingFirstName: 'billing_first_name',
-      billingLastName: 'billing_last_name',
-      billingAddress1: 'billing_address_1',
-      billingAddress2: 'billing_address_2',
-      billingCity: 'billing_city',
-      billingState: 'billing_state',
-      billingPostcode: 'billing_postcode',
-      billingCountry: 'billing_country',
-      locationMeta: 'location_meta',
-      orderNotes: 'order_notes',
-      customerNote: 'customer_note',
-      lineItems: 'line_items',
-      metaData: 'meta_data',
-      rawData: 'raw_data'
-    };
-
-    const mappedData: Record<string, any> = {};
-    for (const [camelKey, value] of Object.entries(orderData)) {
-      const snakeKey = fieldMapping[camelKey] || camelKey;
-      mappedData[snakeKey] = value;
-    }
-
-    const columns = Object.keys(mappedData);
-    const placeholders = columns.map((_, index) => `$${index + 1}`).join(', ');
-    const values = Object.values(mappedData);
-    
-    const query = `INSERT INTO woo_orders (${columns.join(', ')}) VALUES (${placeholders}) RETURNING *`;
-    const result = await db.execute(sql.raw(query, values));
+    // Use the exact field names as they come from the route
+    const result = await db.execute(sql`
+      INSERT INTO woo_orders (
+        woo_order_id, order_id, location_id, customer_name, first_name, last_name,
+        customer_email, customer_phone, customer_id, amount, subtotal, shipping_total,
+        tax_total, discount_total, refund_amount, status, order_date, woo_order_number,
+        payment_method, payment_method_title, currency, shipping_first_name, shipping_last_name,
+        shipping_address_1, shipping_address_2, shipping_city, shipping_state, shipping_postcode,
+        shipping_country, billing_first_name, billing_last_name, billing_address_1, billing_address_2,
+        billing_city, billing_state, billing_postcode, billing_country, location_meta,
+        order_notes, customer_note, line_items, meta_data, raw_data
+      ) VALUES (
+        ${orderData.wooOrderId}, ${orderData.orderId}, ${orderData.locationId}, ${orderData.customerName},
+        ${orderData.firstName}, ${orderData.lastName}, ${orderData.customerEmail}, ${orderData.customerPhone},
+        ${orderData.customerId}, ${orderData.amount}, ${orderData.subtotal}, ${orderData.shippingTotal},
+        ${orderData.taxTotal}, ${orderData.discountTotal}, ${orderData.refundAmount}, ${orderData.status},
+        ${orderData.orderDate}, ${orderData.wooOrderNumber}, ${orderData.paymentMethod}, ${orderData.paymentMethodTitle},
+        ${orderData.currency}, ${orderData.shippingFirstName}, ${orderData.shippingLastName}, ${orderData.shippingAddress1},
+        ${orderData.shippingAddress2}, ${orderData.shippingCity}, ${orderData.shippingState}, ${orderData.shippingPostcode},
+        ${orderData.shippingCountry}, ${orderData.billingFirstName}, ${orderData.billingLastName}, ${orderData.billingAddress1},
+        ${orderData.billingAddress2}, ${orderData.billingCity}, ${orderData.billingState}, ${orderData.billingPostcode},
+        ${orderData.billingCountry}, ${orderData.locationMeta}, ${orderData.orderNotes}, ${orderData.customerNote},
+        ${orderData.lineItems}, ${orderData.metaData}, ${orderData.rawData}
+      ) RETURNING *
+    `);
     return result.rows[0];
   }
 
