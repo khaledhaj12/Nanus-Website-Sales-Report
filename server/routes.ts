@@ -1016,22 +1016,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // WooCommerce webhook endpoint
   app.post('/api/webhook/woocommerce', async (req, res) => {
-    let logData = {
-      platform: 'woocommerce',
-      status: 'error',
-      payload: req.body,
-      headers: req.headers,
-    } as any;
-
     try {
       console.log('WooCommerce webhook received:', JSON.stringify(req.body, null, 2));
       
       // Get stored webhook settings
       const webhookSettings = await storage.getWebhookSettings('woocommerce');
       if (!webhookSettings || !webhookSettings.isActive) {
-        logData.status = 'unauthorized';
-        logData.errorMessage = 'Webhook not configured or inactive';
-        await storage.createWebhookLog(logData);
         console.log('WooCommerce webhook not configured or inactive');
         return res.status(401).json({ error: 'Webhook not configured' });
       }
@@ -1040,9 +1030,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const providedSecret = req.headers['x-wc-webhook-signature'] || req.headers['x-webhook-secret'];
       
       if (!providedSecret || providedSecret !== webhookSettings.secretKey) {
-        logData.status = 'unauthorized';
-        logData.errorMessage = 'Invalid or missing webhook secret';
-        await storage.createWebhookLog(logData);
         console.log('Invalid or missing webhook secret');
         return res.status(401).json({ error: 'Unauthorized: Invalid webhook secret' });
       }
