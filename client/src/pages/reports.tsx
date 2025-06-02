@@ -90,7 +90,7 @@ export default function Reports({ onMenuClick }: ReportsProps) {
       <div className="p-6 max-w-7xl mx-auto space-y-6">
         {/* Filters */}
         <div className="bg-white p-4 rounded-lg shadow-sm border space-y-4">
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             {/* Date Range */}
             <div>
               <label className="text-sm font-medium text-gray-700 mb-2 block">Date Range</label>
@@ -118,27 +118,6 @@ export default function Reports({ onMenuClick }: ReportsProps) {
                   ))}
                 </SelectContent>
               </Select>
-            </div>
-
-            {/* Order Status Filter */}
-            <div>
-              <label className="text-sm font-medium text-gray-700 mb-2 block">Order Status</label>
-              <div className="flex flex-wrap gap-2">
-                {["processing", "completed", "refunded"].map((status) => (
-                  <Badge
-                    key={status}
-                    variant={selectedStatuses.includes(status) ? "default" : "outline"}
-                    className={`cursor-pointer ${
-                      status === "processing" ? "bg-blue-100 text-blue-800 hover:bg-blue-200" :
-                      status === "completed" ? "bg-green-100 text-green-800 hover:bg-green-200" :
-                      "bg-red-100 text-red-800 hover:bg-red-200"
-                    }`}
-                    onClick={() => toggleStatus(status)}
-                  >
-                    {status.charAt(0).toUpperCase() + status.slice(1)}
-                  </Badge>
-                ))}
-              </div>
             </div>
           </div>
         </div>
