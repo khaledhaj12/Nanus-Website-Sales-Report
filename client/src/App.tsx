@@ -18,6 +18,7 @@ import Users from "@/pages/users";
 import ApiConnections from "@/pages/api-connections";
 import Recaptcha from "@/pages/recaptcha";
 import FooterSettings from "@/pages/footer-settings";
+import LogoPage from "@/pages/logo";
 import NotFound from "@/pages/not-found";
 
 // Layout
@@ -93,6 +94,8 @@ function AppRouter() {
         return isAdmin ? <Recaptcha {...commonProps} /> : <Dashboard {...commonProps} />;
       case "footer":
         return isAdmin ? <FooterSettings {...commonProps} /> : <Dashboard {...commonProps} />;
+      case "logo":
+        return isAdmin ? <LogoPage {...commonProps} /> : <Dashboard {...commonProps} />;
       default:
         return <Dashboard {...commonProps} />;
     }
