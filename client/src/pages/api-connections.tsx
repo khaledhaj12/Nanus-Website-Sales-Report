@@ -305,7 +305,12 @@ function ConnectionSettings({ connectionId, platform }: ConnectionSettingsProps)
   };
 
   const handleToggleSync = () => {
-    if (syncStatus && typeof syncStatus === 'object' && 'isRunning' in syncStatus && syncStatus.isRunning) {
+    // Only proceed if sync status data is loaded and valid
+    if (!syncStatus || syncStatusLoading) return;
+    
+    const isRunning = syncStatus && typeof syncStatus === 'object' && 'isRunning' in syncStatus && syncStatus.isRunning;
+    
+    if (isRunning) {
       stopSyncMutation.mutate();
     } else {
       startSyncMutation.mutate();
