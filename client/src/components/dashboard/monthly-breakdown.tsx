@@ -290,7 +290,7 @@ export default function MonthlyBreakdown({
                             {getSortedOrders(monthData.orders).map((order) => (
                               <TableRow key={order.id}>
                                 <TableCell>
-                                  {new Date(order.orderDate + 'Z').toLocaleDateString()}
+                                  {new Date(order.orderDate).toLocaleDateString('en-US', { timeZone: 'UTC' })}
                                 </TableCell>
                                 <TableCell className="font-mono text-blue-600">
                                   {order.orderId}
