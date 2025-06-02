@@ -11,8 +11,8 @@ interface Order {
   id: number;
   orderId: string;
   customerName: string;
-  customerEmail: string;
-  cardLast4: string;
+  customerEmail?: string;
+  cardLast4?: string;
   refundAmount: string;
   amount: string;
   status: string;

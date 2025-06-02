@@ -972,7 +972,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
                    w.shipping_first_name as "shippingFirstName",
                    w.shipping_last_name as "shippingLastName",
                    w.shipping_address_1 as "shippingAddress1",
+                   w.customer_email as "customerEmail",
                    w.amount, w.status, w.location_id as "locationId",
+                   CASE WHEN w.status = 'refunded' THEN w.amount ELSE 0 END as "refundAmount",
                    COALESCE(l.name, 'Unknown Location') as "locationName"
             FROM woo_orders w
             LEFT JOIN locations l ON w.location_id = l.id
