@@ -829,7 +829,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
         params.push(parseInt(targetLocationId as string));
       }
       
-      // Handle status filtering for reports - apply ALL statuses when none specified
+      // Handle date filtering for reports summary
+      const { startMonth, endMonth } = req.query;
+      if (startMonth && endMonth) {
+        const startDate = `${startMonth}-01`;
+        const [endYear, endMonthNum] = (endMonth as string).split('-');
+        const lastDay = new Date(parseInt(endYear), parseInt(endMonthNum), 0).getDate();
+        const endDate = `${endMonth}-${lastDay.toString().padStart(2, '0')}`;
+        
+        whereClause += ` AND order_date >= $${params.length + 1} AND order_date <= $${params.length + 2}`;
+        params.push(startDate);
+        params.push(endDate);
+      }
+      
+      // Handle status filtering for reports
       if (statuses && Array.isArray(statuses) && statuses.length > 0) {
         const statusFilter = statuses as string[];
         const statusPlaceholders = statusFilter.map((_, index) => `$${params.length + index + 1}`).join(', ');
@@ -839,7 +852,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
         whereClause += ` AND status = $${params.length + 1}`;
         params.push(statuses);
       }
-      // No default status filtering - show ALL orders when no filter applied
       
       const query = `
         SELECT 
