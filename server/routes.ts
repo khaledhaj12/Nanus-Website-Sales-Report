@@ -208,8 +208,10 @@ async function processOrderData(data: any[], uploadId: number, userId: number): 
       const existingOrder = await storage.getOrderByOrderId(orderData.orderId);
       if (!existingOrder) {
         await storage.createOrder(orderData);
-        processedCount++;
       }
+      
+      // Always increment processed count for progress tracking
+      processedCount++;
       
       // Update progress tracking
       uploadProgress.set(uploadId, {
@@ -218,6 +220,8 @@ async function processOrderData(data: any[], uploadId: number, userId: number): 
         processedRecords: processedCount,
         status: 'processing'
       });
+      
+      console.log(`Processed ${processedCount}/${totalRecords} records (${Math.round((processedCount / totalRecords) * 100)}%)`);
       
       // Add delay to make progress visible (1000ms per record for demo)
       await new Promise(resolve => setTimeout(resolve, 1000));
