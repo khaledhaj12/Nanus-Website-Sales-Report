@@ -60,8 +60,8 @@ function ConnectionSettings({ connectionId, platform }: ConnectionSettingsProps)
   const { toast } = useToast();
   const queryClient = useQueryClient();
   
-  // Use original platform name for default connection, suffixed for others
-  const platformId = connectionId === 'default' ? platform : `${platform}-${connectionId}`;
+  // Use connection ID as platform identifier
+  const platformId = connectionId;
   
   // Sync settings state
   const [syncSettings, setSyncSettings] = useState<SyncSettings>({
