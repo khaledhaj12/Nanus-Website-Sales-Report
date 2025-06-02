@@ -371,31 +371,20 @@ export default function WooOrders() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-100 dark:from-gray-900 dark:via-gray-800 dark:to-gray-900">
-      <div className="w-full px-4 py-6 sm:py-8 max-w-none mx-auto">
+    <div className="min-h-screen bg-gray-50">
+      <div className="p-6 max-w-7xl mx-auto space-y-6">
         {/* Header */}
-        <div className="mb-8">
-          <div className="flex items-center gap-3 mb-4">
-            <div className="p-2 bg-gradient-to-r from-purple-600 to-pink-600 rounded-lg">
-              <Package className="h-6 w-6 text-white" />
-            </div>
-            <div>
-              <h1 className="text-2xl sm:text-3xl font-bold bg-gradient-to-r from-gray-900 to-gray-700 dark:from-white dark:to-gray-300 bg-clip-text text-transparent">
-                WooCommerce Orders
-              </h1>
-              <p className="text-gray-600 dark:text-gray-400 text-sm sm:text-base">
-                Manage and view your imported WooCommerce orders
-              </p>
-            </div>
-          </div>
+        <div className="mb-6">
+          <h1 className="text-2xl font-bold text-gray-900 mb-2">
+            WooCommerce Orders
+          </h1>
+          <p className="text-gray-600">
+            Manage and view your imported WooCommerce orders
+          </p>
         </div>
 
         {/* Controls */}
-        <Card className="mb-6 border-0 shadow-xl bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm">
-          <CardHeader className="pb-4">
-            <CardTitle className="text-lg">Order Management</CardTitle>
-          </CardHeader>
-          <CardContent>
+        <div className="bg-white p-4 rounded-lg shadow-sm border space-y-4">
             <div className="flex flex-col lg:flex-row gap-4 items-start lg:items-center justify-between">
               {/* Left side controls */}
               <div className="flex flex-col sm:flex-row gap-4 items-start sm:items-center flex-1">
@@ -460,14 +449,13 @@ export default function WooOrders() {
 
               </div>
             </div>
-          </CardContent>
-        </Card>
+        </div>
 
         {/* Orders Table */}
-        <Card className="border-0 shadow-xl bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm">
-          <CardHeader>
-            <CardTitle className="flex items-center justify-between">
-              <span>Orders ({filteredAndSortedOrders.length})</span>
+        <div className="bg-white rounded-lg shadow-sm border">
+          <div className="p-4 border-b">
+            <div className="flex items-center justify-between">
+              <span className="text-lg font-semibold">Orders ({filteredAndSortedOrders.length})</span>
               <div className="flex items-center gap-2">
                 {selectedOrders.length > 0 && (
                   <Button 
@@ -485,9 +473,9 @@ export default function WooOrders() {
                   Export
                 </Button>
               </div>
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
+            </div>
+          </div>
+          <div className="p-4">
             <div className="overflow-x-auto">
               <table className="w-full">
                 <thead>
@@ -552,7 +540,7 @@ export default function WooOrders() {
                     }
                   </p>
                   {!searchTerm && selectedLocation === "all" && (
-                    <Button onClick={() => setShowImportForm(true)}>
+                    <Button>
                       <Upload className="h-4 w-4 mr-2" />
                       Import Orders
                     </Button>
@@ -560,9 +548,8 @@ export default function WooOrders() {
                 </div>
               )}
             </div>
-          </CardContent>
-        </Card>
-
+          </div>
+        </div>
 
       </div>
     </div>
