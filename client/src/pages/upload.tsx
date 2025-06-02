@@ -19,6 +19,7 @@ export default function Upload({ onMenuClick }: UploadProps) {
   const [dragActive, setDragActive] = useState(false);
   const [selectedFiles, setSelectedFiles] = useState<number[]>([]);
   const [uploadProgress, setUploadProgress] = useState(0);
+  const [processingProgress, setProcessingProgress] = useState(0);
   const [uploadStatus, setUploadStatus] = useState<'idle' | 'uploading' | 'processing' | 'completed' | 'error'>('idle');
   const [uploadFileName, setUploadFileName] = useState('');
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -58,10 +59,24 @@ export default function Upload({ onMenuClick }: UploadProps) {
             setUploadStatus('processing');
             setUploadProgress(100);
             
+            // Simulate processing progress
+            let progress = 0;
+            const processingInterval = setInterval(() => {
+              progress += Math.random() * 15 + 5; // Random increment between 5-20%
+              if (progress >= 100) {
+                progress = 100;
+                clearInterval(processingInterval);
+              }
+              setProcessingProgress(Math.min(progress, 100));
+            }, 200);
+            
             try {
               const response = JSON.parse(xhr.responseText);
+              clearInterval(processingInterval);
+              setProcessingProgress(100);
               resolve(response);
             } catch (e) {
+              clearInterval(processingInterval);
               reject(new Error('Failed to parse response'));
             }
           } else {
@@ -104,6 +119,7 @@ export default function Upload({ onMenuClick }: UploadProps) {
       setTimeout(() => {
         setUploadStatus('idle');
         setUploadProgress(0);
+        setProcessingProgress(0);
         setUploadFileName('');
       }, 2000);
     },
@@ -119,6 +135,7 @@ export default function Upload({ onMenuClick }: UploadProps) {
       setTimeout(() => {
         setUploadStatus('idle');
         setUploadProgress(0);
+        setProcessingProgress(0);
         setUploadFileName('');
       }, 3000);
     },
@@ -264,20 +281,44 @@ export default function Upload({ onMenuClick }: UploadProps) {
                     {uploadStatus === 'error' && `Upload Failed`}
                   </h4>
 
-                  {/* Progress Bar */}
-                  <div className="w-full bg-gray-200 rounded-full h-3 mb-4">
-                    <div 
-                      className={`h-3 rounded-full transition-all duration-300 ${
-                        uploadStatus === 'completed' ? 'bg-green-600' : 
-                        uploadStatus === 'error' ? 'bg-red-600' : 'bg-blue-600'
-                      }`}
-                      style={{ width: `${uploadProgress}%` }}
-                    ></div>
+                  {/* Upload Progress Bar */}
+                  <div className="mb-4">
+                    <div className="flex justify-between text-sm text-gray-600 mb-1">
+                      <span>Upload Progress</span>
+                      <span>{uploadProgress}%</span>
+                    </div>
+                    <div className="w-full bg-gray-200 rounded-full h-2">
+                      <div 
+                        className={`h-2 rounded-full transition-all duration-300 ${
+                          uploadStatus === 'error' ? 'bg-red-600' : 'bg-blue-600'
+                        }`}
+                        style={{ width: `${uploadProgress}%` }}
+                      ></div>
+                    </div>
                   </div>
+
+                  {/* Processing Progress Bar */}
+                  {(uploadStatus === 'processing' || uploadStatus === 'completed') && (
+                    <div className="mb-4">
+                      <div className="flex justify-between text-sm text-gray-600 mb-1">
+                        <span>Processing Progress</span>
+                        <span>{Math.round(processingProgress)}%</span>
+                      </div>
+                      <div className="w-full bg-gray-200 rounded-full h-2">
+                        <div 
+                          className={`h-2 rounded-full transition-all duration-300 ${
+                            uploadStatus === 'completed' ? 'bg-green-600' : 
+                            uploadStatus === 'error' ? 'bg-red-600' : 'bg-orange-600'
+                          }`}
+                          style={{ width: `${processingProgress}%` }}
+                        ></div>
+                      </div>
+                    </div>
+                  )}
 
                   {/* Status Description */}
                   <p className="text-gray-600 text-center text-sm">
-                    {uploadStatus === 'uploading' && `${uploadProgress}% uploaded`}
+                    {uploadStatus === 'uploading' && 'Uploading file to server...'}
                     {uploadStatus === 'processing' && 'Importing data and calculating fees...'}
                     {uploadStatus === 'completed' && 'File has been successfully processed'}
                     {uploadStatus === 'error' && 'Please try again or check your file format'}
