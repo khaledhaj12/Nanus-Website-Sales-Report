@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { ChevronRight, ChevronDown, Search } from "lucide-react";
+import { ChevronRight, ChevronDown, ChevronUp, Search } from "lucide-react";
 import { formatCurrency } from "@/lib/feeCalculations";
 
 interface Order {
@@ -53,6 +53,42 @@ export default function MonthlyBreakdown({
   
   const [expandedMonths, setExpandedMonths] = useState<Set<string>>(defaultExpanded);
   const [searchTerm, setSearchTerm] = useState("");
+  const [sortField, setSortField] = useState<string>("");
+  const [sortDirection, setSortDirection] = useState<"asc" | "desc">("desc");
+
+  const handleSort = (field: string) => {
+    if (sortField === field) {
+      setSortDirection(sortDirection === "asc" ? "desc" : "asc");
+    } else {
+      setSortField(field);
+      setSortDirection("desc");
+    }
+  };
+
+  const getSortedOrders = (orders: Order[]) => {
+    if (!sortField) return orders;
+
+    return [...orders].sort((a, b) => {
+      let aValue: any = a[sortField as keyof Order];
+      let bValue: any = b[sortField as keyof Order];
+
+      // Handle different data types
+      if (sortField === 'orderDate') {
+        aValue = new Date(aValue);
+        bValue = new Date(bValue);
+      } else if (sortField === 'amount' || sortField === 'refundAmount') {
+        aValue = parseFloat(aValue || '0');
+        bValue = parseFloat(bValue || '0');
+      } else if (typeof aValue === 'string') {
+        aValue = aValue.toLowerCase();
+        bValue = bValue.toLowerCase();
+      }
+
+      if (aValue < bValue) return sortDirection === 'asc' ? -1 : 1;
+      if (aValue > bValue) return sortDirection === 'asc' ? 1 : -1;
+      return 0;
+    });
+  };
 
   const toggleMonth = (month: string) => {
     const newExpanded = new Set(expandedMonths);
@@ -193,23 +229,71 @@ export default function MonthlyBreakdown({
                         <Table>
                           <TableHeader>
                             <TableRow>
-                              <TableHead>Order ID</TableHead>
-                              <TableHead>Date</TableHead>
-                              <TableHead>Customer</TableHead>
+                              <TableHead className="cursor-pointer hover:bg-gray-50" onClick={() => handleSort('orderDate')}>
+                                <div className="flex items-center space-x-1">
+                                  <span>Date</span>
+                                  <div className="flex flex-col">
+                                    <ChevronUp className="h-3 w-3 text-gray-400" />
+                                    <ChevronDown className="h-3 w-3 text-gray-400 -mt-1" />
+                                  </div>
+                                </div>
+                              </TableHead>
+                              <TableHead className="cursor-pointer hover:bg-gray-50" onClick={() => handleSort('orderId')}>
+                                <div className="flex items-center space-x-1">
+                                  <span>Order ID</span>
+                                  <div className="flex flex-col">
+                                    <ChevronUp className="h-3 w-3 text-gray-400" />
+                                    <ChevronDown className="h-3 w-3 text-gray-400 -mt-1" />
+                                  </div>
+                                </div>
+                              </TableHead>
+                              <TableHead className="cursor-pointer hover:bg-gray-50" onClick={() => handleSort('customerName')}>
+                                <div className="flex items-center space-x-1">
+                                  <span>Customer</span>
+                                  <div className="flex flex-col">
+                                    <ChevronUp className="h-3 w-3 text-gray-400" />
+                                    <ChevronDown className="h-3 w-3 text-gray-400 -mt-1" />
+                                  </div>
+                                </div>
+                              </TableHead>
+                              <TableHead className="cursor-pointer hover:bg-gray-50" onClick={() => handleSort('amount')}>
+                                <div className="flex items-center space-x-1">
+                                  <span>Amount</span>
+                                  <div className="flex flex-col">
+                                    <ChevronUp className="h-3 w-3 text-gray-400" />
+                                    <ChevronDown className="h-3 w-3 text-gray-400 -mt-1" />
+                                  </div>
+                                </div>
+                              </TableHead>
+                              <TableHead className="cursor-pointer hover:bg-gray-50" onClick={() => handleSort('refundAmount')}>
+                                <div className="flex items-center space-x-1">
+                                  <span>Refund</span>
+                                  <div className="flex flex-col">
+                                    <ChevronUp className="h-3 w-3 text-gray-400" />
+                                    <ChevronDown className="h-3 w-3 text-gray-400 -mt-1" />
+                                  </div>
+                                </div>
+                              </TableHead>
+                              <TableHead className="cursor-pointer hover:bg-gray-50" onClick={() => handleSort('status')}>
+                                <div className="flex items-center space-x-1">
+                                  <span>Status</span>
+                                  <div className="flex flex-col">
+                                    <ChevronUp className="h-3 w-3 text-gray-400" />
+                                    <ChevronDown className="h-3 w-3 text-gray-400 -mt-1" />
+                                  </div>
+                                </div>
+                              </TableHead>
                               <TableHead>Location</TableHead>
-                              <TableHead>Refund</TableHead>
-                              <TableHead>Amount</TableHead>
-                              <TableHead>Status</TableHead>
                             </TableRow>
                           </TableHeader>
                           <TableBody>
                             {monthData.orders.map((order) => (
                               <TableRow key={order.id}>
-                                <TableCell className="font-mono text-blue-600">
-                                  {order.orderId}
-                                </TableCell>
                                 <TableCell>
                                   {new Date(order.orderDate).toLocaleDateString()}
+                                </TableCell>
+                                <TableCell className="font-mono text-blue-600">
+                                  {order.orderId}
                                 </TableCell>
                                 <TableCell>
                                   <div>
@@ -221,19 +305,19 @@ export default function MonthlyBreakdown({
                                     )}
                                   </div>
                                 </TableCell>
-                                <TableCell className="text-sm text-gray-600">
-                                  {order.locationName || 'N/A'}
+                                <TableCell className="font-semibold">
+                                  {formatCurrency(parseFloat(order.amount))}
                                 </TableCell>
                                 <TableCell className="text-red-600 font-medium">
                                   {order.refundAmount ? formatCurrency(parseFloat(order.refundAmount)) : '-'}
-                                </TableCell>
-                                <TableCell className="font-semibold">
-                                  {formatCurrency(parseFloat(order.amount))}
                                 </TableCell>
                                 <TableCell>
                                   <Badge className={getStatusColor(order.status)}>
                                     {order.status.charAt(0).toUpperCase() + order.status.slice(1)}
                                   </Badge>
+                                </TableCell>
+                                <TableCell className="text-sm text-gray-600">
+                                  {order.locationName || 'N/A'}
                                 </TableCell>
                               </TableRow>
                             ))}
