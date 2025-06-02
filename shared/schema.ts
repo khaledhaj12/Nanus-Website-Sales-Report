@@ -242,16 +242,7 @@ export const insertOrderSchema = createInsertSchema(orders).omit({
   updatedAt: true,
 });
 
-export const insertFileUploadSchema = createInsertSchema(fileUploads).omit({
-  id: true,
-  createdAt: true,
-});
 
-export const insertNoteSchema = createInsertSchema(notes).omit({
-  id: true,
-  createdAt: true,
-  updatedAt: true,
-});
 
 export const insertWooOrderSchema = createInsertSchema(wooOrders).omit({
   id: true,
@@ -283,10 +274,7 @@ export type Location = typeof locations.$inferSelect;
 export type InsertLocation = z.infer<typeof insertLocationSchema>;
 export type Order = typeof orders.$inferSelect;
 export type InsertOrder = z.infer<typeof insertOrderSchema>;
-export type FileUpload = typeof fileUploads.$inferSelect;
-export type InsertFileUpload = z.infer<typeof insertFileUploadSchema>;
-export type Note = typeof notes.$inferSelect;
-export type InsertNote = z.infer<typeof insertNoteSchema>;
+
 export type WooOrder = typeof wooOrders.$inferSelect;
 export type InsertWooOrder = z.infer<typeof insertWooOrderSchema>;
 export type WebhookSettings = typeof webhookSettings.$inferSelect;

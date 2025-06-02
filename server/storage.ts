@@ -2,9 +2,7 @@ import {
   users,
   locations,
   orders,
-  fileUploads,
   userLocationAccess,
-  notes,
   wooOrders,
   webhookSettings,
   webhookLogs,
@@ -15,10 +13,6 @@ import {
   type InsertLocation,
   type Order,
   type InsertOrder,
-  type FileUpload,
-  type InsertFileUpload,
-  type Note,
-  type InsertNote,
   type WooOrder,
   type InsertWooOrder,
   type WebhookSettings,
@@ -64,13 +58,7 @@ export interface IStorage {
   getOrdersByDateRange(startDate: string, endDate: string, locationId?: number): Promise<Order[]>;
   searchOrders(searchTerm: string, locationId?: number): Promise<Order[]>;
   
-  // File upload operations
-  createFileUpload(fileUpload: InsertFileUpload): Promise<FileUpload>;
-  updateFileUpload(id: number, fileUpload: Partial<InsertFileUpload>): Promise<FileUpload>;
-  getFileUpload(id: number): Promise<FileUpload | undefined>;
-  getRecentFileUploads(limit?: number): Promise<FileUpload[]>;
-  getAllFileUploads(): Promise<FileUpload[]>;
-  deleteFileUploads(ids: number[]): Promise<void>;
+
   
   // User location access
   getUserLocationAccess(userId: number): Promise<number[]>;
@@ -95,12 +83,7 @@ export interface IStorage {
     orders: Order[];
   }>>;
   
-  // Notes operations (admin only)
-  getNotes(userId: number): Promise<Note[]>;
-  getNote(id: number, userId: number): Promise<Note | undefined>;
-  createNote(note: InsertNote): Promise<Note>;
-  updateNote(id: number, note: Partial<InsertNote>, userId: number): Promise<Note>;
-  deleteNote(id: number, userId: number): Promise<void>;
+
   
   // WooCommerce orders operations
   getWooOrder(id: number): Promise<WooOrder | undefined>;
