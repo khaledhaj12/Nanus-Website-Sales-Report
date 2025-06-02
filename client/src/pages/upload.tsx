@@ -96,7 +96,9 @@ export default function Upload({ onMenuClick }: UploadProps) {
             
             try {
               const response = JSON.parse(xhr.responseText);
+              console.log('Upload response:', response);
               setCurrentUploadId(response.fileId);
+              console.log('Set currentUploadId to:', response.fileId);
               resolve(response);
             } catch (e) {
               reject(new Error('Failed to parse response'));
