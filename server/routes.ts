@@ -649,8 +649,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
         ${whereClause}
       `;
 
+      console.log("Dashboard summary query:", query);
+      console.log("Dashboard summary params:", params);
+
       const result = await pool.query(query, params);
       const row = result.rows[0] as any;
+
+      console.log("Dashboard summary raw result:", row);
 
       const summary = {
         totalSales: parseFloat(row.total_sales || '0'),
