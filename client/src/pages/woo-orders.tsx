@@ -123,6 +123,7 @@ export default function WooOrders() {
   const [sortBy, setSortBy] = useState<string>('orderDate');
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
   const [visibleColumns, setVisibleColumns] = useState<string[]>(DEFAULT_VISIBLE_COLUMNS);
+  const [selectedOrders, setSelectedOrders] = useState<number[]>([]);
 
 
   // Fetch data
