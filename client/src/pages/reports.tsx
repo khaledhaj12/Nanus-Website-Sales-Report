@@ -1,13 +1,11 @@
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Badge } from "@/components/ui/badge";
 import Header from "@/components/layout/header";
 import { MonthRangePicker } from "@/components/ui/month-range-picker";
 import MonthlyBreakdown from "@/components/dashboard/monthly-breakdown";
 import SummaryCards from "@/components/dashboard/summary-cards";
 import { useAuth } from "@/hooks/useAuth";
-import { ChevronDown } from "lucide-react";
 
 interface ReportsProps {
   onMenuClick: () => void;
@@ -21,7 +19,9 @@ export default function Reports({ onMenuClick }: ReportsProps) {
   const [startMonth, setStartMonth] = useState(currentMonth);
   const [endMonth, setEndMonth] = useState(currentMonth);
   const [selectedLocation, setSelectedLocation] = useState("all");
-  const [selectedStatuses, setSelectedStatuses] = useState(["processing", "completed", "refunded"]);
+  
+  // Fixed statuses for reports page - no user selection
+  const selectedStatuses = ["processing", "completed", "refunded"];
 
   const { data: locations = [] } = useQuery({
     queryKey: ["/api/locations"],
@@ -73,13 +73,7 @@ export default function Reports({ onMenuClick }: ReportsProps) {
     },
   });
 
-  const toggleStatus = (status: string) => {
-    setSelectedStatuses(prev => 
-      prev.includes(status) 
-        ? prev.filter(s => s !== status)
-        : [...prev, status]
-    );
-  };
+
 
   const isMultipleMonths = startMonth !== endMonth;
 
