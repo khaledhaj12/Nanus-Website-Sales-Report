@@ -646,13 +646,25 @@ export async function registerRoutes(app: Express): Promise<Server> {
         params.push(currentYear);
       }
       
+      // Handle status filtering
+      let statusFilter = ['processing', 'completed']; // Default to paid orders
+      if (statuses) {
+        statusFilter = Array.isArray(statuses) ? statuses as string[] : [statuses as string];
+      }
+      
+      if (statusFilter.length > 0) {
+        const statusPlaceholders = statusFilter.map((_, index) => `$${params.length + index + 1}`).join(', ');
+        whereClause += ` AND status IN (${statusPlaceholders})`;
+        params.push(...statusFilter);
+      }
+      
       const query = `
         SELECT 
           TO_CHAR(order_date, 'YYYY-MM') as month,
-          COALESCE(SUM(CASE WHEN status IN ('processing', 'completed') THEN amount::decimal ELSE 0 END), 0) as total_sales,
-          COUNT(CASE WHEN status IN ('processing', 'completed') THEN 1 END) as total_orders,
+          COALESCE(SUM(amount::decimal), 0) as total_sales,
+          COUNT(*) as total_orders,
           COALESCE(SUM(CASE WHEN status = 'refunded' THEN amount::decimal ELSE 0 END), 0) as total_refunds,
-          COALESCE(SUM(CASE WHEN status IN ('processing', 'completed') THEN (amount::decimal - (amount::decimal * 0.07) - (amount::decimal * 0.029 + 0.30)) ELSE 0 END), 0) as net_amount
+          COALESCE(SUM(amount::decimal - (amount::decimal * 0.07) - (amount::decimal * 0.029 + 0.30)), 0) as net_amount
         FROM woo_orders 
         ${whereClause}
         GROUP BY TO_CHAR(order_date, 'YYYY-MM')
@@ -673,6 +685,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
           if (targetLocationId && targetLocationId !== 'all') {
             orderWhereClause += ` AND location_id = $${orderParams.length + 1}`;
             orderParams.push(parseInt(targetLocationId as string));
+          }
+          
+          // Add status filtering to individual orders as well
+          if (statusFilter.length > 0) {
+            const statusPlaceholders = statusFilter.map((_, index) => `$${orderParams.length + index + 1}`).join(', ');
+            orderWhereClause += ` AND status IN (${statusPlaceholders})`;
+            orderParams.push(...statusFilter);
           }
           
           const orderQuery = `
