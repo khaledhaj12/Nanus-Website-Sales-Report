@@ -78,40 +78,42 @@ export default function Reports({ onMenuClick }: ReportsProps) {
   const isMultipleMonths = startMonth !== endMonth;
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="flex-1 flex flex-col overflow-hidden">
       <Header title="Reports & Order Management" onMenuClick={onMenuClick} />
       
-      <div className="p-6 max-w-7xl mx-auto space-y-6">
+      <main className="flex-1 overflow-auto p-4 md:p-6 bg-slate-50">
         {/* Filters */}
-        <div className="bg-white p-4 rounded-lg shadow-sm border space-y-4">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {/* Date Range */}
-            <div>
-              <label className="text-sm font-medium text-gray-700 mb-2 block">Date Range</label>
-              <MonthRangePicker
-                startValue={startMonth}
-                endValue={endMonth}
-                onStartChange={setStartMonth}
-                onEndChange={setEndMonth}
-              />
-            </div>
+        <div className="mb-6">
+          <div className="bg-white p-4 rounded-lg shadow-sm border">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {/* Date Range */}
+              <div>
+                <label className="text-sm font-medium text-gray-700 mb-2 block">Date Range</label>
+                <MonthRangePicker
+                  startValue={startMonth}
+                  endValue={endMonth}
+                  onStartChange={setStartMonth}
+                  onEndChange={setEndMonth}
+                />
+              </div>
 
-            {/* Location Filter */}
-            <div>
-              <label className="text-sm font-medium text-gray-700 mb-2 block">Location</label>
-              <Select value={selectedLocation} onValueChange={setSelectedLocation}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Select location" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All Locations</SelectItem>
-                  {locations.map((location: any) => (
-                    <SelectItem key={location.id} value={location.id.toString()}>
-                      {location.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              {/* Location Filter */}
+              <div>
+                <label className="text-sm font-medium text-gray-700 mb-2 block">Location</label>
+                <Select value={selectedLocation} onValueChange={setSelectedLocation}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select location" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All Locations</SelectItem>
+                    {locations.map((location: any) => (
+                      <SelectItem key={location.id} value={location.id.toString()}>
+                        {location.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
             </div>
           </div>
         </div>
@@ -136,7 +138,7 @@ export default function Reports({ onMenuClick }: ReportsProps) {
           endMonth={endMonth}
           isMultipleMonths={isMultipleMonths}
         />
-      </div>
+      </main>
     </div>
   );
 }
