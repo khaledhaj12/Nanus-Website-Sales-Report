@@ -395,17 +395,17 @@ export class DatabaseStorage implements IStorage {
     let whereConditions: any[] = [];
     
     if (locationId) {
-      whereConditions.push(eq(orders.locationId, locationId));
+      whereConditions.push(eq(wooOrders.locationId, locationId));
     }
     
     // If no month is specified, get the latest month from the data
     let targetMonth = month;
     if (!targetMonth) {
       const latestOrder = await db
-        .select({ orderDate: orders.orderDate })
-        .from(orders)
+        .select({ orderDate: wooOrders.orderDate })
+        .from(wooOrders)
         .where(whereConditions.length > 0 ? and(...whereConditions) : undefined)
-        .orderBy(desc(orders.orderDate))
+        .orderBy(desc(wooOrders.orderDate))
         .limit(1);
       
       if (latestOrder.length > 0) {
@@ -422,22 +422,22 @@ export class DatabaseStorage implements IStorage {
       // Get the last day of the month properly
       const lastDay = new Date(parseInt(year), parseInt(monthNum), 0).getDate();
       const endDate = `${year}-${monthNum}-${lastDay.toString().padStart(2, '0')}`;
-      whereConditions.push(gte(orders.orderDate, startDate));
-      whereConditions.push(lte(orders.orderDate, endDate));
+      whereConditions.push(gte(wooOrders.orderDate, startDate));
+      whereConditions.push(lte(wooOrders.orderDate, endDate));
     }
 
     const whereClause = whereConditions.length > 0 ? and(...whereConditions) : undefined;
 
     const result = await db
       .select({
-        totalSales: sql<number>`COALESCE(SUM(CASE WHEN ${orders.status} != 'refunded' THEN CAST(${orders.amount} AS DECIMAL) ELSE 0 END), 0)`,
-        totalRefunds: sql<number>`COALESCE(SUM(CASE WHEN ${orders.status} = 'refunded' THEN CAST(${orders.amount} AS DECIMAL) ELSE 0 END), 0)`,
-        totalOrders: sql<number>`COUNT(CASE WHEN ${orders.status} != 'refunded' THEN 1 END)`,
-        platformFees: sql<number>`COALESCE(SUM(CASE WHEN ${orders.status} != 'refunded' THEN CAST(${orders.platformFee} AS DECIMAL) ELSE 0 END), 0)`,
-        stripeFees: sql<number>`COALESCE(SUM(CASE WHEN ${orders.status} != 'refunded' THEN CAST(${orders.stripeFee} AS DECIMAL) ELSE 0 END), 0)`,
-        netDeposit: sql<number>`COALESCE(SUM(CASE WHEN ${orders.status} != 'refunded' THEN CAST(${orders.netAmount} AS DECIMAL) ELSE 0 END), 0)`,
+        totalSales: sql<number>`COALESCE(SUM(CASE WHEN ${wooOrders.status} != 'refunded' THEN CAST(${wooOrders.amount} AS DECIMAL) ELSE 0 END), 0)`,
+        totalRefunds: sql<number>`COALESCE(SUM(CASE WHEN ${wooOrders.status} = 'refunded' THEN CAST(${wooOrders.amount} AS DECIMAL) ELSE 0 END), 0)`,
+        totalOrders: sql<number>`COUNT(CASE WHEN ${wooOrders.status} != 'refunded' THEN 1 END)`,
+        platformFees: sql<number>`COALESCE(SUM(CASE WHEN ${wooOrders.status} != 'refunded' THEN CAST(${wooOrders.amount} AS DECIMAL) * 0.07 ELSE 0 END), 0)`,
+        stripeFees: sql<number>`COALESCE(SUM(CASE WHEN ${wooOrders.status} != 'refunded' THEN (CAST(${wooOrders.amount} AS DECIMAL) * 0.029 + 0.30) ELSE 0 END), 0)`,
+        netDeposit: sql<number>`COALESCE(SUM(CASE WHEN ${wooOrders.status} != 'refunded' THEN (CAST(${wooOrders.amount} AS DECIMAL) - (CAST(${wooOrders.amount} AS DECIMAL) * 0.07) - (CAST(${wooOrders.amount} AS DECIMAL) * 0.029 + 0.30)) ELSE 0 END), 0)`,
       })
-      .from(orders)
+      .from(wooOrders)
       .where(whereClause);
 
     return result[0] || {
@@ -456,22 +456,22 @@ export class DatabaseStorage implements IStorage {
     totalOrders: number;
     totalRefunds: number;
     netAmount: number;
-    orders: Order[];
+    orders: WooOrder[];
   }>> {
     // Get all orders and group by month in JavaScript to avoid SQL ORDER BY conflict
     let whereConditions: any[] = [];
     if (locationId) {
-      whereConditions.push(eq(orders.locationId, locationId));
+      whereConditions.push(eq(wooOrders.locationId, locationId));
     }
 
     const allOrders = await db
       .select()
-      .from(orders)
+      .from(wooOrders)
       .where(whereConditions.length > 0 ? and(...whereConditions) : undefined)
-      .orderBy(desc(orders.orderDate));
+      .orderBy(desc(wooOrders.orderDate));
 
     // Group orders by month
-    const monthGroups = new Map<string, Order[]>();
+    const monthGroups = new Map<string, WooOrder[]>();
     
     for (const order of allOrders) {
       const orderDate = new Date(order.orderDate);
@@ -493,7 +493,10 @@ export class DatabaseStorage implements IStorage {
 
       const totalSales = completedOrders.reduce((sum, order) => sum + parseFloat(order.amount), 0);
       const totalRefunds = refundedOrders.reduce((sum, order) => sum + parseFloat(order.amount), 0);
-      const netAmount = completedOrders.reduce((sum, order) => sum + parseFloat(order.netAmount), 0);
+      // Calculate fees and net amount from WooCommerce data
+      const platformFees = totalSales * 0.07;
+      const stripeFees = (totalSales * 0.029) + (completedOrders.length * 0.30);
+      const netAmount = totalSales - platformFees - stripeFees;
 
       months.push({
         month: monthKey,

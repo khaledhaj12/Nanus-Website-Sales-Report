@@ -100,7 +100,7 @@ export default function Reports({ onMenuClick }: ReportsProps) {
 
   // Query for detailed orders (table view for single month)
   const { data: rawOrders = [] } = useQuery({
-    queryKey: ["/api/orders", selectedLocation, startMonth, endMonth, searchQuery],
+    queryKey: ["/api/woo-orders", selectedLocation, startMonth, endMonth, searchQuery],
     enabled: isSingleMonth,
     queryFn: async () => {
       const params = new URLSearchParams();
@@ -117,7 +117,7 @@ export default function Reports({ onMenuClick }: ReportsProps) {
         params.append("endMonth", endMonth);
       }
       
-      const response = await fetch(`/api/orders?${params}`, {
+      const response = await fetch(`/api/woo-orders?${params}`, {
         credentials: "include",
       });
       
@@ -191,11 +191,11 @@ export default function Reports({ onMenuClick }: ReportsProps) {
   // Delete orders mutation (admin only)
   const deleteOrdersMutation = useMutation({
     mutationFn: async (orderIds: number[]) => {
-      await apiRequest("DELETE", "/api/orders/bulk-delete", { orderIds });
+      await apiRequest("DELETE", "/api/woo-orders/bulk-delete", { orderIds });
     },
     onSuccess: () => {
       // Invalidate all orders queries with any parameters
-      queryClient.invalidateQueries({ queryKey: ["/api/orders"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/woo-orders"] });
       queryClient.invalidateQueries({ queryKey: ["/api/dashboard/summary"] });
       queryClient.invalidateQueries({ queryKey: ["/api/dashboard/monthly-breakdown"] });
       setSelectedOrders([]);
