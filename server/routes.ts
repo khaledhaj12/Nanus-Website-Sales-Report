@@ -284,6 +284,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  app.post('/api/start-sync', isAuthenticated, async (req, res) => {
+    try {
+      await restartAutoSync();
+      res.json({ success: true, message: "Auto sync started successfully" });
+    } catch (error) {
+      console.error("Start sync error:", error);
+      res.status(500).json({ message: "Failed to start auto sync" });
+    }
+  });
+
   // REST API settings endpoints
   app.get('/api/rest-api-settings/:platform', isAuthenticated, async (req, res) => {
     try {
