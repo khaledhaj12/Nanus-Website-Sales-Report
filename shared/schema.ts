@@ -92,70 +92,7 @@ export const orders = pgTable("orders", {
 
 
 
-// WooCommerce orders table - comprehensive data capture
-export const wooOrders = pgTable("woo_orders", {
-  id: serial("id").primaryKey(),
-  wooOrderId: varchar("woo_order_id", { length: 50 }).notNull().unique(),
-  orderId: varchar("order_id", { length: 255 }).notNull(),
-  locationId: integer("location_id").references(() => locations.id),
-  
-  // Customer information
-  customerName: varchar("customer_name", { length: 255 }),
-  firstName: varchar("first_name", { length: 255 }),
-  lastName: varchar("last_name", { length: 255 }),
-  customerEmail: varchar("customer_email", { length: 255 }),
-  customerPhone: varchar("customer_phone", { length: 50 }),
-  customerId: varchar("customer_id", { length: 50 }),
-  
-  // Order financial details
-  amount: decimal("amount", { precision: 10, scale: 2 }).notNull(),
-  subtotal: decimal("subtotal", { precision: 10, scale: 2 }).default('0'),
-  shippingTotal: decimal("shipping_total", { precision: 10, scale: 2 }).default('0'),
-  taxTotal: decimal("tax_total", { precision: 10, scale: 2 }).default('0'),
-  discountTotal: decimal("discount_total", { precision: 10, scale: 2 }).default('0'),
-  refundAmount: decimal("refund_amount", { precision: 10, scale: 2 }).default('0'),
-  
-  // Order details
-  status: varchar("status", { length: 50 }).notNull(),
-  orderDate: timestamp("order_date").notNull(),
-  wooOrderNumber: varchar("woo_order_number", { length: 50 }),
-  paymentMethod: varchar("payment_method", { length: 100 }),
-  paymentMethodTitle: varchar("payment_method_title", { length: 255 }),
-  currency: varchar("currency", { length: 10 }).default('USD'),
-  
-  // Shipping information
-  shippingFirstName: varchar("shipping_first_name", { length: 255 }),
-  shippingLastName: varchar("shipping_last_name", { length: 255 }),
-  shippingAddress1: varchar("shipping_address_1", { length: 255 }),
-  shippingAddress2: varchar("shipping_address_2", { length: 255 }),
-  shippingCity: varchar("shipping_city", { length: 100 }),
-  shippingState: varchar("shipping_state", { length: 100 }),
-  shippingPostcode: varchar("shipping_postcode", { length: 20 }),
-  shippingCountry: varchar("shipping_country", { length: 10 }),
-  
-  // Billing information
-  billingFirstName: varchar("billing_first_name", { length: 255 }),
-  billingLastName: varchar("billing_last_name", { length: 255 }),
-  billingAddress1: varchar("billing_address_1", { length: 255 }),
-  billingAddress2: varchar("billing_address_2", { length: 255 }),
-  billingCity: varchar("billing_city", { length: 100 }),
-  billingState: varchar("billing_state", { length: 100 }),
-  billingPostcode: varchar("billing_postcode", { length: 20 }),
-  billingCountry: varchar("billing_country", { length: 10 }),
-  
-  // Metadata and notes
-  locationMeta: varchar("location_meta", { length: 255 }),
-  orderNotes: text("order_notes"),
-  customerNote: text("customer_note"),
-  
-  // Raw data storage
-  lineItems: text("line_items"), // JSON string of products/items
-  metaData: text("meta_data"), // JSON string of all metadata
-  rawData: text("raw_data"), // Store full WooCommerce order data as JSON
-  
-  createdAt: timestamp("created_at").defaultNow(),
-  updatedAt: timestamp("updated_at").defaultNow(),
-});
+
 
 // Sync settings table for automated data fetching
 export const syncSettings = pgTable("sync_settings", {
@@ -202,7 +139,6 @@ export const usersRelations = relations(users, ({ many }) => ({
 
 export const locationsRelations = relations(locations, ({ many }) => ({
   orders: many(orders),
-  wooOrders: many(wooOrders),
   userAccess: many(userLocationAccess),
 }));
 
@@ -233,12 +169,7 @@ export const ordersRelations = relations(orders, ({ one }) => ({
 
 
 
-export const wooOrdersRelations = relations(wooOrders, ({ one }) => ({
-  location: one(locations, {
-    fields: [wooOrders.locationId],
-    references: [locations.id],
-  }),
-}));
+
 
 // Insert schemas
 export const insertUserSchema = createInsertSchema(users).omit({
@@ -260,11 +191,7 @@ export const insertOrderSchema = createInsertSchema(orders).omit({
 
 
 
-export const insertWooOrderSchema = createInsertSchema(wooOrders).omit({
-  id: true,
-  createdAt: true,
-  updatedAt: true,
-});
+
 
 export const insertSyncSettingsSchema = createInsertSchema(syncSettings).omit({
   id: true,
@@ -292,8 +219,7 @@ export type InsertLocation = z.infer<typeof insertLocationSchema>;
 export type Order = typeof orders.$inferSelect;
 export type InsertOrder = z.infer<typeof insertOrderSchema>;
 
-export type WooOrder = typeof wooOrders.$inferSelect;
-export type InsertWooOrder = z.infer<typeof insertWooOrderSchema>;
+
 export type SyncSettings = typeof syncSettings.$inferSelect;
 export type InsertSyncSettings = z.infer<typeof insertSyncSettingsSchema>;
 export type StoreConnection = typeof storeConnections.$inferSelect;
