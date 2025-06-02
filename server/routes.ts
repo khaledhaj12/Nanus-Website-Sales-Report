@@ -646,6 +646,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
           await processXLSXFile(req.file.buffer, fileUpload.id, userId);
         }
         
+        // Update file upload status to completed
+        await storage.updateFileUpload(fileUpload.id, {
+          status: 'completed'
+        });
+        
         console.log("File processing completed successfully");
         res.json({
           message: "File uploaded and processed successfully",
