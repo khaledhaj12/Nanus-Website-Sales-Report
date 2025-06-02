@@ -388,108 +388,179 @@ export default function Reports({ onMenuClick }: ReportsProps) {
                       No orders found for the selected filters.
                     </div>
                   ) : (
-                    <div className="overflow-x-auto">
-                      <Table>
-                        <TableHeader>
-                          <TableRow>
-                            {isAdmin && (
-                              <TableHead className="w-12">
-                                <Checkbox
-                                  checked={selectedOrders.length === sortedOrders.length}
-                                  onCheckedChange={handleSelectAll}
-                                />
-                              </TableHead>
-                            )}
-                            <SortableHeader 
-                              sortKey="orderDate" 
-                              currentSort={sortBy} 
-                              currentOrder={sortOrder} 
-                              onSort={handleSort}
-                            >
-                              Date
-                            </SortableHeader>
-                            <SortableHeader 
-                              sortKey="orderId" 
-                              currentSort={sortBy} 
-                              currentOrder={sortOrder} 
-                              onSort={handleSort}
-                            >
-                              Order ID
-                            </SortableHeader>
-                            <SortableHeader 
-                              sortKey="customerName" 
-                              currentSort={sortBy} 
-                              currentOrder={sortOrder} 
-                              onSort={handleSort}
-                            >
-                              Customer
-                            </SortableHeader>
-                            <SortableHeader 
-                              sortKey="amount" 
-                              currentSort={sortBy} 
-                              currentOrder={sortOrder} 
-                              onSort={handleSort}
-                            >
-                              Amount
-                            </SortableHeader>
-                            <SortableHeader 
-                              sortKey="refundAmount" 
-                              currentSort={sortBy} 
-                              currentOrder={sortOrder} 
-                              onSort={handleSort}
-                            >
-                              Refund
-                            </SortableHeader>
-                            <SortableHeader 
-                              sortKey="status" 
-                              currentSort={sortBy} 
-                              currentOrder={sortOrder} 
-                              onSort={handleSort}
-                            >
-                              Status
-                            </SortableHeader>
-                            {isAdmin && (
-                              <TableHead>Location</TableHead>
-                            )}
-                          </TableRow>
-                        </TableHeader>
-                        <TableBody>
-                          {sortedOrders.map((order: any) => (
-                            <TableRow key={order.id}>
+                    <>
+                      {/* Desktop Table View */}
+                      <div className="hidden md:block overflow-x-auto">
+                        <Table>
+                          <TableHeader>
+                            <TableRow>
                               {isAdmin && (
+                                <TableHead className="w-12">
+                                  <Checkbox
+                                    checked={selectedOrders.length === sortedOrders.length}
+                                    onCheckedChange={handleSelectAll}
+                                  />
+                                </TableHead>
+                              )}
+                              <SortableHeader 
+                                sortKey="orderDate" 
+                                currentSort={sortBy} 
+                                currentOrder={sortOrder} 
+                                onSort={handleSort}
+                              >
+                                Date
+                              </SortableHeader>
+                              <SortableHeader 
+                                sortKey="orderId" 
+                                currentSort={sortBy} 
+                                currentOrder={sortOrder} 
+                                onSort={handleSort}
+                              >
+                                Order ID
+                              </SortableHeader>
+                              <SortableHeader 
+                                sortKey="customerName" 
+                                currentSort={sortBy} 
+                                currentOrder={sortOrder} 
+                                onSort={handleSort}
+                              >
+                                Customer
+                              </SortableHeader>
+                              <SortableHeader 
+                                sortKey="amount" 
+                                currentSort={sortBy} 
+                                currentOrder={sortOrder} 
+                                onSort={handleSort}
+                              >
+                                Amount
+                              </SortableHeader>
+                              <SortableHeader 
+                                sortKey="refundAmount" 
+                                currentSort={sortBy} 
+                                currentOrder={sortOrder} 
+                                onSort={handleSort}
+                              >
+                                Refund
+                              </SortableHeader>
+                              <SortableHeader 
+                                sortKey="status" 
+                                currentSort={sortBy} 
+                                currentOrder={sortOrder} 
+                                onSort={handleSort}
+                              >
+                                Status
+                              </SortableHeader>
+                              {isAdmin && (
+                                <TableHead>Location</TableHead>
+                              )}
+                            </TableRow>
+                          </TableHeader>
+                          <TableBody>
+                            {sortedOrders.map((order: any) => (
+                              <TableRow key={order.id}>
+                                {isAdmin && (
+                                  <TableCell>
+                                    <Checkbox
+                                      checked={selectedOrders.includes(order.id)}
+                                      onCheckedChange={() => handleSelectOrder(order.id)}
+                                    />
+                                  </TableCell>
+                                )}
+                                <TableCell>{new Date(order.orderDate).toLocaleDateString()}</TableCell>
+                                <TableCell className="font-mono text-sm">{order.orderId}</TableCell>
+                                <TableCell>{order.customerName || order.firstName || "N/A"}</TableCell>
+                                <TableCell className="font-medium">{formatCurrency(parseFloat(order.amount))}</TableCell>
+                                <TableCell className="text-red-600">
+                                  {order.refundAmount ? formatCurrency(parseFloat(order.refundAmount)) : "-"}
+                                </TableCell>
                                 <TableCell>
+                                  <Badge variant={
+                                    order.status === "completed" ? "default" :
+                                    order.status === "refunded" ? "destructive" :
+                                    order.status === "pending" ? "secondary" : "outline"
+                                  }>
+                                    {order.status}
+                                  </Badge>
+                                </TableCell>
+                                {isAdmin && (
+                                  <TableCell>
+                                    {Array.isArray(locations) && locations.find((loc: any) => loc.id === order.locationId)?.name || "Unknown"}
+                                  </TableCell>
+                                )}
+                              </TableRow>
+                            ))}
+                          </TableBody>
+                        </Table>
+                      </div>
+
+                      {/* Mobile Card View */}
+                      <div className="md:hidden space-y-3">
+                        {isAdmin && sortedOrders.length > 0 && (
+                          <div className="flex items-center gap-3 p-3 bg-gray-100 rounded-lg">
+                            <Checkbox
+                              checked={selectedOrders.length === sortedOrders.length}
+                              onCheckedChange={handleSelectAll}
+                            />
+                            <span className="text-sm text-gray-600">
+                              Select All ({selectedOrders.length} of {sortedOrders.length} selected)
+                            </span>
+                          </div>
+                        )}
+                        
+                        {sortedOrders.map((order: any) => (
+                          <div key={order.id} className="border rounded-lg p-4 bg-white">
+                            <div className="flex justify-between items-start mb-3">
+                              <div className="flex items-center gap-3">
+                                {isAdmin && (
                                   <Checkbox
                                     checked={selectedOrders.includes(order.id)}
                                     onCheckedChange={() => handleSelectOrder(order.id)}
                                   />
-                                </TableCell>
+                                )}
+                                <div>
+                                  <div className="font-mono text-blue-600 font-medium text-sm">
+                                    {order.orderId}
+                                  </div>
+                                  <div className="text-xs text-gray-500">
+                                    {new Date(order.orderDate).toLocaleDateString()}
+                                  </div>
+                                </div>
+                              </div>
+                              <Badge variant={
+                                order.status === "completed" ? "default" :
+                                order.status === "refunded" ? "destructive" :
+                                order.status === "pending" ? "secondary" : "outline"
+                              }>
+                                {order.status}
+                              </Badge>
+                            </div>
+                            
+                            <div className="space-y-2 text-sm">
+                              <div className="flex justify-between">
+                                <span className="text-gray-500">Customer:</span>
+                                <span>{order.customerName || order.firstName || "N/A"}</span>
+                              </div>
+                              <div className="flex justify-between">
+                                <span className="text-gray-500">Amount:</span>
+                                <span className="font-medium">{formatCurrency(parseFloat(order.amount))}</span>
+                              </div>
+                              {order.refundAmount && (
+                                <div className="flex justify-between">
+                                  <span className="text-gray-500">Refund:</span>
+                                  <span className="text-red-600 font-medium">{formatCurrency(parseFloat(order.refundAmount))}</span>
+                                </div>
                               )}
-                              <TableCell>{new Date(order.orderDate).toLocaleDateString()}</TableCell>
-                              <TableCell className="font-mono text-sm">{order.orderId}</TableCell>
-                              <TableCell>{order.customerName || order.firstName || "N/A"}</TableCell>
-                              <TableCell className="font-medium">{formatCurrency(parseFloat(order.amount))}</TableCell>
-                              <TableCell className="text-red-600">
-                                {order.refundAmount ? formatCurrency(parseFloat(order.refundAmount)) : "-"}
-                              </TableCell>
-                              <TableCell>
-                                <Badge variant={
-                                  order.status === "completed" ? "default" :
-                                  order.status === "refunded" ? "destructive" :
-                                  order.status === "pending" ? "secondary" : "outline"
-                                }>
-                                  {order.status}
-                                </Badge>
-                              </TableCell>
                               {isAdmin && (
-                                <TableCell>
-                                  {Array.isArray(locations) && locations.find((loc: any) => loc.id === order.locationId)?.name || "Unknown"}
-                                </TableCell>
+                                <div className="flex justify-between">
+                                  <span className="text-gray-500">Location:</span>
+                                  <span>{Array.isArray(locations) && locations.find((loc: any) => loc.id === order.locationId)?.name || "Unknown"}</span>
+                                </div>
                               )}
-                            </TableRow>
-                          ))}
-                        </TableBody>
-                      </Table>
-                    </div>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </>
                   )}
                 </CardContent>
               </Card>

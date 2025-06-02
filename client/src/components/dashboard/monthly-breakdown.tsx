@@ -142,7 +142,7 @@ export default function MonthlyBreakdown({ data, isLoading }: MonthlyBreakdownPr
                       </div>
                     </div>
                     
-                    <div className="grid grid-cols-6 gap-6 text-center text-sm flex-shrink-0 ml-6">
+                    <div className="grid grid-cols-2 md:grid-cols-6 gap-4 md:gap-6 text-center text-sm flex-shrink-0 ml-0 md:ml-6 mt-3 md:mt-0">
                       <div>
                         <p className="text-xs text-gray-500 mb-1">Sales</p>
                         <p className="font-semibold text-gray-900">{formatCurrency(monthData.totalSales)}</p>
@@ -174,7 +174,8 @@ export default function MonthlyBreakdown({ data, isLoading }: MonthlyBreakdownPr
                 {isExpanded && (
                   <div className="bg-gray-50">
                     <div className="p-6">
-                      <div className="overflow-x-auto">
+                      {/* Desktop Table View */}
+                      <div className="hidden md:block overflow-x-auto">
                         <Table>
                           <TableHeader>
                             <TableRow>
@@ -220,6 +221,49 @@ export default function MonthlyBreakdown({ data, isLoading }: MonthlyBreakdownPr
                             ))}
                           </TableBody>
                         </Table>
+                      </div>
+
+                      {/* Mobile Card View */}
+                      <div className="md:hidden space-y-3">
+                        {monthData.orders.map((order) => (
+                          <div key={order.id} className="bg-white border rounded-lg p-4">
+                            <div className="flex justify-between items-start mb-2">
+                              <div className="font-mono text-blue-600 font-medium">
+                                {order.orderId}
+                              </div>
+                              <Badge className={getStatusColor(order.status)}>
+                                {order.status.charAt(0).toUpperCase() + order.status.slice(1)}
+                              </Badge>
+                            </div>
+                            
+                            <div className="space-y-2 text-sm">
+                              <div className="flex justify-between">
+                                <span className="text-gray-500">Date:</span>
+                                <span>{new Date(order.orderDate).toLocaleDateString()}</span>
+                              </div>
+                              <div className="flex justify-between">
+                                <span className="text-gray-500">Customer:</span>
+                                <span>{order.customerName || 'N/A'}</span>
+                              </div>
+                              {order.cardLast4 && (
+                                <div className="flex justify-between">
+                                  <span className="text-gray-500">Card:</span>
+                                  <span>**{order.cardLast4}</span>
+                                </div>
+                              )}
+                              <div className="flex justify-between">
+                                <span className="text-gray-500">Amount:</span>
+                                <span className="font-semibold">{formatCurrency(parseFloat(order.amount))}</span>
+                              </div>
+                              {order.refundAmount && (
+                                <div className="flex justify-between">
+                                  <span className="text-gray-500">Refund:</span>
+                                  <span className="text-red-600 font-medium">{formatCurrency(parseFloat(order.refundAmount))}</span>
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                        ))}
                       </div>
                     </div>
                   </div>
