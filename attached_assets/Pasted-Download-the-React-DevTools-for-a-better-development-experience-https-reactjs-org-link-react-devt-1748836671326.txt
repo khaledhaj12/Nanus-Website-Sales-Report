@@ -1,0 +1,50 @@
+Download the React DevTools for a better development experience: https://reactjs.org/link/react-devtools
+ Progress polling effect triggered. uploadStatus: idle currentUploadId: null
+ Progress polling effect triggered. uploadStatus: idle currentUploadId: null
+ Progress polling effect triggered. uploadStatus: uploading currentUploadId: null
+ Upload response: Object
+ Set currentUploadId to: 33
+ Progress polling effect triggered. uploadStatus: processing currentUploadId: 33
+ Starting progress polling for upload ID: 33
+ Fetching progress for upload ID: 33
+ Progress data: Object
+ Fetching progress for upload ID: 33
+ Progress data: Object
+ Fetching progress for upload ID: 33
+ Progress data: Object
+ Fetching progress for upload ID: 33
+ Progress data: Object
+ Fetching progress for upload ID: 33
+ Progress data: Object
+ Fetching progress for upload ID: 33
+ Progress data: Object
+ Fetching progress for upload ID: 33
+ Progress data: Object
+ Fetching progress for upload ID: 33
+ Progress data: Object
+ Fetching progress for upload ID: 33
+ Progress data: Object
+ Fetching progress for upload ID: 33
+ Progress polling effect triggered. uploadStatus: idle currentUploadId: 33
+ Progress data: Object
+ Progress polling effect triggered. uploadStatus: idle currentUploadId: null
+ Warning: validateDOMNesting(...): <th> cannot appear as a child of <div>.
+    at th
+    at SortableHeader (https://ee4b7f00-6d45-4ffc-a131-b72a4d989a18-00-9t5valsb7bpr.worf.replit.dev/src/components/ui/sortable-header.tsx:19:3)
+    at div
+    at div
+    at div
+    at _c3 (https://ee4b7f00-6d45-4ffc-a131-b72a4d989a18-00-9t5valsb7bpr.worf.replit.dev/src/components/ui/card.tsx:45:12)
+    at div
+    at _c (https://ee4b7f00-6d45-4ffc-a131-b72a4d989a18-00-9t5valsb7bpr.worf.replit.dev/src/components/ui/card.tsx:20:11)
+    at main
+    at div
+    at Users (https://ee4b7f00-6d45-4ffc-a131-b72a4d989a18-00-9t5valsb7bpr.worf.replit.dev/src/pages/users.tsx:75:33)
+    at div
+    at AppRouter (https://ee4b7f00-6d45-4ffc-a131-b72a4d989a18-00-9t5valsb7bpr.worf.replit.dev/src/App.tsx?v=fIpTUxziTie9vBV31JcYw:36:51)
+    at Provider (https://ee4b7f00-6d45-4ffc-a131-b72a4d989a18-00-9t5valsb7bpr.worf.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/chunk-7SUNRGEF.js?v=456fe00c:38:15)
+    at TooltipProvider (https://ee4b7f00-6d45-4ffc-a131-b72a4d989a18-00-9t5valsb7bpr.worf.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/@radix-ui_react-tooltip.js?v=456fe00c:59:5)
+    at QueryClientProvider (https://ee4b7f00-6d45-4ffc-a131-b72a4d989a18-00-9t5valsb7bpr.worf.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/@tanstack_react-query.js?v=456fe00c:2805:3)
+    at App
+printWarning @ chunk-RPCDYKBN.js:521Understand this error
+ Progress polling effect triggered. uploadStatus: idle currentUploadId: null

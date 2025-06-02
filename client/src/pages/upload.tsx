@@ -39,7 +39,7 @@ export default function Upload({ onMenuClick }: UploadProps) {
   useEffect(() => {
     console.log('Progress polling effect triggered. uploadStatus:', uploadStatus, 'currentUploadId:', currentUploadId);
     
-    if (uploadStatus === 'processing' && currentUploadId) {
+    if (currentUploadId && (uploadStatus === 'processing' || uploadStatus === 'uploading')) {
       console.log('Starting progress polling for upload ID:', currentUploadId);
       
       const interval = setInterval(async () => {
@@ -51,6 +51,7 @@ export default function Upload({ onMenuClick }: UploadProps) {
           console.log('Progress data:', progressData);
           
           if (progressData.status === 'processing') {
+            setUploadStatus('processing'); // Force status back to processing
             setProcessingProgress(progressData.progress);
             setProcessedRecords(progressData.processedRecords);
             setTotalRecords(progressData.totalRecords);
@@ -71,7 +72,7 @@ export default function Upload({ onMenuClick }: UploadProps) {
             queryClient.invalidateQueries({ queryKey: ["/api/dashboard/summary"] });
             queryClient.invalidateQueries({ queryKey: ["/api/locations"] });
             
-            // Reset after a short delay to show completed state
+            // Reset after a longer delay to show completed state
             setTimeout(() => {
               setUploadStatus('idle');
               setCurrentUploadId(null);
@@ -79,7 +80,7 @@ export default function Upload({ onMenuClick }: UploadProps) {
               setUploadProgress(0);
               setProcessedRecords(0);
               setTotalRecords(0);
-            }, 2000);
+            }, 5000);
           }
         } catch (error) {
           console.error('Error fetching progress:', error);
