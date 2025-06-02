@@ -968,16 +968,55 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Webhook settings API endpoints
+  app.get('/api/webhook-settings/:platform', requireAdmin, async (req, res) => {
+    try {
+      const { platform } = req.params;
+      const settings = await storage.getWebhookSettings(platform);
+      res.json(settings || { platform, secretKey: '', isActive: false });
+    } catch (error) {
+      console.error("Get webhook settings error:", error);
+      res.status(500).json({ message: "Failed to get webhook settings" });
+    }
+  });
+
+  app.post('/api/webhook-settings', requireAdmin, async (req, res) => {
+    try {
+      const { platform, secretKey, isActive } = req.body;
+      
+      if (!platform || !secretKey) {
+        return res.status(400).json({ message: "Platform and secret key are required" });
+      }
+      
+      const settings = await storage.upsertWebhookSettings({
+        platform,
+        secretKey,
+        isActive: isActive !== undefined ? isActive : true
+      });
+      
+      res.json(settings);
+    } catch (error) {
+      console.error("Save webhook settings error:", error);
+      res.status(500).json({ message: "Failed to save webhook settings" });
+    }
+  });
+
   // WooCommerce webhook endpoint
   app.post('/api/webhook/woocommerce', async (req, res) => {
     try {
       console.log('WooCommerce webhook received:', JSON.stringify(req.body, null, 2));
       
+      // Get stored webhook settings
+      const webhookSettings = await storage.getWebhookSettings('woocommerce');
+      if (!webhookSettings || !webhookSettings.isActive) {
+        console.log('WooCommerce webhook not configured or inactive');
+        return res.status(401).json({ error: 'Webhook not configured' });
+      }
+      
       // Validate secret key from headers
       const providedSecret = req.headers['x-wc-webhook-signature'] || req.headers['x-webhook-secret'];
-      const expectedSecret = 'woo_webhook_secret_2025';
       
-      if (!providedSecret || providedSecret !== expectedSecret) {
+      if (!providedSecret || providedSecret !== webhookSettings.secretKey) {
         console.log('Invalid or missing webhook secret');
         return res.status(401).json({ error: 'Unauthorized: Invalid webhook secret' });
       }
