@@ -598,11 +598,11 @@ export default function ApiConnections() {
     {
       connectionId: 'woocommerce',
       name: 'Main Store',
-      domain: '',
+      domain: 'Main Store',
       platform: 'woocommerce',
       isDefault: true
     },
-    ...dbConnections
+    ...(Array.isArray(dbConnections) ? dbConnections : [])
   ];
   
   const [activeConnectionId, setActiveConnectionId] = useState('woocommerce');
