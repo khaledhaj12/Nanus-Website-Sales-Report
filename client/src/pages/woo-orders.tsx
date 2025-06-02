@@ -12,7 +12,8 @@ import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
 import { 
   Search, 
-  Download, 
+  Download,
+  Trash2, 
   Filter, 
   Settings, 
   Calendar,
