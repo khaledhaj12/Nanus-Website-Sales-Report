@@ -905,6 +905,69 @@ export async function registerRoutes(app: Express): Promise<Server> {
     res.json(progress);
   });
 
+  // WooCommerce orders API endpoints
+  app.get('/api/woo-orders', requireAuth, async (req: any, res) => {
+    try {
+      const { location, search, startMonth, endMonth } = req.query;
+      const userId = req.session.user.id;
+      const userRole = req.session.user.role;
+      
+      let wooOrders = [];
+      
+      if (search) {
+        wooOrders = await storage.searchWooOrders(search, location && location !== "all" ? parseInt(location) : undefined);
+      } else if (startMonth && endMonth) {
+        const startDate = `${startMonth}-01`;
+        const endDate = new Date(endMonth + '-01');
+        endDate.setMonth(endDate.getMonth() + 1);
+        endDate.setDate(0);
+        
+        wooOrders = await storage.getWooOrdersByDateRange(
+          startDate, 
+          endDate.toISOString().split('T')[0],
+          location && location !== "all" ? parseInt(location) : undefined
+        );
+      } else {
+        wooOrders = await storage.getAllWooOrders(location && location !== "all" ? parseInt(location) : undefined);
+      }
+      
+      // Filter by user access if not admin
+      if (userRole !== 'admin') {
+        const userLocations = await storage.getUserLocationAccess(userId);
+        wooOrders = wooOrders.filter(order => userLocations.includes(order.locationId));
+      }
+      
+      res.json(wooOrders);
+    } catch (error) {
+      console.error("Get WooCommerce orders error:", error);
+      res.status(500).json({ message: "Failed to get WooCommerce orders" });
+    }
+  });
+
+  app.delete('/api/woo-orders/bulk-delete', requireAdmin, async (req, res) => {
+    try {
+      const { orderIds } = req.body;
+      
+      if (!Array.isArray(orderIds) || orderIds.length === 0) {
+        return res.status(400).json({ message: "Invalid order IDs" });
+      }
+      
+      const validIds = orderIds
+        .filter(id => id !== null && id !== undefined && !isNaN(Number(id)))
+        .map(id => Number(id));
+      
+      if (validIds.length === 0) {
+        return res.status(400).json({ message: "No valid order IDs provided" });
+      }
+      
+      await storage.deleteWooOrders(validIds);
+      res.json({ message: "WooCommerce orders deleted successfully" });
+    } catch (error: any) {
+      console.error("Delete WooCommerce orders error:", error);
+      res.status(500).json({ message: "Failed to delete WooCommerce orders" });
+    }
+  });
+
   // WooCommerce webhook endpoint
   app.post('/api/webhook/woocommerce', async (req, res) => {
     try {

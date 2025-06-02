@@ -14,6 +14,7 @@ import {
   Menu,
   X,
   StickyNote,
+  ShoppingBag,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -27,6 +28,7 @@ interface SidebarProps {
 const navigationItems = [
   { id: "dashboard", label: "Dashboard", icon: PieChart },
   { id: "reports", label: "Reports", icon: BarChart3 },
+  { id: "woo-orders", label: "WooCommerce", icon: ShoppingBag },
   { id: "locations", label: "Locations", icon: MapPin },
   { id: "users", label: "User Access", icon: Users, adminOnly: true },
   { id: "upload", label: "Upload Data", icon: Upload, adminOnly: true },

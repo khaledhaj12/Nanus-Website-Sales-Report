@@ -5,6 +5,7 @@ import {
   fileUploads,
   userLocationAccess,
   notes,
+  wooOrders,
   type User,
   type InsertUser,
   type Location,
@@ -15,6 +16,8 @@ import {
   type InsertFileUpload,
   type Note,
   type InsertNote,
+  type WooOrder,
+  type InsertWooOrder,
   type UserLocationAccess,
 } from "@shared/schema";
 import { db } from "./db";
@@ -89,6 +92,18 @@ export interface IStorage {
   createNote(note: InsertNote): Promise<Note>;
   updateNote(id: number, note: Partial<InsertNote>, userId: number): Promise<Note>;
   deleteNote(id: number, userId: number): Promise<void>;
+  
+  // WooCommerce orders operations
+  getWooOrder(id: number): Promise<WooOrder | undefined>;
+  getWooOrderByWooOrderId(wooOrderId: string): Promise<WooOrder | undefined>;
+  createWooOrder(wooOrder: InsertWooOrder): Promise<WooOrder>;
+  updateWooOrder(id: number, wooOrder: Partial<InsertWooOrder>): Promise<WooOrder>;
+  deleteWooOrder(id: number): Promise<void>;
+  deleteWooOrders(ids: number[]): Promise<void>;
+  getAllWooOrders(locationId?: number): Promise<WooOrder[]>;
+  getWooOrdersByLocation(locationId: number): Promise<WooOrder[]>;
+  getWooOrdersByDateRange(startDate: string, endDate: string, locationId?: number): Promise<WooOrder[]>;
+  searchWooOrders(searchTerm: string, locationId?: number): Promise<WooOrder[]>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -524,6 +539,94 @@ export class DatabaseStorage implements IStorage {
     await db
       .delete(notes)
       .where(and(eq(notes.id, id), eq(notes.createdBy, userId)));
+  }
+
+  // WooCommerce orders operations
+  async getWooOrder(id: number): Promise<WooOrder | undefined> {
+    const [wooOrder] = await db.select().from(wooOrders).where(eq(wooOrders.id, id));
+    return wooOrder || undefined;
+  }
+
+  async getWooOrderByWooOrderId(wooOrderId: string): Promise<WooOrder | undefined> {
+    const [wooOrder] = await db.select().from(wooOrders).where(eq(wooOrders.wooOrderId, wooOrderId));
+    return wooOrder || undefined;
+  }
+
+  async createWooOrder(insertWooOrder: InsertWooOrder): Promise<WooOrder> {
+    const [wooOrder] = await db
+      .insert(wooOrders)
+      .values(insertWooOrder)
+      .returning();
+    return wooOrder;
+  }
+
+  async updateWooOrder(id: number, insertWooOrder: Partial<InsertWooOrder>): Promise<WooOrder> {
+    const [wooOrder] = await db
+      .update(wooOrders)
+      .set({ ...insertWooOrder, updatedAt: new Date() })
+      .where(eq(wooOrders.id, id))
+      .returning();
+    return wooOrder;
+  }
+
+  async deleteWooOrder(id: number): Promise<void> {
+    await db.delete(wooOrders).where(eq(wooOrders.id, id));
+  }
+
+  async deleteWooOrders(ids: number[]): Promise<void> {
+    if (!Array.isArray(ids) || ids.length === 0) {
+      throw new Error("Invalid IDs array");
+    }
+    await db.delete(wooOrders).where(inArray(wooOrders.id, ids));
+  }
+
+  async getAllWooOrders(locationId?: number): Promise<WooOrder[]> {
+    if (locationId) {
+      return await db.select().from(wooOrders).where(eq(wooOrders.locationId, locationId)).orderBy(desc(wooOrders.orderDate));
+    }
+    return await db.select().from(wooOrders).orderBy(desc(wooOrders.orderDate));
+  }
+
+  async getWooOrdersByLocation(locationId: number): Promise<WooOrder[]> {
+    return await db.select().from(wooOrders).where(eq(wooOrders.locationId, locationId)).orderBy(desc(wooOrders.orderDate));
+  }
+
+  async getWooOrdersByDateRange(startDate: string, endDate: string, locationId?: number): Promise<WooOrder[]> {
+    let query = db.select().from(wooOrders).where(
+      and(
+        gte(wooOrders.orderDate, new Date(startDate)),
+        lte(wooOrders.orderDate, new Date(endDate))
+      )
+    );
+
+    if (locationId) {
+      query = query.where(
+        and(
+          gte(wooOrders.orderDate, new Date(startDate)),
+          lte(wooOrders.orderDate, new Date(endDate)),
+          eq(wooOrders.locationId, locationId)
+        )
+      );
+    }
+
+    return await query.orderBy(desc(wooOrders.orderDate));
+  }
+
+  async searchWooOrders(searchTerm: string, locationId?: number): Promise<WooOrder[]> {
+    const searchConditions = or(
+      like(wooOrders.orderId, `%${searchTerm}%`),
+      like(wooOrders.customerName, `%${searchTerm}%`),
+      like(wooOrders.customerEmail, `%${searchTerm}%`),
+      like(wooOrders.wooOrderNumber, `%${searchTerm}%`)
+    );
+
+    if (locationId) {
+      return await db.select().from(wooOrders).where(
+        and(searchConditions, eq(wooOrders.locationId, locationId))
+      ).orderBy(desc(wooOrders.orderDate));
+    }
+
+    return await db.select().from(wooOrders).where(searchConditions).orderBy(desc(wooOrders.orderDate));
   }
 }
 
