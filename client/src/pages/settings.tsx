@@ -182,7 +182,7 @@ export default function Settings() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-100 dark:from-gray-900 dark:via-gray-800 dark:to-gray-900">
-      <div className="container mx-auto px-4 py-6 sm:py-8 max-w-6xl">
+      <div className="w-full px-4 py-6 sm:py-8 max-w-none mx-auto">
         {/* Header */}
         <div className="mb-8">
           <div className="flex items-center gap-3 mb-4">
@@ -200,9 +200,9 @@ export default function Settings() {
           </div>
         </div>
 
-        <div className="grid gap-6 lg:gap-8">
+        <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6 lg:gap-8">
           {/* Sync Status Card */}
-          <Card className="border-0 shadow-xl bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm">
+          <Card className="border-0 shadow-xl bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm xl:col-span-3">
             <CardHeader className="pb-4">
               <CardTitle className="flex items-center gap-3 text-lg sm:text-xl">
                 <div className="p-2 bg-gradient-to-r from-green-500 to-emerald-500 rounded-lg">
