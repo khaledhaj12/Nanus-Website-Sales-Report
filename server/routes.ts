@@ -1029,15 +1029,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Handle WooCommerce test webhook
       if (orderData.webhook_id && !orderData.id && !orderData.number) {
         console.log('Received WooCommerce test webhook:', orderData.webhook_id);
-        
-        // Log test webhook
-        await storage.createWebhookLog({
-          platform: 'woocommerce',
-          status: 'success',
-          payload: orderData,
-          headers: req.headers,
-        });
-        
         return res.status(200).json({ message: 'Webhook test successful' });
       }
       
@@ -1125,34 +1116,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
         await storage.createWooOrder(wooOrderData);
       }
       
-      // Log successful webhook processing
-      await storage.createWebhookLog({
-        platform: 'woocommerce',
-        status: 'success',
-        orderId: wooOrderId,
-        orderTotal: total.toString(),
-        payload: orderData,
-        headers: req.headers,
-      });
-      
       console.log('Order processed successfully');
       res.status(200).json({ success: true, message: 'Order processed successfully' });
     } catch (error) {
       console.error('WooCommerce webhook error:', error);
-      
-      // Log failed webhook processing
-      try {
-        await storage.createWebhookLog({
-          platform: 'woocommerce',
-          status: 'error',
-          errorMessage: error instanceof Error ? error.message : 'Unknown error',
-          payload: req.body,
-          headers: req.headers,
-        });
-      } catch (logError) {
-        console.error('Failed to log webhook error:', logError);
-      }
-      
       res.status(500).json({ error: 'Failed to process webhook' });
     }
   });
