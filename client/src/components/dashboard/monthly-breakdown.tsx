@@ -126,7 +126,7 @@ export default function MonthlyBreakdown({ data, isLoading }: MonthlyBreakdownPr
             return (
               <div key={monthData.month} className="border-b border-gray-200 last:border-b-0">
                 <div
-                  className="p-4 cursor-pointer hover:bg-gray-50 transition-colors"
+                  className="p-4 cursor-pointer bg-gray-50 hover:bg-gray-100 transition-colors"
                   onClick={() => toggleMonth(monthData.month)}
                 >
                   <div className="flex items-center">
