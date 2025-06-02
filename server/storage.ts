@@ -310,53 +310,70 @@ export class DatabaseStorage implements IStorage {
     stripeFees: number;
     netDeposit: number;
   }> {
-    // First get all orders, then filter in memory
-    let query = db.select().from(wooOrders);
-    
-    if (locationId) {
-      query = query.where(eq(wooOrders.locationId, locationId));
-    }
-    
-    const allOrders = await query;
-    
-    // Filter by month if specified
-    let filteredOrders = allOrders;
-    if (month) {
-      filteredOrders = allOrders.filter(order => {
-        const orderDate = new Date(order.orderDate);
-        const orderMonth = `${orderDate.getFullYear()}-${(orderDate.getMonth() + 1).toString().padStart(2, '0')}`;
-        return orderMonth === month;
-      });
-    } else if (allOrders.length > 0) {
-      // Get the latest month from the data
-      const latestDate = new Date(Math.max(...allOrders.map(o => new Date(o.orderDate).getTime())));
-      const latestMonth = `${latestDate.getFullYear()}-${(latestDate.getMonth() + 1).toString().padStart(2, '0')}`;
-      filteredOrders = allOrders.filter(order => {
-        const orderDate = new Date(order.orderDate);
-        const orderMonth = `${orderDate.getFullYear()}-${(orderDate.getMonth() + 1).toString().padStart(2, '0')}`;
-        return orderMonth === latestMonth;
-      });
-    }
+    try {
+      // Get all orders first, then calculate in JavaScript to avoid date type issues
+      let baseQuery = db.select().from(wooOrders);
+      
+      if (locationId) {
+        baseQuery = baseQuery.where(eq(wooOrders.locationId, locationId));
+      }
+      
+      const allOrders = await baseQuery;
+      
+      // Filter by month if specified
+      let filteredOrders = allOrders;
+      if (month) {
+        filteredOrders = allOrders.filter(order => {
+          try {
+            const orderDate = new Date(order.orderDate);
+            const orderMonth = `${orderDate.getFullYear()}-${(orderDate.getMonth() + 1).toString().padStart(2, '0')}`;
+            return orderMonth === month;
+          } catch {
+            return false;
+          }
+        });
+      }
 
-    // Calculate metrics
-    const nonRefundedOrders = filteredOrders.filter(order => order.status !== 'refunded');
-    const refundedOrders = filteredOrders.filter(order => order.status === 'refunded');
-    
-    const totalSales = nonRefundedOrders.reduce((sum, order) => sum + parseFloat(order.amount || '0'), 0);
-    const totalRefunds = refundedOrders.reduce((sum, order) => sum + parseFloat(order.amount || '0'), 0);
-    const totalOrders = nonRefundedOrders.length;
-    const platformFees = totalSales * 0.07;
-    const stripeFees = nonRefundedOrders.reduce((sum, order) => sum + (parseFloat(order.amount || '0') * 0.029 + 0.30), 0);
-    const netDeposit = totalSales - platformFees - stripeFees;
+      // Calculate metrics in JavaScript
+      const nonRefundedOrders = filteredOrders.filter(order => order.status !== 'refunded');
+      const refundedOrders = filteredOrders.filter(order => order.status === 'refunded');
+      
+      const totalSales = nonRefundedOrders.reduce((sum, order) => {
+        return sum + parseFloat(order.amount?.toString() || '0');
+      }, 0);
+      
+      const totalRefunds = refundedOrders.reduce((sum, order) => {
+        return sum + parseFloat(order.amount?.toString() || '0');
+      }, 0);
+      
+      const totalOrders = nonRefundedOrders.length;
+      const platformFees = totalSales * 0.07;
+      const stripeFees = nonRefundedOrders.reduce((sum, order) => {
+        const amount = parseFloat(order.amount?.toString() || '0');
+        return sum + (amount * 0.029 + 0.30);
+      }, 0);
+      const netDeposit = totalSales - platformFees - stripeFees;
 
-    return {
-      totalSales,
-      totalOrders,
-      totalRefunds,
-      platformFees,
-      stripeFees,
-      netDeposit,
-    };
+      return {
+        totalSales,
+        totalOrders,
+        totalRefunds,
+        platformFees,
+        stripeFees,
+        netDeposit,
+      };
+    } catch (error) {
+      console.error('Dashboard summary error:', error);
+      // Return zeros if there's an error
+      return {
+        totalSales: 0,
+        totalOrders: 0,
+        totalRefunds: 0,
+        platformFees: 0,
+        stripeFees: 0,
+        netDeposit: 0,
+      };
+    }
   }
 
   async getMonthlyBreakdown(year?: number, locationId?: number): Promise<Array<{
