@@ -13,7 +13,7 @@ import {
   Menu,
   X,
   ShoppingBag,
-  Settings,
+  Globe,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -30,7 +30,7 @@ const navigationItems = [
   { id: "woo-orders", label: "WooCommerce", icon: ShoppingBag },
   { id: "locations", label: "Locations", icon: MapPin },
   { id: "users", label: "User Access", icon: Users, adminOnly: true },
-  { id: "settings", label: "Settings", icon: Settings, adminOnly: true },
+  { id: "api-connections", label: "API Connections", icon: Globe, adminOnly: true },
 ];
 
 export default function Sidebar({ activeSection, onSectionChange, isOpen, onToggle }: SidebarProps) {
