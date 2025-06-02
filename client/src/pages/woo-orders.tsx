@@ -125,6 +125,55 @@ export default function WooOrders() {
   const [visibleColumns, setVisibleColumns] = useState<string[]>(DEFAULT_VISIBLE_COLUMNS);
   const [selectedOrders, setSelectedOrders] = useState<number[]>([]);
 
+  // Multi-select handlers
+  const handleSelectOrder = (orderId: number) => {
+    setSelectedOrders(prev => 
+      prev.includes(orderId) 
+        ? prev.filter(id => id !== orderId)
+        : [...prev, orderId]
+    );
+  };
+
+  const handleSelectAll = () => {
+    setSelectedOrders(prev => 
+      prev.length === orders.length ? [] : orders.map(order => order.id)
+    );
+  };
+
+  // Delete mutation
+  const deleteOrdersMutation = useMutation({
+    mutationFn: async (orderIds: number[]) => {
+      const response = await fetch('/api/woo-orders/bulk-delete', {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ orderIds })
+      });
+      if (!response.ok) throw new Error('Failed to delete orders');
+      return response.json();
+    },
+    onSuccess: () => {
+      toast({
+        title: "Success",
+        description: `${selectedOrders.length} orders deleted successfully`,
+      });
+      setSelectedOrders([]);
+      queryClient.invalidateQueries({ queryKey: ["/api/woo-orders"] });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to delete orders",
+        variant: "destructive",
+      });
+    }
+  });
+
+  const handleDeleteSelected = () => {
+    if (selectedOrders.length === 0) return;
+    if (confirm(`Are you sure you want to delete ${selectedOrders.length} selected orders? This action cannot be undone.`)) {
+      deleteOrdersMutation.mutate(selectedOrders);
+    }
+  };
 
   // Fetch data
   const { data: orders = [], isLoading, refetch } = useQuery({
@@ -418,10 +467,23 @@ export default function WooOrders() {
           <CardHeader>
             <CardTitle className="flex items-center justify-between">
               <span>Orders ({filteredAndSortedOrders.length})</span>
-              <Button variant="outline" size="sm">
-                <Download className="h-4 w-4 mr-2" />
-                Export
-              </Button>
+              <div className="flex items-center gap-2">
+                {selectedOrders.length > 0 && (
+                  <Button 
+                    variant="destructive" 
+                    size="sm"
+                    onClick={handleDeleteSelected}
+                    disabled={deleteOrdersMutation.isPending}
+                  >
+                    <Trash2 className="h-4 w-4 mr-2" />
+                    Delete ({selectedOrders.length})
+                  </Button>
+                )}
+                <Button variant="outline" size="sm">
+                  <Download className="h-4 w-4 mr-2" />
+                  Export
+                </Button>
+              </div>
             </CardTitle>
           </CardHeader>
           <CardContent>
@@ -429,6 +491,12 @@ export default function WooOrders() {
               <table className="w-full">
                 <thead>
                   <tr className="border-b">
+                    <th className="w-12 p-3">
+                      <Checkbox
+                        checked={selectedOrders.length === filteredAndSortedOrders.length && filteredAndSortedOrders.length > 0}
+                        onCheckedChange={handleSelectAll}
+                      />
+                    </th>
                     {COLUMN_DEFINITIONS
                       .filter(col => visibleColumns.includes(col.key))
                       .map((col) => (
@@ -452,6 +520,12 @@ export default function WooOrders() {
                 <tbody>
                   {filteredAndSortedOrders.map((order) => (
                     <tr key={order.id} className="border-b hover:bg-gray-50 dark:hover:bg-gray-700/50">
+                      <td className="w-12 p-3">
+                        <Checkbox
+                          checked={selectedOrders.includes(order.id)}
+                          onCheckedChange={() => handleSelectOrder(order.id)}
+                        />
+                      </td>
                       {COLUMN_DEFINITIONS
                         .filter(col => visibleColumns.includes(col.key))
                         .map((col) => (
