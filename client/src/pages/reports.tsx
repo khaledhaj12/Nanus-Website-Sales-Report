@@ -10,6 +10,7 @@ import { Badge } from "@/components/ui/badge";
 import Header from "@/components/layout/header";
 import { SortableHeader } from "@/components/ui/sortable-header";
 import { MonthRangePicker } from "@/components/ui/month-range-picker";
+import PaginationControls from "@/components/ui/pagination-controls";
 import { formatCurrency } from "@/lib/feeCalculations";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
@@ -32,6 +33,8 @@ export default function Reports({ onMenuClick }: ReportsProps) {
   const [selectedOrders, setSelectedOrders] = useState<number[]>([]);
   const [sortBy, setSortBy] = useState<string>('orderDate');
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
+  const [currentPage, setCurrentPage] = useState(1);
+  const [itemsPerPage, setItemsPerPage] = useState(25);
   const { toast } = useToast();
 
   const { data: locations = [] } = useQuery({
@@ -126,7 +129,7 @@ export default function Reports({ onMenuClick }: ReportsProps) {
     },
   });
 
-  // Apply sorting to orders
+  // Apply sorting and pagination to orders
   const sortedOrders = useMemo(() => {
     const sorted = [...rawOrders].sort((a: any, b: any) => {
       let aValue = a[sortBy];
@@ -151,6 +154,18 @@ export default function Reports({ onMenuClick }: ReportsProps) {
 
     return sorted;
   }, [rawOrders, sortBy, sortOrder]);
+
+  // Paginate the sorted orders
+  const paginatedOrders = useMemo(() => {
+    const startIndex = (currentPage - 1) * itemsPerPage;
+    return sortedOrders.slice(startIndex, startIndex + itemsPerPage);
+  }, [sortedOrders, currentPage, itemsPerPage]);
+
+  // Reset to first page when filters change
+  const handleItemsPerPageChange = (newItemsPerPage: number) => {
+    setItemsPerPage(newItemsPerPage);
+    setCurrentPage(1);
+  };
 
   const reportCards = [
     {
@@ -384,7 +399,7 @@ export default function Reports({ onMenuClick }: ReportsProps) {
                   </div>
                 </CardHeader>
                 <CardContent>
-                  {sortedOrders.length === 0 ? (
+                  {paginatedOrders.length === 0 ? (
                     <div className="text-center py-8 text-gray-500">
                       No orders found for the selected filters.
                     </div>
@@ -398,7 +413,7 @@ export default function Reports({ onMenuClick }: ReportsProps) {
                               {isAdmin && (
                                 <TableHead className="w-12">
                                   <Checkbox
-                                    checked={selectedOrders.length === sortedOrders.length}
+                                    checked={selectedOrders.length === paginatedOrders.length && paginatedOrders.length > 0}
                                     onCheckedChange={handleSelectAll}
                                   />
                                 </TableHead>
