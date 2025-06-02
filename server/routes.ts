@@ -1026,8 +1026,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(401).json({ error: 'Webhook not configured' });
       }
       
-      // Validate secret key from headers
-      const providedSecret = req.headers['x-wc-webhook-signature'] || req.headers['x-webhook-secret'];
+      // Log all headers to debug
+      console.log('Webhook headers:', req.headers);
+      
+      // WooCommerce sends the secret in different possible headers
+      const providedSecret = req.headers['x-wc-webhook-signature'] || 
+                           req.headers['x-webhook-secret'] || 
+                           req.headers['x-wc-webhook-source'] ||
+                           req.headers['authorization'];
+      
+      console.log('Expected secret:', webhookSettings.secretKey);
+      console.log('Provided secret:', providedSecret);
       
       if (!providedSecret || providedSecret !== webhookSettings.secretKey) {
         console.log('Invalid or missing webhook secret');
