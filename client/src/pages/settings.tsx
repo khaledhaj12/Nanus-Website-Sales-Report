@@ -129,15 +129,15 @@ export default function Settings({ onMenuClick }: SettingsProps) {
     },
     onSuccess: (data: any) => {
       toast({
-        title: data.success ? "Connection Successful" : "Connection Failed",
-        description: data.message,
-        variant: data.success ? "default" : "destructive",
+        title: "Connection Successful",
+        description: data.message || "WooCommerce API connection verified successfully",
+        variant: "default",
       });
     },
-    onError: () => {
+    onError: (error: any) => {
       toast({
-        title: "Error",
-        description: "Failed to test connection",
+        title: "Connection Failed",
+        description: error.message || "Failed to connect to WooCommerce API",
         variant: "destructive",
       });
     },
@@ -154,19 +154,20 @@ export default function Settings({ onMenuClick }: SettingsProps) {
     },
     onSuccess: (data: any) => {
       toast({
-        title: data.success ? "Import Successful" : "Import Failed",
-        description: data.message,
-        variant: data.success ? "default" : "destructive",
+        title: "Import Successful",
+        description: data.message || `${data.imported || 0} orders imported, ${data.skipped || 0} skipped`,
+        variant: "default",
       });
       
       // Refresh order data
       queryClient.invalidateQueries({ queryKey: ["/api/woo-orders"] });
       queryClient.invalidateQueries({ queryKey: ["/api/dashboard/summary"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/locations"] });
     },
-    onError: () => {
+    onError: (error: any) => {
       toast({
-        title: "Error",
-        description: "Failed to import orders",
+        title: "Import Failed",
+        description: error.message || "Failed to import orders from WooCommerce",
         variant: "destructive",
       });
     },
