@@ -612,10 +612,7 @@ export default function ApiConnections() {
   // Mutation to create store connection
   const createConnectionMutation = useMutation({
     mutationFn: async (connection: any) => {
-      return await apiRequest(`/api/store-connections`, {
-        method: "POST",
-        body: connection,
-      });
+      return await apiRequest("POST", "/api/store-connections", connection);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/store-connections"] });
@@ -636,9 +633,7 @@ export default function ApiConnections() {
   // Mutation to delete store connection
   const deleteConnectionMutation = useMutation({
     mutationFn: async (connectionId: string) => {
-      return await apiRequest(`/api/store-connections/${connectionId}`, {
-        method: "DELETE",
-      });
+      return await apiRequest("DELETE", `/api/store-connections/${connectionId}`);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/store-connections"] });
