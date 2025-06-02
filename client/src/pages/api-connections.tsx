@@ -60,14 +60,14 @@ function ConnectionSettings({ connectionId, platform }: ConnectionSettingsProps)
   
   // Sync settings state
   const [syncSettings, setSyncSettings] = useState<SyncSettings>({
-    platform: platform,
+    platform: `${platform}-${connectionId}`,
     isActive: false,
     intervalMinutes: 5
   });
   
   // API settings state
   const [apiSettings, setApiSettings] = useState<RestApiSettings>({
-    platform: platform,
+    platform: `${platform}-${connectionId}`,
     consumerKey: '',
     consumerSecret: '',
     storeUrl: '',
@@ -80,45 +80,62 @@ function ConnectionSettings({ connectionId, platform }: ConnectionSettingsProps)
     endDate: ''
   });
 
-  // Queries
+  // Queries - Use connection-specific platform identifiers
   const { data: syncData = {} } = useQuery({
-    queryKey: [`/api/sync-settings/${platform}`],
-    refetchInterval: 2000,
+    queryKey: [`/api/sync-settings/${platform}-${connectionId}`],
+    refetchInterval: connectionId === 'default' ? 2000 : 0, // Only auto-refresh for main store
   });
 
   const { data: apiData = {} } = useQuery({
-    queryKey: [`/api/rest-api-settings/${platform}`],
+    queryKey: [`/api/rest-api-settings/${platform}-${connectionId}`],
   });
 
   const { data: syncStatus } = useQuery({
     queryKey: ["/api/sync-status"],
-    refetchInterval: 1000,
+    refetchInterval: connectionId === 'default' ? 1000 : 0, // Only auto-refresh for main store
+    enabled: connectionId === 'default', // Only check sync status for main store
   });
 
-  // Initialize settings from API data
+  // Initialize settings from API data - only populate if data exists, otherwise keep defaults
   useEffect(() => {
-    if (syncData && Object.keys(syncData).length > 0) {
+    if (syncData && Object.keys(syncData).length > 0 && syncData.platform) {
       setSyncSettings(prev => ({
         ...prev,
-        platform: syncData.platform || platform,
+        platform: syncData.platform,
         isActive: syncData.isActive || false,
         intervalMinutes: syncData.intervalMinutes || 5
       }));
+    } else {
+      // Reset to defaults for new connections
+      setSyncSettings({
+        platform: `${platform}-${connectionId}`,
+        isActive: false,
+        intervalMinutes: 5
+      });
     }
-  }, [syncData, platform]);
+  }, [syncData, platform, connectionId]);
 
   useEffect(() => {
-    if (apiData && Object.keys(apiData).length > 0) {
+    if (apiData && Object.keys(apiData).length > 0 && apiData.platform) {
       setApiSettings(prev => ({
         ...prev,
-        platform: apiData.platform || platform,
+        platform: apiData.platform,
         consumerKey: apiData.consumerKey || '',
         consumerSecret: apiData.consumerSecret || '',
         storeUrl: apiData.storeUrl || '',
         isActive: apiData.isActive !== undefined ? apiData.isActive : true
       }));
+    } else {
+      // Reset to defaults for new connections
+      setApiSettings({
+        platform: `${platform}-${connectionId}`,
+        consumerKey: '',
+        consumerSecret: '',
+        storeUrl: '',
+        isActive: true
+      });
     }
-  }, [apiData, platform]);
+  }, [apiData, platform, connectionId]);
 
   // Mutations
   const updateSyncSettingsMutation = useMutation({
