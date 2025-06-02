@@ -81,29 +81,29 @@ export default function SummaryCards({
   }
 
   return (
-    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6 mb-8">
+    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-4 mb-8">
       {cards.map((card, index) => {
         const Icon = card.icon;
         return (
-          <Card key={index} className="border border-gray-200">
-            <CardContent className="p-6">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm font-medium text-gray-600">{card.title}</p>
-                  <p className="text-3xl font-bold text-gray-900">{card.value}</p>
+          <Card key={index} className="border border-gray-200 hover:shadow-md transition-shadow">
+            <CardContent className="p-4">
+              <div className="flex items-start justify-between mb-3">
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-medium text-gray-600 mb-1">{card.title}</p>
+                  <p className="text-2xl font-bold text-gray-900 truncate">{card.value}</p>
                 </div>
-                <div className={`p-3 ${card.bgColor} rounded-full`}>
-                  <Icon className={`${card.iconColor} h-6 w-6`} />
+                <div className={`flex-shrink-0 p-2 ${card.bgColor} rounded-lg ml-3`}>
+                  <Icon className={`${card.iconColor} h-5 w-5`} />
                 </div>
               </div>
-              <div className="mt-4">
+              <div className="mt-3">
                 {card.growth ? (
-                  <div className="flex items-center">
-                    <span className="text-green-500 text-sm font-medium">{card.growth}</span>
-                    <span className="text-gray-500 text-sm ml-2">{card.growthText}</span>
+                  <div className="flex items-center text-xs">
+                    <span className="text-green-500 font-medium">{card.growth}</span>
+                    <span className="text-gray-500 ml-1">{card.growthText}</span>
                   </div>
                 ) : (
-                  <span className="text-gray-500 text-sm">{card.subText}</span>
+                  <span className="text-gray-500 text-xs">{card.subText}</span>
                 )}
               </div>
             </CardContent>
