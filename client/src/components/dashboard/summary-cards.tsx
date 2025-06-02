@@ -1,11 +1,12 @@
 import { Card, CardContent } from "@/components/ui/card";
-import { DollarSign, ShoppingCart, Percent, PiggyBank } from "lucide-react";
+import { DollarSign, ShoppingCart, Percent, Banknote, CreditCard } from "lucide-react";
 import { formatCurrency } from "@/lib/feeCalculations";
 
 interface SummaryCardsProps {
   totalSales: number;
   totalOrders: number;
   platformFees: number;
+  stripeFees: number;
   netDeposit: number;
   totalRefunds?: number;
   isLoading?: boolean;
@@ -15,6 +16,7 @@ export default function SummaryCards({
   totalSales,
   totalOrders,
   platformFees,
+  stripeFees,
   netDeposit,
   totalRefunds = 0,
   isLoading = false,
@@ -47,9 +49,17 @@ export default function SummaryCards({
       subText: "7% of total sales",
     },
     {
+      title: "Stripe Fees",
+      value: formatCurrency(stripeFees),
+      icon: CreditCard,
+      bgColor: "bg-orange-50",
+      iconColor: "text-orange-600",
+      subText: "2.9% + $0.30 per transaction",
+    },
+    {
       title: "Net Deposit",
       value: formatCurrency(netDeposit),
-      icon: PiggyBank,
+      icon: Banknote,
       bgColor: "bg-purple-50",
       iconColor: "text-purple-600",
       subText: "After all fees",
@@ -58,7 +68,7 @@ export default function SummaryCards({
 
   if (isLoading) {
     return (
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6 mb-8">
         {cards.map((_, index) => (
           <Card key={index} className="animate-pulse">
             <CardContent className="p-6">
@@ -71,7 +81,7 @@ export default function SummaryCards({
   }
 
   return (
-    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6 mb-8">
       {cards.map((card, index) => {
         const Icon = card.icon;
         return (

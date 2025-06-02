@@ -135,6 +135,7 @@ export default function Dashboard({ onMenuClick }: DashboardProps) {
           totalSales={summary?.totalSales || 0}
           totalOrders={summary?.totalOrders || 0}
           platformFees={summary?.platformFees || 0}
+          stripeFees={summary?.stripeFees || 0}
           netDeposit={summary?.netDeposit || 0}
           totalRefunds={summary?.totalRefunds || 0}
           isLoading={summaryLoading}
