@@ -621,16 +621,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
         params.push(month);
       }
       
-      // Handle status filtering
-      let statusFilter = ['processing', 'completed', 'refunded']; // Default to all order types
-      if (statuses) {
-        statusFilter = Array.isArray(statuses) ? statuses : [statuses];
-      }
-      
-      if (statusFilter.length > 0) {
+      // Handle status filtering - only apply filter if statuses are explicitly provided
+      if (statuses && Array.isArray(statuses) && statuses.length > 0) {
+        const statusFilter = statuses;
         const statusPlaceholders = statusFilter.map((_, index) => `$${params.length + index + 1}`).join(', ');
         whereClause += ` AND status IN (${statusPlaceholders})`;
         params.push(...statusFilter);
+      } else if (statuses && !Array.isArray(statuses)) {
+        // Single status provided
+        whereClause += ` AND status = $${params.length + 1}`;
+        params.push(statuses);
       }
       
       const query = `
@@ -697,16 +697,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
         params.push(currentYear);
       }
       
-      // Handle status filtering
-      let statusFilter = ['processing', 'completed', 'refunded']; // Default to all order types
-      if (statuses) {
-        statusFilter = Array.isArray(statuses) ? statuses as string[] : [statuses as string];
-      }
-      
-      if (statusFilter.length > 0) {
+      // Handle status filtering - only apply filter if statuses are explicitly provided
+      if (statuses && Array.isArray(statuses) && statuses.length > 0) {
+        const statusFilter = statuses as string[];
         const statusPlaceholders = statusFilter.map((_, index) => `$${params.length + index + 1}`).join(', ');
         whereClause += ` AND status IN (${statusPlaceholders})`;
         params.push(...statusFilter);
+      } else if (statuses && !Array.isArray(statuses)) {
+        // Single status provided
+        whereClause += ` AND status = $${params.length + 1}`;
+        params.push(statuses);
       }
       
       const query = `
