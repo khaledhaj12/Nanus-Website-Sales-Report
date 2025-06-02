@@ -70,6 +70,16 @@ export default function Upload({ onMenuClick }: UploadProps) {
             queryClient.invalidateQueries({ queryKey: ["/api/uploads/all"] });
             queryClient.invalidateQueries({ queryKey: ["/api/dashboard/summary"] });
             queryClient.invalidateQueries({ queryKey: ["/api/locations"] });
+            
+            // Reset after a short delay to show completed state
+            setTimeout(() => {
+              setUploadStatus('idle');
+              setCurrentUploadId(null);
+              setProcessingProgress(0);
+              setUploadProgress(0);
+              setProcessedRecords(0);
+              setTotalRecords(0);
+            }, 2000);
           }
         } catch (error) {
           console.error('Error fetching progress:', error);
