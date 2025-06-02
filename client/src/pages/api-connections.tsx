@@ -88,16 +88,16 @@ function ConnectionSettings({ connectionId, platform }: ConnectionSettingsProps)
   });
 
   // Queries - Use connection-specific platform identifiers
-  const { data: syncData = {} } = useQuery({
+  const { data: syncData = {}, isLoading: syncDataLoading } = useQuery({
     queryKey: [`/api/sync-settings/${platformId}`],
     refetchInterval: connectionId === 'default' ? 2000 : 0, // Only auto-refresh for main store
   });
 
-  const { data: apiData = {} } = useQuery({
+  const { data: apiData = {}, isLoading: apiDataLoading } = useQuery({
     queryKey: [`/api/rest-api-settings/${platformId}`],
   });
 
-  const { data: syncStatus } = useQuery({
+  const { data: syncStatus, isLoading: syncStatusLoading } = useQuery({
     queryKey: ["/api/sync-status"],
     refetchInterval: connectionId === 'default' ? 1000 : 0, // Only auto-refresh for main store
     enabled: connectionId === 'default', // Only check sync status for main store
@@ -339,35 +339,37 @@ function ConnectionSettings({ connectionId, platform }: ConnectionSettingsProps)
       <SyncStatus platform={platformId} />
 
       {/* Sync Control Card */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Settings2 className="h-5 w-5" />
-            Sync Control
-          </CardTitle>
-          <CardDescription>
-            Start or stop automatic sync and configure settings
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="flex flex-col sm:flex-row gap-3">
-            <Button
-              onClick={handleToggleSync}
-              disabled={startSyncMutation.isPending || stopSyncMutation.isPending}
-              className="flex-1"
-            >
-              {startSyncMutation.isPending || stopSyncMutation.isPending ? (
-                <RefreshCw className="mr-2 h-4 w-4 animate-spin" />
-              ) : (syncStatus && typeof syncStatus === 'object' && 'isRunning' in syncStatus && syncStatus.isRunning) ? (
-                <AlertCircle className="mr-2 h-4 w-4" />
-              ) : (
-                <Zap className="mr-2 h-4 w-4" />
-              )}
-              {(syncStatus && typeof syncStatus === 'object' && 'isRunning' in syncStatus && syncStatus.isRunning) ? "Stop Auto Sync" : "Start Auto Sync"}
-            </Button>
-          </div>
-        </CardContent>
-      </Card>
+      {!syncStatusLoading && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Settings2 className="h-5 w-5" />
+              Sync Control
+            </CardTitle>
+            <CardDescription>
+              Start or stop automatic sync and configure settings
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="flex flex-col sm:flex-row gap-3">
+              <Button
+                onClick={handleToggleSync}
+                disabled={startSyncMutation.isPending || stopSyncMutation.isPending}
+                className="flex-1"
+              >
+                {startSyncMutation.isPending || stopSyncMutation.isPending ? (
+                  <RefreshCw className="mr-2 h-4 w-4 animate-spin" />
+                ) : (syncStatus && typeof syncStatus === 'object' && 'isRunning' in syncStatus && syncStatus.isRunning) ? (
+                  <AlertCircle className="mr-2 h-4 w-4" />
+                ) : (
+                  <Zap className="mr-2 h-4 w-4" />
+                )}
+                {(syncStatus && typeof syncStatus === 'object' && 'isRunning' in syncStatus && syncStatus.isRunning) ? "Stop Auto Sync" : "Start Auto Sync"}
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       {/* REST API Settings */}
       <Card>
