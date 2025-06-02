@@ -768,10 +768,37 @@ export class DatabaseStorage implements IStorage {
 
     while (hasMore) {
       try {
-        const url = `${storeUrl}/wp-json/wc/v3/orders?per_page=100&page=${page}&after=${startDate}&before=${endDate}&consumer_key=${consumerKey}&consumer_secret=${consumerSecret}`;
-        const response = await fetch(url);
+        // Create URL with proper authentication
+        const baseUrl = `${storeUrl}/wp-json/wc/v3/orders`;
+        const params = new URLSearchParams({
+          per_page: '100',
+          page: page.toString(),
+          consumer_key: consumerKey,
+          consumer_secret: consumerSecret
+        });
+        
+        // Add date filters if provided
+        if (startDate) {
+          params.append('after', `${startDate}T00:00:00`);
+        }
+        if (endDate) {
+          params.append('before', `${endDate}T23:59:59`);
+        }
+        
+        const url = `${baseUrl}?${params.toString()}`;
+        console.log(`Fetching orders from: ${baseUrl}?${params.toString().replace(consumerKey, 'XXX').replace(consumerSecret, 'XXX')}`);
+        
+        const response = await fetch(url, {
+          method: 'GET',
+          headers: {
+            'Content-Type': 'application/json',
+            'User-Agent': 'WooCommerce-Import/1.0'
+          }
+        });
         
         if (!response.ok) {
+          const errorText = await response.text();
+          console.error(`WooCommerce API Error ${response.status}: ${errorText}`);
           throw new Error(`HTTP ${response.status}: ${response.statusText}`);
         }
         
@@ -790,6 +817,53 @@ export class DatabaseStorage implements IStorage {
               skipped++;
               continue;
             }
+
+            // Extract location from order meta data
+            let locationId = 1; // Default fallback
+            let locationName = "Default Location";
+            
+            // Look for orderable location in meta data
+            if (order.meta_data && Array.isArray(order.meta_data)) {
+              const orderableLocationMeta = order.meta_data.find((meta: any) => 
+                meta.key === 'orderable_location' || 
+                meta.key === '_orderable_location' ||
+                meta.key === 'store_location' ||
+                meta.key === '_store_location'
+              );
+              
+              if (orderableLocationMeta && orderableLocationMeta.value) {
+                locationName = orderableLocationMeta.value;
+                console.log(`Found location in meta data: ${locationName}`);
+              }
+            }
+            
+            // Also check line items for location info
+            if (order.line_items && Array.isArray(order.line_items)) {
+              for (const item of order.line_items) {
+                if (item.meta_data && Array.isArray(item.meta_data)) {
+                  const itemLocationMeta = item.meta_data.find((meta: any) => 
+                    meta.key === 'orderable_location' || 
+                    meta.key === '_orderable_location' ||
+                    meta.key === 'store_location' ||
+                    meta.key === '_store_location'
+                  );
+                  
+                  if (itemLocationMeta && itemLocationMeta.value) {
+                    locationName = itemLocationMeta.value;
+                    console.log(`Found location in line item meta data: ${locationName}`);
+                    break;
+                  }
+                }
+              }
+            }
+            
+            // Create or get location
+            let existingLocation = await this.getLocationByName(locationName);
+            if (!existingLocation) {
+              console.log(`Creating new location: ${locationName}`);
+              existingLocation = await this.createLocation({ name: locationName });
+            }
+            locationId = existingLocation.id;
 
             // Create order data
             const orderData = {
@@ -821,7 +895,7 @@ export class DatabaseStorage implements IStorage {
               shippingCountry: order.shipping?.country || null,
               lineItems: JSON.stringify(order.line_items || []),
               rawData: JSON.stringify(order),
-              locationId: 77 // Default location
+              locationId: locationId
             };
 
             await this.createWooOrder(orderData);
