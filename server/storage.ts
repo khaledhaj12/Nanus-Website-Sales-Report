@@ -368,7 +368,8 @@ export class DatabaseStorage implements IStorage {
     const monthlyData = new Map();
     
     for (const order of result) {
-      const monthKey = order.orderDate?.toISOString().substring(0, 7) || '';
+      const orderDate = order.orderDate instanceof Date ? order.orderDate : new Date(order.orderDate);
+      const monthKey = orderDate.toISOString().substring(0, 7);
       if (!monthlyData.has(monthKey)) {
         monthlyData.set(monthKey, {
           month: monthKey,
