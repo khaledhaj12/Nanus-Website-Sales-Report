@@ -675,26 +675,25 @@ export default function ApiConnections() {
       return;
     }
 
-    const newConnection: Connection = {
-      id: `connection-${Date.now()}`,
+    const connectionId = `woocommerce-connection-${Date.now()}`;
+    const newConnection = {
+      connectionId,
       name: newConnectionName.trim(),
       domain: extractDomainFromUrl(newConnectionName.trim()),
-      platform: 'woocommerce'
+      platform: connectionId
     };
 
-    setConnections(prev => [...prev, newConnection]);
-    setActiveConnectionId(newConnection.id);
-    setNewConnectionName('');
-    setShowAddConnection(false);
-    
-    toast({
-      title: "Success",
-      description: `Added new connection: ${newConnection.name}`,
+    createConnectionMutation.mutate(newConnection, {
+      onSuccess: () => {
+        setActiveConnectionId(connectionId);
+        setNewConnectionName('');
+        setShowAddConnection(false);
+      }
     });
   };
 
   const removeConnection = (connectionId: string) => {
-    if (connectionId === 'default') {
+    if (connectionId === 'woocommerce') {
       toast({
         title: "Error",
         description: "Cannot remove the main store connection",
@@ -703,19 +702,16 @@ export default function ApiConnections() {
       return;
     }
 
-    setConnections(prev => prev.filter(conn => conn.id !== connectionId));
-    
-    if (activeConnectionId === connectionId) {
-      setActiveConnectionId('default');
-    }
-    
-    toast({
-      title: "Success",
-      description: "Connection removed successfully",
+    deleteConnectionMutation.mutate(connectionId, {
+      onSuccess: () => {
+        if (activeConnectionId === connectionId) {
+          setActiveConnectionId('woocommerce');
+        }
+      }
     });
   };
 
-  const activeConnection = connections.find(conn => conn.id === activeConnectionId);
+  const activeConnection = connections.find(conn => conn.connectionId === activeConnectionId);
 
   return (
     <div className="p-4 md:p-6 space-y-6">
@@ -731,22 +727,22 @@ export default function ApiConnections() {
       <Tabs value={activeConnectionId} onValueChange={setActiveConnectionId}>
         <TabsList className="w-full flex-wrap h-auto p-1">
           {connections.map((connection) => (
-            <div key={connection.id} className="relative">
+            <div key={connection.connectionId} className="relative">
               <TabsTrigger 
-                value={connection.id}
+                value={connection.connectionId}
                 className="flex items-center gap-2 px-3 py-2"
               >
                 <Globe className="h-4 w-4" />
                 {connection.domain || connection.name}
               </TabsTrigger>
-              {connection.id !== 'default' && (
+              {connection.connectionId !== 'woocommerce' && (
                 <Button
                   variant="ghost"
                   size="sm"
                   className="absolute -top-2 -right-2 h-5 w-5 p-0 rounded-full bg-red-500 hover:bg-red-600 text-white"
                   onClick={(e) => {
                     e.stopPropagation();
-                    removeConnection(connection.id);
+                    removeConnection(connection.connectionId);
                   }}
                 >
                   <X className="h-3 w-3" />
