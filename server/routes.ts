@@ -696,7 +696,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
           
           const orderQuery = `
             SELECT w.id, w.woo_order_id as "orderId", w.order_date as "orderDate", 
-                   w.customer_name as "customerName", w.customer_email as "customerEmail",
+                   COALESCE(
+                     NULLIF(w.customer_name, ''),
+                     TRIM(CONCAT(COALESCE(w.billing_first_name, ''), ' ', COALESCE(w.billing_last_name, ''))),
+                     TRIM(CONCAT(COALESCE(w.shipping_first_name, ''), ' ', COALESCE(w.shipping_last_name, ''))),
+                     COALESCE(w.customer_email, '')
+                   ) as "customerName", 
+                   w.customer_email as "customerEmail",
                    w.amount, w.status, w.billing_address_1 as "cardLast4", w.amount as "refundAmount",
                    l.name as "locationName"
             FROM woo_orders w
