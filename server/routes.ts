@@ -285,7 +285,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
       let hasMore = true;
 
       while (hasMore) {
-        const url = `${storeUrl}/wp-json/wc/v3/orders?per_page=100&page=${page}&orderby=date&order=desc&consumer_key=${consumerKey}&consumer_secret=${consumerSecret}`;
+        let url = `${storeUrl}/wp-json/wc/v3/orders?per_page=100&page=${page}&orderby=date&order=desc&consumer_key=${consumerKey}&consumer_secret=${consumerSecret}`;
+        
+        // Add date range filtering if provided
+        if (startDate) {
+          url += `&after=${startDate}T00:00:00`;
+        }
+        if (endDate) {
+          url += `&before=${endDate}T23:59:59`;
+        }
         
         const response = await axios.get(url);
         const orders = response.data;
