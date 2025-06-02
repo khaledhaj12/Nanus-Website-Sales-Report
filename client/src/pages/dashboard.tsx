@@ -26,7 +26,7 @@ export default function Dashboard({ onMenuClick }: DashboardProps) {
   const [startMonth, setStartMonth] = useState(currentMonth);
   const [endMonth, setEndMonth] = useState(currentMonth);
   const [selectedLocation, setSelectedLocation] = useState(isAdmin ? "all" : "");
-  const [selectedStatuses, setSelectedStatuses] = useState<string[]>(["processing", "completed"]);
+  const [selectedStatuses, setSelectedStatuses] = useState<string[]>(["processing", "completed", "refunded"]);
 
   const { data: locations = [] } = useQuery({
     queryKey: ["/api/locations"],
@@ -152,32 +152,43 @@ export default function Dashboard({ onMenuClick }: DashboardProps) {
                   <Button
                     variant="outline"
                     role="combobox"
-                    className="w-full justify-between"
+                    className="w-full justify-between min-h-[40px] px-3 py-2"
                   >
                     {selectedStatuses.length > 0 ? (
-                      <div className="flex flex-wrap gap-1">
+                      <div className="flex flex-wrap gap-1 items-center max-w-[200px]">
                         {selectedStatuses.slice(0, 2).map((status) => (
-                          <Badge key={status} variant="secondary" className="text-xs">
+                          <Badge 
+                            key={status} 
+                            variant="secondary" 
+                            className={cn(
+                              "text-xs capitalize font-medium px-2 py-1",
+                              status === "processing" && "bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200",
+                              status === "completed" && "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200",
+                              status === "refunded" && "bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200",
+                              status === "pending" && "bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200",
+                              status === "cancelled" && "bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-200"
+                            )}
+                          >
                             {status}
                           </Badge>
                         ))}
                         {selectedStatuses.length > 2 && (
-                          <Badge variant="secondary" className="text-xs">
+                          <Badge variant="secondary" className="text-xs bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-400">
                             +{selectedStatuses.length - 2}
                           </Badge>
                         )}
                       </div>
                     ) : (
-                      "Select statuses"
+                      <span className="text-muted-foreground">Select order statuses</span>
                     )}
                     <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
                   </Button>
                 </PopoverTrigger>
-                <PopoverContent className="w-full p-0">
+                <PopoverContent className="w-[280px] p-0" align="start">
                   <Command>
-                    <CommandInput placeholder="Search status..." />
+                    <CommandInput placeholder="Search status..." className="h-9" />
                     <CommandEmpty>No status found.</CommandEmpty>
-                    <CommandGroup>
+                    <CommandGroup className="p-2">
                       {["processing", "completed", "pending", "on-hold", "cancelled", "refunded", "failed"].map((status) => (
                         <CommandItem
                           key={status}
@@ -189,14 +200,25 @@ export default function Dashboard({ onMenuClick }: DashboardProps) {
                                 : [...prev, status]
                             );
                           }}
+                          className="flex items-center space-x-2 px-2 py-1.5 rounded-sm cursor-pointer hover:bg-accent"
                         >
                           <Check
                             className={cn(
-                              "mr-2 h-4 w-4",
+                              "h-4 w-4 text-primary",
                               selectedStatuses.includes(status) ? "opacity-100" : "opacity-0"
                             )}
                           />
-                          {status}
+                          <span className="capitalize font-medium flex-1">{status}</span>
+                          <div className={cn(
+                            "w-2 h-2 rounded-full",
+                            status === "processing" && "bg-blue-500",
+                            status === "completed" && "bg-green-500",
+                            status === "refunded" && "bg-red-500",
+                            status === "pending" && "bg-yellow-500",
+                            status === "cancelled" && "bg-gray-500",
+                            status === "on-hold" && "bg-orange-500",
+                            status === "failed" && "bg-red-600"
+                          )} />
                         </CommandItem>
                       ))}
                     </CommandGroup>

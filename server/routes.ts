@@ -571,7 +571,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       
       // Handle status filtering
-      let statusFilter = ['processing', 'completed']; // Default to paid orders
+      let statusFilter = ['processing', 'completed', 'refunded']; // Default to all order types
       if (statuses) {
         statusFilter = Array.isArray(statuses) ? statuses : [statuses];
       }
@@ -647,7 +647,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       
       // Handle status filtering
-      let statusFilter = ['processing', 'completed']; // Default to paid orders
+      let statusFilter = ['processing', 'completed', 'refunded']; // Default to all order types
       if (statuses) {
         statusFilter = Array.isArray(statuses) ? statuses as string[] : [statuses as string];
       }
