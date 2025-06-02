@@ -304,13 +304,19 @@ function ConnectionSettings({ connectionId, platform }: ConnectionSettingsProps)
     testConnectionMutation.mutate();
   };
 
+  // Safe computation of sync running state
+  const isSyncRunning = Boolean(
+    syncStatus && 
+    typeof syncStatus === 'object' && 
+    'isRunning' in syncStatus && 
+    syncStatus.isRunning
+  );
+
   const handleToggleSync = () => {
     // Only proceed if sync status data is loaded and valid
     if (!syncStatus || syncStatusLoading) return;
     
-    const isRunning = syncStatus && typeof syncStatus === 'object' && 'isRunning' in syncStatus && syncStatus.isRunning;
-    
-    if (isRunning) {
+    if (isSyncRunning) {
       stopSyncMutation.mutate();
     } else {
       startSyncMutation.mutate();
@@ -368,12 +374,12 @@ function ConnectionSettings({ connectionId, platform }: ConnectionSettingsProps)
               >
                 {startSyncMutation.isPending || stopSyncMutation.isPending ? (
                   <RefreshCw className="mr-2 h-4 w-4 animate-spin" />
-                ) : (syncStatus && typeof syncStatus === 'object' && 'isRunning' in syncStatus && syncStatus.isRunning) ? (
+                ) : isSyncRunning ? (
                   <AlertCircle className="mr-2 h-4 w-4" />
                 ) : (
                   <Zap className="mr-2 h-4 w-4" />
                 )}
-                {(syncStatus && typeof syncStatus === 'object' && 'isRunning' in syncStatus && syncStatus.isRunning) ? "Stop Auto Sync" : "Start Auto Sync"}
+                {isSyncRunning ? "Stop Auto Sync" : "Start Auto Sync"}
               </Button>
             </div>
           </CardContent>
