@@ -1060,6 +1060,33 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Footer settings routes
+  app.get('/api/footer-settings', async (req, res) => {
+    try {
+      const settings = await storage.getFooterSettings();
+      res.json(settings);
+    } catch (error) {
+      console.error("Error fetching footer settings:", error);
+      res.status(500).json({ message: "Failed to fetch footer settings" });
+    }
+  });
+
+  app.post('/api/footer-settings', isAuthenticated, async (req, res) => {
+    try {
+      const { customCode, isEnabled } = req.body;
+      
+      const settings = await storage.upsertFooterSettings({
+        customCode: customCode || '',
+        isEnabled: isEnabled !== undefined ? isEnabled : true,
+      });
+      
+      res.json({ success: true, settings });
+    } catch (error) {
+      console.error("Error updating footer settings:", error);
+      res.status(500).json({ message: "Failed to update footer settings" });
+    }
+  });
+
   const httpServer = createServer(app);
   
   // Start auto sync on server startup
