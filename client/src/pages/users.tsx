@@ -52,6 +52,9 @@ function UserStatusAccess({ userId }: UserStatusAccessProps) {
     queryKey: ["/api/users", userId, "statuses"],
   });
 
+  // Debug logging
+  console.log("UserStatusAccess - userStatuses:", userStatuses, "type:", typeof userStatuses);
+
   const statusDisplayNames: { [key: string]: string } = {
     'processing': 'Processing',
     'completed': 'Completed', 
@@ -83,8 +86,10 @@ function UserStatusAccess({ userId }: UserStatusAccessProps) {
     }
   };
 
-  // Ensure userStatuses is an array of strings
-  const statusArray = Array.isArray(userStatuses) ? userStatuses : [];
+  // Safely handle the userStatuses data - filter out non-string values
+  const statusArray = Array.isArray(userStatuses) 
+    ? userStatuses.filter(item => typeof item === 'string')
+    : [];
 
   return (
     <div className="mt-2">
@@ -93,12 +98,16 @@ function UserStatusAccess({ userId }: UserStatusAccessProps) {
         <span className="text-xs text-gray-400">All statuses accessible</span>
       ) : (
         <div className="flex flex-wrap gap-1">
-          {statusArray.map((status: string, index: number) => (
-            <Badge key={`${status}-${index}`} variant="outline" className={`text-xs ${getStatusBadgeColor(status)}`}>
-              <Shield className="mr-1 h-3 w-3" />
-              {statusDisplayNames[status] || status}
-            </Badge>
-          ))}
+          {statusArray.map((status: string, index: number) => {
+            // Ensure status is a string before rendering
+            const statusText = String(status);
+            return (
+              <Badge key={`${statusText}-${index}`} variant="outline" className={`text-xs ${getStatusBadgeColor(statusText)}`}>
+                <Shield className="mr-1 h-3 w-3" />
+                {statusDisplayNames[statusText] || statusText}
+              </Badge>
+            );
+          })}
         </div>
       )}
     </div>
