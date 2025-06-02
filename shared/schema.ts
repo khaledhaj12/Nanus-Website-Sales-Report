@@ -58,6 +58,14 @@ export const userLocationAccess = pgTable("user_location_access", {
   createdAt: timestamp("created_at").defaultNow(),
 });
 
+// User status access table
+export const userStatusAccess = pgTable("user_status_access", {
+  id: serial("id").primaryKey(),
+  userId: integer("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  status: varchar("status", { length: 50 }).notNull(),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
 // Orders table
 export const orders = pgTable("orders", {
   id: serial("id").primaryKey(),
@@ -177,6 +185,7 @@ export const restApiSettings = pgTable("rest_api_settings", {
 // Relations
 export const usersRelations = relations(users, ({ many }) => ({
   locationAccess: many(userLocationAccess),
+  statusAccess: many(userStatusAccess),
 }));
 
 export const locationsRelations = relations(locations, ({ many }) => ({
@@ -193,6 +202,13 @@ export const userLocationAccessRelations = relations(userLocationAccess, ({ one 
   location: one(locations, {
     fields: [userLocationAccess.locationId],
     references: [locations.id],
+  }),
+}));
+
+export const userStatusAccessRelations = relations(userStatusAccess, ({ one }) => ({
+  user: one(users, {
+    fields: [userStatusAccess.userId],
+    references: [users.id],
   }),
 }));
 
@@ -265,3 +281,4 @@ export type InsertSyncSettings = z.infer<typeof insertSyncSettingsSchema>;
 export type RestApiSettings = typeof restApiSettings.$inferSelect;
 export type InsertRestApiSettings = z.infer<typeof insertRestApiSettingsSchema>;
 export type UserLocationAccess = typeof userLocationAccess.$inferSelect;
+export type UserStatusAccess = typeof userStatusAccess.$inferSelect;

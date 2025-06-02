@@ -3,6 +3,7 @@ import {
   locations,
   orders,
   userLocationAccess,
+  userStatusAccess,
   wooOrders,
   syncSettings,
   restApiSettings,
@@ -19,6 +20,7 @@ import {
   type RestApiSettings,
   type InsertRestApiSettings,
   type UserLocationAccess,
+  type UserStatusAccess,
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, desc, and, gte, lte, or, like, inArray, sql } from "drizzle-orm";
@@ -59,6 +61,10 @@ export interface IStorage {
   // User location access
   getUserLocationAccess(userId: number): Promise<number[]>;
   setUserLocationAccess(userId: number, locationIds: number[]): Promise<void>;
+  
+  // User status access
+  getUserStatusAccess(userId: number): Promise<string[]>;
+  setUserStatusAccess(userId: number, statuses: string[]): Promise<void>;
   
   // Analytics
   getDashboardSummary(locationId?: number, month?: string): Promise<{
