@@ -92,7 +92,7 @@ function AppRouter() {
       case "recaptcha":
         return isAdmin ? <Recaptcha {...commonProps} /> : <Dashboard {...commonProps} />;
       case "footer":
-        return isAdmin ? <FooterSettings /> : <Dashboard {...commonProps} />;
+        return isAdmin ? <FooterSettings {...commonProps} /> : <Dashboard {...commonProps} />;
       default:
         return <Dashboard {...commonProps} />;
     }
