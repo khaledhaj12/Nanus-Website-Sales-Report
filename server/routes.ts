@@ -55,6 +55,30 @@ const logoUpload = multer({
 });
 
 export async function registerRoutes(app: Express): Promise<Server> {
+  // Initialize admin user if not exists
+  const initializeAdmin = async () => {
+    try {
+      const adminUsername = process.env.ADMIN_USERNAME || 'admin';
+      const adminUser = await storage.getUserByUsername(adminUsername);
+      if (!adminUser) {
+        const hashedPassword = await bcrypt.hash(process.env.ADMIN_PASSWORD || 'admin123', 10);
+        await storage.createUser({
+          username: adminUsername,
+          password: hashedPassword,
+          firstName: 'Admin',
+          lastName: 'User',
+          email: 'admin@company.com',
+          role: 'admin',
+        });
+        console.log(`Admin user created with username: ${adminUsername}`);
+      }
+    } catch (error) {
+      console.error('Error initializing admin user:', error);
+    }
+  };
+
+  await initializeAdmin();
+
   // Serve uploaded logos
   app.use('/uploads', express.static('uploads'));
 
