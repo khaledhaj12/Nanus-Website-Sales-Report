@@ -37,7 +37,8 @@ export function DateRangePicker({
     if (!startValue && !endValue) return placeholder;
     
     const formatDate = (value: string) => {
-      const date = new Date(value);
+      const [year, month, day] = value.split('-');
+      const date = new Date(parseInt(year), parseInt(month) - 1, parseInt(day));
       return date.toLocaleDateString('en-US', { 
         year: 'numeric', 
         month: 'short', 
