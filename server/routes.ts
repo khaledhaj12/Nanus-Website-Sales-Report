@@ -1195,47 +1195,181 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ message: "No file uploaded" });
       }
 
+      const existingSettings = await storage.getLogoSettings();
+      
       // Delete old logo if exists
-      const existingLogo = await storage.getLogoSettings();
-      if (existingLogo?.logoPath) {
+      if (existingSettings?.logoPath) {
         try {
-          await fs.unlink(existingLogo.logoPath);
+          await fs.unlink(existingSettings.logoPath);
         } catch (deleteError) {
           console.warn("Could not delete old logo file:", deleteError);
         }
       }
 
-      const logoPath = req.file.path;
-      const settings = await storage.upsertLogoSettings({
-        logoPath: logoPath,
+      const updateData = {
+        logoPath: req.file.path,
         originalName: req.file.originalname,
         mimeType: req.file.mimetype,
         fileSize: req.file.size,
-      });
+      };
 
-      res.json({ success: true, logoPath: `/uploads/logos/${req.file.filename}` });
+      // Preserve existing favicon data if it exists
+      if (existingSettings) {
+        Object.assign(updateData, {
+          faviconPath: existingSettings.faviconPath,
+          faviconOriginalName: existingSettings.faviconOriginalName,
+          faviconMimeType: existingSettings.faviconMimeType,
+          faviconFileSize: existingSettings.faviconFileSize,
+        });
+      }
+
+      const settings = await storage.upsertLogoSettings(updateData);
+
+      res.json({ success: true, logoPath: `/uploads/logos/${req.file.filename}`, settings });
     } catch (error) {
       console.error("Error uploading logo:", error);
       res.status(500).json({ message: "Failed to upload logo" });
     }
   });
 
+  app.post('/api/favicon-upload', isAuthenticated, logoUpload.single('favicon'), async (req, res) => {
+    try {
+      if (!req.file) {
+        return res.status(400).json({ message: "No file uploaded" });
+      }
+
+      const existingSettings = await storage.getLogoSettings();
+      
+      // Delete old favicon if exists
+      if (existingSettings?.faviconPath) {
+        try {
+          await fs.unlink(existingSettings.faviconPath);
+        } catch (deleteError) {
+          console.warn("Could not delete old favicon file:", deleteError);
+        }
+      }
+
+      const updateData = {
+        faviconPath: req.file.path,
+        faviconOriginalName: req.file.originalname,
+        faviconMimeType: req.file.mimetype,
+        faviconFileSize: req.file.size,
+      };
+
+      // Preserve existing logo data if it exists
+      if (existingSettings) {
+        Object.assign(updateData, {
+          logoPath: existingSettings.logoPath,
+          originalName: existingSettings.originalName,
+          mimeType: existingSettings.mimeType,
+          fileSize: existingSettings.fileSize,
+        });
+      }
+
+      const settings = await storage.upsertLogoSettings(updateData);
+
+      res.json({ success: true, faviconPath: `/uploads/logos/${req.file.filename}`, settings });
+    } catch (error) {
+      console.error("Error uploading favicon:", error);
+      res.status(500).json({ message: "Failed to upload favicon" });
+    }
+  });
+
   app.delete('/api/logo-settings', isAuthenticated, async (req, res) => {
     try {
-      const existingLogo = await storage.getLogoSettings();
-      if (existingLogo?.logoPath) {
+      const existingSettings = await storage.getLogoSettings();
+      
+      // Delete logo file if exists
+      if (existingSettings?.logoPath) {
         try {
-          await fs.unlink(existingLogo.logoPath);
+          await fs.unlink(existingSettings.logoPath);
         } catch (deleteError) {
           console.warn("Could not delete logo file:", deleteError);
+        }
+      }
+
+      // Delete favicon file if exists
+      if (existingSettings?.faviconPath) {
+        try {
+          await fs.unlink(existingSettings.faviconPath);
+        } catch (deleteError) {
+          console.warn("Could not delete favicon file:", deleteError);
         }
       }
 
       await storage.deleteLogoSettings();
       res.json({ success: true });
     } catch (error) {
+      console.error("Error deleting logo settings:", error);
+      res.status(500).json({ message: "Failed to delete logo settings" });
+    }
+  });
+
+  app.delete('/api/logo-only', isAuthenticated, async (req, res) => {
+    try {
+      const existingSettings = await storage.getLogoSettings();
+      
+      if (existingSettings?.logoPath) {
+        try {
+          await fs.unlink(existingSettings.logoPath);
+        } catch (deleteError) {
+          console.warn("Could not delete logo file:", deleteError);
+        }
+      }
+
+      if (existingSettings) {
+        const updateData = {
+          logoPath: null,
+          originalName: null,
+          mimeType: null,
+          fileSize: null,
+          faviconPath: existingSettings.faviconPath,
+          faviconOriginalName: existingSettings.faviconOriginalName,
+          faviconMimeType: existingSettings.faviconMimeType,
+          faviconFileSize: existingSettings.faviconFileSize,
+        };
+
+        await storage.upsertLogoSettings(updateData);
+      }
+
+      res.json({ success: true });
+    } catch (error) {
       console.error("Error deleting logo:", error);
       res.status(500).json({ message: "Failed to delete logo" });
+    }
+  });
+
+  app.delete('/api/favicon-only', isAuthenticated, async (req, res) => {
+    try {
+      const existingSettings = await storage.getLogoSettings();
+      
+      if (existingSettings?.faviconPath) {
+        try {
+          await fs.unlink(existingSettings.faviconPath);
+        } catch (deleteError) {
+          console.warn("Could not delete favicon file:", deleteError);
+        }
+      }
+
+      if (existingSettings) {
+        const updateData = {
+          logoPath: existingSettings.logoPath,
+          originalName: existingSettings.originalName,
+          mimeType: existingSettings.mimeType,
+          fileSize: existingSettings.fileSize,
+          faviconPath: null,
+          faviconOriginalName: null,
+          faviconMimeType: null,
+          faviconFileSize: null,
+        };
+
+        await storage.upsertLogoSettings(updateData);
+      }
+
+      res.json({ success: true });
+    } catch (error) {
+      console.error("Error deleting favicon:", error);
+      res.status(500).json({ message: "Failed to delete favicon" });
     }
   });
 

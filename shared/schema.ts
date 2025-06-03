@@ -247,9 +247,13 @@ export const insertFooterSettingsSchema = createInsertSchema(footerSettings).omi
 export const logoSettings = pgTable("logo_settings", {
   id: serial("id").primaryKey(),
   logoPath: text("logo_path"), // Path to uploaded logo file
-  originalName: text("original_name"), // Original filename
-  mimeType: text("mime_type"), // Image MIME type
-  fileSize: integer("file_size"), // File size in bytes
+  faviconPath: text("favicon_path"), // Path to uploaded favicon file
+  originalName: text("original_name"), // Original logo filename
+  faviconOriginalName: text("favicon_original_name"), // Original favicon filename
+  mimeType: text("mime_type"), // Logo MIME type
+  faviconMimeType: text("favicon_mime_type"), // Favicon MIME type
+  fileSize: integer("file_size"), // Logo file size in bytes
+  faviconFileSize: integer("favicon_file_size"), // Favicon file size in bytes
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });
