@@ -31,13 +31,13 @@ export default function Dashboard({ onMenuClick }: DashboardProps) {
     enabled: !isAdmin && !!user?.id,
   });
 
-  // Define allowed statuses based on user role and database permissions
+  // Define allowed statuses based on user role
   const allowedStatuses = useMemo(() => {
     if (isAdmin) {
-      // Admin users: full access to all statuses, NO restrictions
+      // Admin users: full access to all statuses, NO restrictions whatsoever
       return ["completed", "processing", "refunded", "on-hold", "checkout-draft", "failed", "pending", "cancelled"];
     } else {
-      // Non-admin users: use statuses from database, fallback to safe defaults
+      // Non-admin users: restricted statuses from database
       const allowedStatuses = Array.isArray(userStatuses) ? userStatuses : [];
       return allowedStatuses.length > 0 ? allowedStatuses : ["completed", "processing", "refunded"];
     }

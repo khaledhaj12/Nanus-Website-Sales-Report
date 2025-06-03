@@ -1068,7 +1068,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         params.push(month);
       }
       
-      // Handle status filtering - ENFORCE security restrictions for non-admin users
+      // Handle status filtering - ENFORCE security restrictions for non-admin users ONLY
       let statusFilter: string[] = [];
       if (statuses) {
         if (Array.isArray(statuses)) {
@@ -1077,19 +1077,24 @@ export async function registerRoutes(app: Express): Promise<Server> {
           statusFilter = [statuses as string];
         }
         
-        // SECURITY: Filter out any statuses not allowed for this user
-        statusFilter = statusFilter.filter(status => allowedStatuses.includes(status));
+        // SECURITY: Only filter statuses for non-admin users
+        if (!isAdmin) {
+          statusFilter = statusFilter.filter(status => allowedStatuses.includes(status));
+        }
       }
       
-      // If no valid statuses provided, default to allowed statuses for this user
-      if (statusFilter.length === 0) {
+      // For non-admin users: If no valid statuses provided, default to their allowed statuses
+      // For admin users: If no statuses provided, don't filter by status (show all)
+      if (!isAdmin && statusFilter.length === 0) {
         statusFilter = allowedStatuses;
       }
       
-      // Apply status filtering to query
-      const statusPlaceholders = statusFilter.map((_, index) => `$${params.length + index + 1}`).join(', ');
-      whereClause += ` AND status IN (${statusPlaceholders})`;
-      params.push(...statusFilter);
+      // Apply status filtering to query (only if we have statuses to filter)
+      if (statusFilter.length > 0) {
+        const statusPlaceholders = statusFilter.map((_, index) => `$${params.length + index + 1}`).join(', ');
+        whereClause += ` AND status IN (${statusPlaceholders})`;
+        params.push(...statusFilter);
+      }
       
       const query = `
         SELECT 
