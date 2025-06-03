@@ -351,7 +351,9 @@ export default function CreateUserModal({ isOpen, onClose, editingUser }: Create
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="password">Initial Password *</Label>
+                  <Label htmlFor="password">
+                    {isEditMode ? "New Password (leave blank to keep current)" : "Initial Password *"}
+                  </Label>
                   <Input
                     id="password"
                     type="password"
@@ -360,8 +362,8 @@ export default function CreateUserModal({ isOpen, onClose, editingUser }: Create
                       setFormData(prev => ({ ...prev, password: e.target.value }));
                       if (e.target.value) validatePassword(e.target.value);
                     }}
-                    placeholder="Set initial password"
-                    required
+                    placeholder={isEditMode ? "Leave blank to keep current password" : "Set initial password"}
+                    required={!isEditMode}
                   />
                   {passwordError && (
                     <p className="text-xs text-red-500">{passwordError}</p>
