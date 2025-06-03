@@ -97,11 +97,11 @@ export default function Sidebar({ activeSection, onSectionChange, isOpen, onTogg
         isOpen ? "translate-x-0" : "-translate-x-full md:translate-x-0"
       )}>
         {/* Header */}
-        <div className="p-6 border-b border-slate-700">
+        <div className="p-4 border-b border-slate-700">
           <div className="flex items-center justify-between">
-            <div className="flex items-center space-x-3">
+            <div className="flex flex-col items-center space-y-2 w-full">
               {logoSettings?.logoPath ? (
-                <div className="w-32 h-32 rounded-xl overflow-hidden">
+                <div className="w-16 h-16 rounded-xl overflow-hidden">
                   <img 
                     src={logoSettings.logoPath} 
                     alt="Logo" 
@@ -113,9 +113,9 @@ export default function Sidebar({ activeSection, onSectionChange, isOpen, onTogg
                   <BarChart3 className="h-6 w-6 text-white" />
                 </div>
               )}
-              <div>
-                <h1 className="text-lg font-bold text-white">Website Sales</h1>
-                <p className="text-xs text-slate-300 mt-1">
+              <div className="text-center">
+                <h1 className="text-sm font-bold text-white">Website Sales</h1>
+                <p className="text-xs text-slate-300">
                   {user?.role === 'admin' ? 'Administrator' : 'User Dashboard'}
                 </p>
               </div>
