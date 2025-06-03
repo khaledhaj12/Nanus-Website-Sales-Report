@@ -101,7 +101,7 @@ export default function Sidebar({ activeSection, onSectionChange, isOpen, onTogg
           <div className="flex items-center justify-between">
             <div className="flex flex-col items-center space-y-2 w-full">
               {logoSettings?.logoPath ? (
-                <div className="w-16 h-16 rounded-xl overflow-hidden">
+                <div className="w-48 h-48 rounded-xl overflow-hidden">
                   <img 
                     src={logoSettings.logoPath} 
                     alt="Logo" 
