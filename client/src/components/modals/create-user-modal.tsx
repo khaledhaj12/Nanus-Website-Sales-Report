@@ -199,9 +199,15 @@ export default function CreateUserModal({ isOpen, onClose, editingUser }: Create
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/users'] });
+      // Also invalidate user-specific permission and location data
+      if (editingUser?.id) {
+        queryClient.invalidateQueries({ queryKey: [`/api/users/${editingUser.id}/permissions`] });
+        queryClient.invalidateQueries({ queryKey: [`/api/users/${editingUser.id}/locations`] });
+        queryClient.invalidateQueries({ queryKey: [`/api/users/${editingUser.id}/statuses`] });
+      }
       toast({
         title: "Success",
-        description: "User created successfully",
+        description: editingUser ? "User updated successfully" : "User created successfully",
       });
       onClose();
       resetForm();
