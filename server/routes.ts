@@ -63,6 +63,50 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Serve Open Graph image for social media previews
+  app.get('/og-image', async (req, res) => {
+    try {
+      const logoSettings = await storage.getLogoSettings();
+      
+      if (logoSettings?.logoPath) {
+        const logoPath = path.resolve(logoSettings.logoPath);
+        
+        // Check if file exists
+        if (fs.existsSync(logoPath)) {
+          // Get file extension to determine MIME type
+          const ext = path.extname(logoPath).toLowerCase();
+          let mimeType = 'image/png'; // Default
+          
+          switch (ext) {
+            case '.jpg':
+            case '.jpeg':
+              mimeType = 'image/jpeg';
+              break;
+            case '.png':
+              mimeType = 'image/png';
+              break;
+            case '.gif':
+              mimeType = 'image/gif';
+              break;
+            case '.webp':
+              mimeType = 'image/webp';
+              break;
+          }
+          
+          res.setHeader('Content-Type', mimeType);
+          res.setHeader('Cache-Control', 'public, max-age=3600'); // Cache for 1 hour
+          return res.sendFile(logoPath);
+        }
+      }
+      
+      // Return 404 if no logo is set
+      res.status(404).send('Open Graph image not found');
+    } catch (error) {
+      console.error('Error serving Open Graph image:', error);
+      res.status(500).send('Internal server error');
+    }
+  });
+
   // Session middleware
   app.use(session({
     secret: 'your-secret-key',
