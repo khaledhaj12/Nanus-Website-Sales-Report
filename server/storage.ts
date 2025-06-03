@@ -527,21 +527,38 @@ export class DatabaseStorage implements IStorage {
 
   async getRestApiSettings(platform: string): Promise<any> {
     try {
-      // Try to get actual settings from store connections table
-      const [connection] = await db.select().from(storeConnections).where(eq(storeConnections.name, platform));
-      if (connection) {
+      // Get the main WooCommerce settings record
+      const [settings] = await db.select().from(restApiSettings)
+        .where(eq(restApiSettings.platform, 'woocommerce'))
+        .limit(1);
+      
+      if (settings) {
         return {
           platform: platform,
-          consumerKey: connection.consumerKey,
-          consumerSecret: connection.consumerSecret,
-          storeUrl: connection.storeUrl,
-          isActive: connection.isActive
+          consumerKey: settings.consumerKey || '',
+          consumerSecret: settings.consumerSecret || '',
+          storeUrl: settings.storeUrl || '',
+          isActive: settings.isActive || false
         };
       }
-      return undefined;
+      
+      // If no main settings, return empty structure
+      return {
+        platform: platform,
+        consumerKey: '',
+        consumerSecret: '',
+        storeUrl: '',
+        isActive: false
+      };
     } catch (error) {
       console.error('Error getting REST API settings:', error);
-      return undefined;
+      return {
+        platform: platform,
+        consumerKey: '',
+        consumerSecret: '',
+        storeUrl: '',
+        isActive: false
+      };
     }
   }
 
