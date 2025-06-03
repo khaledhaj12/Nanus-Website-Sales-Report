@@ -30,7 +30,7 @@ interface SidebarProps {
 }
 
 const navigationItems = [
-  { id: "home", label: "Home", icon: Home },
+  { id: "home", label: "Home", icon: Home, userOnly: true },
   { id: "dashboard", label: "Dashboard", icon: PieChart },
   { id: "reports", label: "Reports", icon: BarChart3 },
   { id: "locations", label: "Locations", icon: MapPin },
@@ -83,11 +83,11 @@ export default function Sidebar({ activeSection, onSectionChange, isOpen, onTogg
 
   // Filter items based on admin status and user permissions
   const filteredItems = navigationItems.filter(item => {
-    // Admin users can see all items
-    if (isAdmin) return true;
+    // For user-only items, hide from admin users
+    if (item.userOnly && isAdmin) return false;
     
     // For admin-only items, check if user is admin
-    if (item.adminOnly) return false;
+    if (item.adminOnly && !isAdmin) return false;
     
     // For regular items, check permissions (home and profile are always accessible)
     if (item.id === 'home' || item.id === 'profile') return true;
