@@ -5,13 +5,13 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { ChevronRight, ChevronDown, ChevronUp, Search, Trash2 } from "lucide-react";
 import { formatCurrency } from "@/lib/feeCalculations";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
 import { useAuth } from "@/hooks/useAuth";
+import { DeleteConfirmationDialog } from "./delete-confirmation-dialog";
 
 interface Order {
   id: number;
@@ -221,7 +221,8 @@ export default function MonthlyBreakdown({
   }
 
   return (
-    <Card>
+    <>
+      <Card>
       <CardHeader>
         <div className="flex flex-col md:flex-row md:items-center justify-between">
           <CardTitle>Monthly Breakdown</CardTitle>
@@ -517,5 +518,14 @@ export default function MonthlyBreakdown({
         </div>
       </CardContent>
     </Card>
+
+      <DeleteConfirmationDialog
+        open={showDeleteDialog}
+        onOpenChange={setShowDeleteDialog}
+        onConfirm={handleDeleteConfirm}
+        orderCount={selectedOrders.length}
+        isDeleting={deleteOrdersMutation.isPending}
+      />
+    </>
   );
 }
