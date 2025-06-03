@@ -280,9 +280,12 @@ export default function CreateUserModal({ isOpen, onClose, editingUser }: Create
     <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle>Add New User</DialogTitle>
+          <DialogTitle>{isEditMode ? "Edit User" : "Add New User"}</DialogTitle>
           <DialogDescription>
-            Create a new user account with specific permissions and location access.
+            {isEditMode 
+              ? "Update user account details, permissions and location access."
+              : "Create a new user account with specific permissions and location access."
+            }
           </DialogDescription>
         </DialogHeader>
 
