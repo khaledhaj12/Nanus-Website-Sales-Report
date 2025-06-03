@@ -999,10 +999,28 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
 
 
+  // Helper function to get allowed statuses based on user role
+  function getAllowedStatuses(isAdmin: boolean): string[] {
+    if (isAdmin) {
+      return ["completed", "processing", "refunded", "on-hold", "checkout-draft", "failed", "pending", "cancelled"];
+    } else {
+      // Non-admin users can ONLY see these three statuses - NO EXCEPTIONS
+      return ["completed", "processing", "refunded"];
+    }
+  }
+
   // Dashboard routes
   app.get('/api/dashboard/summary', isAuthenticated, async (req, res) => {
     try {
       const { location, locationId, month, startMonth, endMonth, startDate, endDate, statuses } = req.query;
+      
+      // Get user's admin status
+      const userId = req.session?.user?.id;
+      const user = await storage.getUser(userId);
+      const isAdmin = user?.isAdmin || false;
+      
+      // Get allowed statuses for this user
+      const allowedStatuses = getAllowedStatuses(isAdmin);
       
       // Use raw SQL query to bypass ORM date issues
       const { pool } = await import('./db');

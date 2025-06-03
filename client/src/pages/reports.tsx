@@ -20,9 +20,15 @@ export default function Reports({ onMenuClick }: ReportsProps) {
   const [endDate, setEndDate] = useState(todayStr);
   const [selectedLocation, setSelectedLocation] = useState("");
 
-  
-  // Include all statuses to show actual order data
-  const selectedStatuses = ["processing", "completed", "refunded", "pending", "failed", "cancelled", "on-hold", "checkout-draft"];
+  // Define allowed statuses based on user role
+  const selectedStatuses = useMemo(() => {
+    if (isAdmin) {
+      return ["processing", "completed", "refunded", "pending", "failed", "cancelled", "on-hold", "checkout-draft"];
+    } else {
+      // Non-admin users can ONLY see these three statuses
+      return ["completed", "processing", "refunded"];
+    }
+  }, [isAdmin]);
 
   // Fetch all locations for admin users
   const { data: allLocations = [] } = useQuery({

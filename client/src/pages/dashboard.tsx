@@ -25,7 +25,17 @@ export default function Dashboard({ onMenuClick }: DashboardProps) {
   const [startDate, setStartDate] = useState(todayStr);
   const [endDate, setEndDate] = useState(todayStr);
   const [selectedLocation, setSelectedLocation] = useState("");
-  const [selectedStatuses, setSelectedStatuses] = useState<string[]>(["completed", "processing", "refunded", "on-hold", "checkout-draft", "failed"]);
+  // Define allowed statuses based on user role
+  const allowedStatuses = useMemo(() => {
+    if (isAdmin) {
+      return ["completed", "processing", "refunded", "on-hold", "checkout-draft", "failed", "pending", "cancelled"];
+    } else {
+      // Non-admin users can ONLY see these three statuses
+      return ["completed", "processing", "refunded"];
+    }
+  }, [isAdmin]);
+
+  const [selectedStatuses, setSelectedStatuses] = useState<string[]>([]);
 
   // Fetch all locations for admin users
   const { data: allLocations = [] } = useQuery({
@@ -97,6 +107,11 @@ export default function Dashboard({ onMenuClick }: DashboardProps) {
       setSelectedLocation(locations[0].id.toString());
     }
   }, [shouldShowAllLocations, locations, selectedLocation]);
+
+  // Initialize and enforce status restrictions based on user role
+  useEffect(() => {
+    setSelectedStatuses(allowedStatuses);
+  }, [allowedStatuses]);
 
   // Memoize the SelectItems to prevent re-rendering
   const locationItems = useMemo(() => {
@@ -257,7 +272,7 @@ export default function Dashboard({ onMenuClick }: DashboardProps) {
                 <PopoverContent className="w-[280px] p-0" align="start">
                   <Command>
                     <CommandGroup className="p-2">
-                      {["processing", "completed", "pending", "on-hold", "cancelled", "refunded", "failed", "checkout-draft"].map((status) => (
+                      {allowedStatuses.map((status) => (
                         <CommandItem
                           key={status}
                           value={status}
