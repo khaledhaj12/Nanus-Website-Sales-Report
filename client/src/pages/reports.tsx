@@ -30,6 +30,9 @@ export default function Reports({ onMenuClick }: ReportsProps) {
     queryKey: ["/api/locations"],
   });
 
+  // Debug: Log locations to see what we're getting
+  console.log("Reports page locations data:", locations);
+
   const { data: summaryData, isLoading: isSummaryLoading } = useQuery({
     queryKey: ["/api/reports/summary", { location: selectedLocation, startMonth, endMonth, statuses: selectedStatuses }],
     queryFn: async () => {
