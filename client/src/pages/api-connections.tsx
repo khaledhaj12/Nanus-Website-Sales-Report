@@ -161,11 +161,19 @@ function ConnectionSettings({ connectionId, platform }: ConnectionSettingsProps)
       const response = await apiRequest("POST", `/api/sync-settings`, settings);
       return response.json();
     },
-    onSuccess: () => {
+    onSuccess: (data) => {
       toast({
         title: "Success",
         description: "Sync settings updated successfully",
       });
+      // Update local state to match server response
+      if (data.settings) {
+        setSyncSettings({
+          platform: data.settings.platform,
+          isActive: data.settings.isActive,
+          intervalMinutes: data.settings.intervalMinutes
+        });
+      }
       queryClient.invalidateQueries({ queryKey: [`/api/sync-settings/${platformId}`] });
     },
     onError: (error) => {
@@ -174,6 +182,8 @@ function ConnectionSettings({ connectionId, platform }: ConnectionSettingsProps)
         description: error.message || "Failed to update sync settings",
         variant: "destructive",
       });
+      // Revert local state on error
+      queryClient.invalidateQueries({ queryKey: [`/api/sync-settings/${platformId}`] });
     },
   });
 
