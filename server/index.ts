@@ -6,32 +6,18 @@ import { startAutoSync } from "./syncManager";
 
 async function enableAutoSyncForAllConnections() {
   try {
-    // Enable auto-sync for main store
-    await storage.upsertSyncSettings({
-      platform: 'woocommerce',
-      isActive: true,
-      intervalMinutes: 5,
-      isRunning: false,
-      lastSyncAt: null,
-      nextSyncAt: null
-    });
-    await startAutoSync('woocommerce');
-
-    // Enable auto-sync for all additional store connections
-    const connections = await storage.getAllStoreConnections();
-    for (const connection of connections) {
-      await storage.upsertSyncSettings({
-        platform: `woocommerce-${connection.id}`,
-        isActive: true,
-        intervalMinutes: 5,
-        isRunning: false,
-        lastSyncAt: null,
-        nextSyncAt: null
-      });
-      await startAutoSync(`woocommerce-${connection.id}`);
+    // Enable auto-sync for all three main connections
+    const platforms = ['woocommerce', 'woocommerce-1', 'woocommerce-2'];
+    
+    for (const platform of platforms) {
+      // Check if sync settings already exist and are active
+      const existingSettings = await storage.getSyncSettings(platform);
+      if (existingSettings && existingSettings.isActive) {
+        await startAutoSync(platform);
+      }
     }
     
-    console.log(`Auto-sync enabled for ${connections.length + 1} store connections`);
+    console.log(`Auto-sync enabled for ${platforms.length} store connections`);
   } catch (error) {
     console.error("Failed to enable auto-sync for store connections:", error);
   }
