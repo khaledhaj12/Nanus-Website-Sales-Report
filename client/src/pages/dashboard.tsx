@@ -25,7 +25,7 @@ export default function Dashboard({ onMenuClick }: DashboardProps) {
   const [startDate, setStartDate] = useState(todayStr);
   const [endDate, setEndDate] = useState(todayStr);
   const [selectedLocation, setSelectedLocation] = useState("");
-  // Fetch user's allowed statuses from database
+  // Fetch user's allowed statuses from database (ONLY for non-admin users)
   const { data: userStatuses = [] } = useQuery({
     queryKey: [`/api/users/${user?.id}/statuses`],
     enabled: !isAdmin && !!user?.id,
@@ -34,10 +34,12 @@ export default function Dashboard({ onMenuClick }: DashboardProps) {
   // Define allowed statuses based on user role and database permissions
   const allowedStatuses = useMemo(() => {
     if (isAdmin) {
+      // Admin users: full access to all statuses, NO restrictions
       return ["completed", "processing", "refunded", "on-hold", "checkout-draft", "failed", "pending", "cancelled"];
     } else {
       // Non-admin users: use statuses from database, fallback to safe defaults
-      return userStatuses.length > 0 ? userStatuses : ["completed", "processing", "refunded"];
+      const allowedStatuses = Array.isArray(userStatuses) ? userStatuses : [];
+      return allowedStatuses.length > 0 ? allowedStatuses : ["completed", "processing", "refunded"];
     }
   }, [isAdmin, userStatuses]);
 
@@ -116,7 +118,9 @@ export default function Dashboard({ onMenuClick }: DashboardProps) {
 
   // Initialize and enforce status restrictions based on user role
   useEffect(() => {
-    setSelectedStatuses(allowedStatuses);
+    if (Array.isArray(allowedStatuses) && allowedStatuses.length > 0) {
+      setSelectedStatuses(allowedStatuses);
+    }
   }, [allowedStatuses]);
 
   // Memoize the SelectItems to prevent re-rendering
@@ -278,7 +282,7 @@ export default function Dashboard({ onMenuClick }: DashboardProps) {
                 <PopoverContent className="w-[280px] p-0" align="start">
                   <Command>
                     <CommandGroup className="p-2">
-                      {allowedStatuses.map((status) => (
+                      {Array.isArray(allowedStatuses) && allowedStatuses.map((status: string) => (
                         <CommandItem
                           key={status}
                           value={status}
