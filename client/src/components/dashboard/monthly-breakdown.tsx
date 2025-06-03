@@ -10,6 +10,7 @@ import { formatCurrency } from "@/lib/feeCalculations";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
+import { useAuth } from "@/hooks/useAuth";
 
 interface Order {
   id: number;
@@ -63,6 +64,8 @@ export default function MonthlyBreakdown({
 
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  const { permissions } = useAuth();
+  const isAdmin = permissions?.isAdmin;
 
   // Delete orders mutation
   const deleteOrdersMutation = useMutation({
@@ -206,7 +209,7 @@ export default function MonthlyBreakdown({
         <div className="flex flex-col md:flex-row md:items-center justify-between">
           <CardTitle>Monthly Breakdown</CardTitle>
           <div className="mt-4 md:mt-0 flex space-x-3">
-            {selectedOrders.length > 0 && (
+            {isAdmin && selectedOrders.length > 0 && (
               <Button
                 variant="destructive"
                 onClick={() => deleteOrdersMutation.mutate(selectedOrders)}
@@ -290,12 +293,14 @@ export default function MonthlyBreakdown({
                         <Table>
                           <TableHeader>
                             <TableRow>
-                              <TableHead className="w-12">
-                                <Checkbox
-                                  checked={monthData.orders.length > 0 && monthData.orders.every(order => selectedOrders.includes(order.id))}
-                                  onCheckedChange={(checked) => handleSelectAll(monthData.orders, checked === true)}
-                                />
-                              </TableHead>
+                              {isAdmin && (
+                                <TableHead className="w-12">
+                                  <Checkbox
+                                    checked={monthData.orders.length > 0 && monthData.orders.every(order => selectedOrders.includes(order.id))}
+                                    onCheckedChange={(checked) => handleSelectAll(monthData.orders, checked === true)}
+                                  />
+                                </TableHead>
+                              )}
                               <TableHead className="cursor-pointer hover:bg-gray-50" onClick={() => handleSort('orderDate')}>
                                 <div className="flex items-center space-x-1">
                                   <span>Date</span>
@@ -365,12 +370,14 @@ export default function MonthlyBreakdown({
                           <TableBody>
                             {getSortedOrders(monthData.orders).map((order) => (
                               <TableRow key={order.id}>
-                                <TableCell>
-                                  <Checkbox
-                                    checked={selectedOrders.includes(order.id)}
-                                    onCheckedChange={(checked) => handleSelectOrder(order.id, checked === true)}
-                                  />
-                                </TableCell>
+                                {isAdmin && (
+                                  <TableCell>
+                                    <Checkbox
+                                      checked={selectedOrders.includes(order.id)}
+                                      onCheckedChange={(checked) => handleSelectOrder(order.id, checked === true)}
+                                    />
+                                  </TableCell>
+                                )}
                                 <TableCell>
                                   {new Date(order.orderDate).toLocaleDateString('en-US', { timeZone: 'UTC' })}
                                 </TableCell>
