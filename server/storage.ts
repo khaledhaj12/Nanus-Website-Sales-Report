@@ -171,6 +171,9 @@ export class DatabaseStorage implements IStorage {
     const [user] = await db.select().from(users).where(eq(users.username, username));
     if (!user) return null;
     
+    // Check if user account is active
+    if (!user.isActive) return null;
+    
     const isValid = await bcrypt.compare(password, user.password);
     return isValid ? user : null;
   }
