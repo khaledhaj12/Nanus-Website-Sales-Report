@@ -1247,7 +1247,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         ORDER BY month DESC
       `;
 
-      const result = await pool.query(query, params);
+      const result = await pool.query(query, baseParams);
       
       // Capture statusFilter for use in nested function
       const capturedStatusFilter = statusFilter;
