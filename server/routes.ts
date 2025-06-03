@@ -49,6 +49,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Serve uploaded logos
   app.use('/uploads', express.static('uploads'));
 
+  // Serve favicon at root level
+  app.get('/favicon.ico', async (req, res) => {
+    try {
+      const logoSettings = await storage.getLogoSettings();
+      if (logoSettings?.faviconPath) {
+        res.sendFile(path.resolve(logoSettings.faviconPath));
+      } else {
+        res.status(404).send('Favicon not found');
+      }
+    } catch (error) {
+      res.status(404).send('Favicon not found');
+    }
+  });
+
   // Session middleware
   app.use(session({
     secret: 'your-secret-key',
