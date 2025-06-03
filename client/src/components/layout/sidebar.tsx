@@ -1,6 +1,6 @@
 import { useAuth } from "@/hooks/useAuth";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { useLocation } from "wouter";
+import { useLocation, useRoute } from "wouter";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
@@ -18,6 +18,7 @@ import {
   Code,
   Image,
   User,
+  Home,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
