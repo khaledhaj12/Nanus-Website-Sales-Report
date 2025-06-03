@@ -63,162 +63,7 @@ interface ConnectionSettingsProps {
   platform: string;
 }
 
-function LocationMapping({ connectionId }: { connectionId: string }) {
-  const { toast } = useToast();
-  const queryClient = useQueryClient();
-  const [isEditing, setIsEditing] = useState(false);
-  const [selectedLocationId, setSelectedLocationId] = useState<string>('');
-  const [newLocationName, setNewLocationName] = useState('');
 
-  // Load locations
-  const { data: locations = [] } = useQuery({
-    queryKey: ["/api/locations"],
-  });
-
-  // Load store connection details
-  const { data: storeConnections = [] } = useQuery({
-    queryKey: ["/api/store-connections"],
-  });
-
-  const currentConnection = storeConnections.find((conn: any) => conn.id === connectionId);
-  const currentLocation = locations.find((loc: any) => loc.id === currentConnection?.defaultLocationId);
-
-  // Update location mapping mutation
-  const updateLocationMutation = useMutation({
-    mutationFn: async ({ locationId, locationName }: { locationId?: string; locationName?: string }) => {
-      return await apiRequest("PATCH", `/api/store-connections/${connectionId}/location`, {
-        locationId: locationId ? parseInt(locationId) : undefined,
-        locationName: locationName || undefined
-      });
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/store-connections"] });
-      queryClient.invalidateQueries({ queryKey: ["/api/locations"] });
-      setIsEditing(false);
-      setNewLocationName('');
-      toast({
-        title: "Success",
-        description: "Location mapping updated successfully. Existing 'Unknown Location' orders have been updated.",
-      });
-    },
-    onError: (error) => {
-      toast({
-        title: "Error",
-        description: "Failed to update location mapping",
-        variant: "destructive",
-      });
-    },
-  });
-
-  const handleSaveMapping = () => {
-    if (newLocationName.trim()) {
-      // Create new location
-      updateLocationMutation.mutate({ locationName: newLocationName.trim() });
-    } else if (selectedLocationId) {
-      // Use existing location
-      updateLocationMutation.mutate({ locationId: selectedLocationId });
-    }
-  };
-
-  return (
-    <Card>
-      <CardHeader>
-        <CardTitle className="flex items-center gap-2">
-          <MapPin className="h-5 w-5" />
-          Location Mapping
-        </CardTitle>
-        <CardDescription>
-          Assign a default location for orders from this store when no location metadata is available
-        </CardDescription>
-      </CardHeader>
-      <CardContent className="space-y-4">
-        <div className="flex items-center justify-between">
-          <div>
-            <Label className="text-sm font-medium">Current Default Location</Label>
-            <div className="text-sm text-muted-foreground mt-1">
-              {currentLocation ? currentLocation.name : 'No location assigned (will use "Unknown Location")'}
-            </div>
-          </div>
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => setIsEditing(!isEditing)}
-            className="flex items-center gap-2"
-          >
-            <Edit className="h-4 w-4" />
-            Edit
-          </Button>
-        </div>
-
-        {isEditing && (
-          <div className="space-y-4 p-4 border rounded-lg bg-muted/50">
-            <div className="space-y-2">
-              <Label>Select Existing Location</Label>
-              <Select value={selectedLocationId} onValueChange={setSelectedLocationId}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Choose a location..." />
-                </SelectTrigger>
-                <SelectContent>
-                  {locations.map((location: any) => (
-                    <SelectItem key={location.id} value={location.id.toString()}>
-                      {location.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-
-            <div className="text-center text-sm text-muted-foreground">
-              OR
-            </div>
-
-            <div className="space-y-2">
-              <Label>Create New Location</Label>
-              <Input
-                placeholder="Enter new location name"
-                value={newLocationName}
-                onChange={(e) => {
-                  setNewLocationName(e.target.value);
-                  if (e.target.value.trim()) {
-                    setSelectedLocationId('');
-                  }
-                }}
-              />
-            </div>
-
-            <div className="flex gap-2">
-              <Button
-                onClick={handleSaveMapping}
-                disabled={!selectedLocationId && !newLocationName.trim() || updateLocationMutation.isPending}
-                className="flex items-center gap-2"
-              >
-                <Save className="h-4 w-4" />
-                {updateLocationMutation.isPending ? 'Saving...' : 'Save Mapping'}
-              </Button>
-              <Button
-                variant="outline"
-                onClick={() => {
-                  setIsEditing(false);
-                  setSelectedLocationId('');
-                  setNewLocationName('');
-                }}
-              >
-                Cancel
-              </Button>
-            </div>
-
-            <Alert>
-              <Info className="h-4 w-4" />
-              <AlertDescription>
-                This mapping will apply to future orders and update existing orders marked as "Unknown Location" from this store.
-              </AlertDescription>
-            </Alert>
-          </div>
-        )}
-      </CardContent>
-    </Card>
-  );
-}
 
 function ConnectionSettings({ connectionId, platform }: ConnectionSettingsProps) {
   const { toast } = useToast();
@@ -764,21 +609,32 @@ function ApiConnections({ onMenuClick }: ApiConnectionsProps) {
   const { toast } = useToast();
   const queryClient = useQueryClient();
   
-  // Load store connections from database
-  const { data: dbConnections = [], isLoading: connectionsLoading } = useQuery({
-    queryKey: ["/api/store-connections"],
-  });
-
-  // Use only the database connections
-  const connections = Array.isArray(dbConnections) ? dbConnections.map(conn => ({
-    connectionId: conn.id,
-    name: conn.name,
-    domain: conn.name,
-    platform: 'woocommerce',
-    isDefault: conn.id === '1'
-  })) : [];
+  // Use your original hardcoded connections with working API keys
+  const connections = [
+    {
+      connectionId: 'woocommerce',
+      name: 'Main Store', 
+      domain: 'nanushotchicken.co',
+      platform: 'woocommerce',
+      isDefault: true
+    },
+    {
+      connectionId: 'woocommerce-1',
+      name: 'Delaware',
+      domain: 'delaware.nanushotchicken.co', 
+      platform: 'woocommerce',
+      isDefault: false
+    },
+    {
+      connectionId: 'woocommerce-2',
+      name: 'Drexel',
+      domain: 'drexel.nanushotchicken.co',
+      platform: 'woocommerce', 
+      isDefault: false
+    }
+  ];
   
-  const [activeConnectionId, setActiveConnectionId] = useState('1');
+  const [activeConnectionId, setActiveConnectionId] = useState('woocommerce');
   const [newConnectionName, setNewConnectionName] = useState('');
   const [showAddConnection, setShowAddConnection] = useState(false);
 
@@ -991,13 +847,10 @@ function ApiConnections({ onMenuClick }: ApiConnectionsProps) {
 
         {connections.map((connection) => (
           <TabsContent key={connection.connectionId} value={connection.connectionId} className="mt-6">
-            <div className="space-y-6">
-              <LocationMapping connectionId={connection.connectionId} />
-              <ConnectionSettings 
-                connectionId={connection.connectionId}
-                platform={connection.platform}
-              />
-            </div>
+            <ConnectionSettings 
+              connectionId={connection.connectionId}
+              platform={connection.platform}
+            />
           </TabsContent>
         ))}
       </Tabs>
