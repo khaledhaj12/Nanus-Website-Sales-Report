@@ -152,6 +152,29 @@ export const storeConnections = pgTable("store_connections", {
   updatedAt: timestamp("updated_at").defaultNow(),
 });
 
+// REST API settings table
+export const restApiSettings = pgTable("rest_api_settings", {
+  id: serial("id").primaryKey(),
+  connectionId: varchar("connection_id").references(() => storeConnections.id),
+  endpoint: varchar("endpoint", { length: 500 }).notNull(),
+  method: varchar("method", { length: 10 }).notNull().default("GET"),
+  headers: jsonb("headers"),
+  isActive: boolean("is_active").notNull().default(true),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+// Sync settings table
+export const syncSettings = pgTable("sync_settings", {
+  id: serial("id").primaryKey(),
+  connectionId: varchar("connection_id").references(() => storeConnections.id),
+  autoSyncEnabled: boolean("auto_sync_enabled").notNull().default(false),
+  syncInterval: integer("sync_interval").notNull().default(5),
+  lastSyncAt: timestamp("last_sync_at"),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
 // Relations
 export const usersRelations = relations(users, ({ many }) => ({
   locationAccess: many(userLocationAccess),
@@ -253,6 +276,18 @@ export const insertStoreConnectionSchema = createInsertSchema(storeConnections).
   updatedAt: true,
 });
 
+export const insertRestApiSettingsSchema = createInsertSchema(restApiSettings).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export const insertSyncSettingsSchema = createInsertSchema(syncSettings).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
 // Type definitions
 export type User = typeof users.$inferSelect;
 export type InsertUser = z.infer<typeof insertUserSchema>;
@@ -274,3 +309,7 @@ export type FooterSettings = typeof footerSettings.$inferSelect;
 export type InsertFooterSettings = z.infer<typeof insertFooterSettingsSchema>;
 export type StoreConnection = typeof storeConnections.$inferSelect;
 export type InsertStoreConnection = z.infer<typeof insertStoreConnectionSchema>;
+export type RestApiSettings = typeof restApiSettings.$inferSelect;
+export type InsertRestApiSettings = z.infer<typeof insertRestApiSettingsSchema>;
+export type SyncSettings = typeof syncSettings.$inferSelect;
+export type InsertSyncSettings = z.infer<typeof insertSyncSettingsSchema>;

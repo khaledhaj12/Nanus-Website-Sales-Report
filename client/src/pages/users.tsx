@@ -4,9 +4,9 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import Header from "@/components/layout/header";
-import UserModal from "@/components/modals/user-modal";
+import CreateUserModal from "@/components/modals/create-user-modal";
 import { SortableHeader } from "@/components/ui/sortable-header";
-import { Edit, Plus, MapPin, Trash2, Shield } from "lucide-react";
+import { Edit, Plus, MapPin, Trash2, Shield, ChevronUp, ChevronDown } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
 
@@ -333,13 +333,12 @@ export default function Users({ onMenuClick }: UsersProps) {
         </Card>
       </main>
 
-      <UserModal 
+      <CreateUserModal 
         isOpen={isUserModalOpen}
         onClose={() => {
           setIsUserModalOpen(false);
           setEditingUser(null);
         }}
-        editingUser={editingUser}
       />
     </div>
   );

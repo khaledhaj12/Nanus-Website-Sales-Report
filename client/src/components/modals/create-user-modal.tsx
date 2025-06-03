@@ -53,7 +53,7 @@ export default function CreateUserModal({ isOpen, onClose }: CreateUserModalProp
   const [passwordError, setPasswordError] = useState('');
 
   // Fetch locations for assignment
-  const { data: locations = [] } = useQuery({
+  const { data: locations = [] } = useQuery<any[]>({
     queryKey: ['/api/locations'],
   });
 
