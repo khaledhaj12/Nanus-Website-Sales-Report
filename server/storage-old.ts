@@ -114,6 +114,11 @@ export interface IStorage {
   getStoreConnection(connectionId: string): Promise<StoreConnection | undefined>;
   createStoreConnection(connection: InsertStoreConnection): Promise<StoreConnection>;
   deleteStoreConnection(connectionId: string): Promise<void>;
+  
+  // Logo settings operations
+  getLogoSettings(): Promise<LogoSettings | undefined>;
+  upsertLogoSettings(settings: InsertLogoSettings): Promise<LogoSettings>;
+  deleteLogoSettings(): Promise<void>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -911,6 +916,35 @@ export class DatabaseStorage implements IStorage {
     }
 
     return { imported, skipped };
+  }
+
+  // Logo settings operations
+  async getLogoSettings(): Promise<LogoSettings | undefined> {
+    const [logo] = await db.select().from(logoSettings).limit(1);
+    return logo;
+  }
+
+  async upsertLogoSettings(settings: InsertLogoSettings): Promise<LogoSettings> {
+    const existing = await this.getLogoSettings();
+    
+    if (existing) {
+      const [updated] = await db
+        .update(logoSettings)
+        .set({ ...settings, updatedAt: new Date() })
+        .where(eq(logoSettings.id, existing.id))
+        .returning();
+      return updated;
+    } else {
+      const [created] = await db
+        .insert(logoSettings)
+        .values(settings)
+        .returning();
+      return created;
+    }
+  }
+
+  async deleteLogoSettings(): Promise<void> {
+    await db.delete(logoSettings);
   }
 }
 

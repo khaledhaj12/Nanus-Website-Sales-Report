@@ -9,6 +9,7 @@ import {
   restApiSettings,
   recaptchaSettings,
   footerSettings,
+  logoSettings,
   type User,
   type InsertUser,
   type Location,
@@ -25,6 +26,8 @@ import {
   type InsertRecaptchaSettings,
   type FooterSettings,
   type InsertFooterSettings,
+  type LogoSettings,
+  type InsertLogoSettings,
   type UserLocationAccess,
   type UserStatusAccess,
 } from "@shared/schema";

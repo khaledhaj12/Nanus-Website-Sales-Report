@@ -1178,6 +1178,67 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Logo settings routes
+  app.get('/api/logo-settings', async (req, res) => {
+    try {
+      const settings = await storage.getLogoSettings();
+      res.json(settings || {});
+    } catch (error) {
+      console.error("Error fetching logo settings:", error);
+      res.status(500).json({ message: "Failed to fetch logo settings" });
+    }
+  });
+
+  app.post('/api/logo-upload', isAuthenticated, logoUpload.single('logo'), async (req, res) => {
+    try {
+      if (!req.file) {
+        return res.status(400).json({ message: "No file uploaded" });
+      }
+
+      // Delete old logo if exists
+      const existingLogo = await storage.getLogoSettings();
+      if (existingLogo?.logoPath) {
+        try {
+          await fs.unlink(existingLogo.logoPath);
+        } catch (deleteError) {
+          console.warn("Could not delete old logo file:", deleteError);
+        }
+      }
+
+      const logoPath = req.file.path;
+      const settings = await storage.upsertLogoSettings({
+        logoPath: logoPath,
+        originalName: req.file.originalname,
+        mimeType: req.file.mimetype,
+        fileSize: req.file.size,
+      });
+
+      res.json({ success: true, logoPath: `/uploads/logos/${req.file.filename}` });
+    } catch (error) {
+      console.error("Error uploading logo:", error);
+      res.status(500).json({ message: "Failed to upload logo" });
+    }
+  });
+
+  app.delete('/api/logo-settings', isAuthenticated, async (req, res) => {
+    try {
+      const existingLogo = await storage.getLogoSettings();
+      if (existingLogo?.logoPath) {
+        try {
+          await fs.unlink(existingLogo.logoPath);
+        } catch (deleteError) {
+          console.warn("Could not delete logo file:", deleteError);
+        }
+      }
+
+      await storage.deleteLogoSettings();
+      res.json({ success: true });
+    } catch (error) {
+      console.error("Error deleting logo:", error);
+      res.status(500).json({ message: "Failed to delete logo" });
+    }
+  });
+
   const httpServer = createServer(app);
   
   // Start auto sync on server startup
