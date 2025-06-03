@@ -1051,10 +1051,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
         params.push(endDateTime);
       } else if (startMonth && endMonth) {
         // Month range filtering (existing functionality)
-        const monthStartDate = `${startMonth}-01`;
+        const monthStartDate = `${startMonth}-01 00:00:00`;
         const [endYear, endMonthNum] = (endMonth as string).split('-');
         const lastDay = new Date(parseInt(endYear), parseInt(endMonthNum), 0).getDate();
-        const monthEndDate = `${endMonth}-${lastDay.toString().padStart(2, '0')}`;
+        const monthEndDate = `${endMonth}-${lastDay.toString().padStart(2, '0')} 23:59:59`;
         
         whereClause += ` AND order_date >= $${params.length + 1} AND order_date <= $${params.length + 2}`;
         params.push(monthStartDate);
