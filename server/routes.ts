@@ -543,6 +543,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const { platform } = req.params;
       const settings = await storage.getSyncSettings(platform);
+      const syncManagerStatus = getSyncStatus(platform);
       
       if (!settings) {
         return res.json({
@@ -554,12 +555,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       }
 
+      // Check if sync is actually running in the sync manager AND enabled in settings
+      const isActuallyRunning = syncManagerStatus.isRunning && settings.isActive;
+
       res.json({
         isActive: settings.isActive || false,
         intervalMinutes: settings.intervalMinutes || 5,
         lastSyncAt: settings.lastSyncAt,
         lastOrderCount: settings.lastOrderCount || 0,
-        isRunning: settings.isRunning || false,
+        isRunning: isActuallyRunning,
       });
     } catch (error) {
       console.error("Error fetching sync status:", error);
@@ -575,6 +579,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const now = new Date();
       const nextSync = new Date(now.getTime() + (intervalMinutes || 5) * 60 * 1000);
       
+      // Stop any existing sync first
+      await stopAutoSync(platform);
+      
       const settings = await storage.upsertSyncSettings({
         platform,
         isActive,
@@ -584,11 +591,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
         nextSyncAt: isActive ? nextSync : null
       });
       
-      // Control auto sync based on settings
+      // Start auto sync if enabled
       if (isActive) {
-        await startAutoSync(platform);
-      } else {
-        await stopAutoSync(platform);
+        setTimeout(async () => {
+          await startAutoSync(platform);
+        }, 100); // Small delay to ensure settings are saved
       }
       
       res.json({ success: true, settings });

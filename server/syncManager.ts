@@ -34,6 +34,16 @@ export async function startAutoSync(platform: string = 'woocommerce') {
     platform
   });
   
+  // Update sync settings to reflect running state
+  await storage.upsertSyncSettings({
+    platform: platform,
+    isActive: settings.isActive,
+    intervalMinutes: settings.intervalMinutes,
+    isRunning: true,
+    lastSyncAt: settings.lastSyncAt,
+    nextSyncAt: settings.nextSyncAt
+  });
+  
   console.log(`Auto sync started for ${platform} - running every ${settings.intervalMinutes} minutes`);
   
   // Perform initial sync
@@ -46,6 +56,19 @@ export async function stopAutoSync(platform: string = 'woocommerce') {
     clearInterval(manager.intervalId);
     syncManagers.delete(platform);
     console.log(`Auto sync stopped for ${platform}`);
+    
+    // Update sync settings to reflect stopped state
+    const settings = await storage.getSyncSettings(platform);
+    if (settings) {
+      await storage.upsertSyncSettings({
+        platform: platform,
+        isActive: settings.isActive,
+        intervalMinutes: settings.intervalMinutes,
+        isRunning: false,
+        lastSyncAt: settings.lastSyncAt,
+        nextSyncAt: null
+      });
+    }
   }
 }
 
