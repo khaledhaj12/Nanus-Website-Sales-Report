@@ -388,6 +388,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // User page permissions routes
+  app.get('/api/users/:id/permissions', isAuthenticated, async (req, res) => {
+    try {
+      const userId = parseInt(req.params.id);
+      const permissions = await storage.getUserPagePermissions(userId);
+      res.json(permissions);
+    } catch (error) {
+      console.error("Get user permissions error:", error);
+      res.status(500).json({ message: "Failed to get user permissions" });
+    }
+  });
+
   app.post('/api/users/:id/permissions', isAuthenticated, async (req, res) => {
     try {
       const userId = parseInt(req.params.id);

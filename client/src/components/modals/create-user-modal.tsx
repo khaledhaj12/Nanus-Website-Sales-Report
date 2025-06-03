@@ -71,6 +71,12 @@ export default function CreateUserModal({ isOpen, onClose, editingUser }: Create
     enabled: Boolean(editingUser?.id),
   });
 
+  // Fetch user page permissions if editing
+  const { data: userPermissions = {} } = useQuery({
+    queryKey: [`/api/users/${editingUser?.id}/permissions`],
+    enabled: Boolean(editingUser?.id),
+  });
+
   // Populate form data when editing user
   useEffect(() => {
     if (editingUser) {
@@ -84,7 +90,7 @@ export default function CreateUserModal({ isOpen, onClose, editingUser }: Create
         mustChangePassword: editingUser.mustChangePassword || false,
         isActive: editingUser.isActive !== undefined ? editingUser.isActive : true,
         selectedLocations: userLocations || [],
-        pagePermissions: {},
+        pagePermissions: userPermissions || {},
         orderStatuses: userStatuses || [],
       });
     } else {
@@ -103,7 +109,7 @@ export default function CreateUserModal({ isOpen, onClose, editingUser }: Create
         orderStatuses: [],
       });
     }
-  }, [editingUser, userLocations, userStatuses]);
+  }, [editingUser, userLocations, userStatuses, userPermissions]);
 
   const validatePassword = (password: string) => {
     const minLength = password.length >= 8;
