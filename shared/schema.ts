@@ -167,10 +167,14 @@ export const restApiSettings = pgTable("rest_api_settings", {
 // Sync settings table
 export const syncSettings = pgTable("sync_settings", {
   id: serial("id").primaryKey(),
+  platform: varchar("platform", { length: 50 }).notNull().default('woocommerce'),
   connectionId: varchar("connection_id").references(() => storeConnections.id),
-  autoSyncEnabled: boolean("auto_sync_enabled").notNull().default(false),
-  syncInterval: integer("sync_interval").notNull().default(5),
+  isActive: boolean("is_active").notNull().default(false),
+  intervalMinutes: integer("interval_minutes").notNull().default(5),
   lastSyncAt: timestamp("last_sync_at"),
+  nextSyncAt: timestamp("next_sync_at"),
+  lastOrderCount: integer("last_order_count").default(0),
+  isRunning: boolean("is_running").notNull().default(false),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });
