@@ -1096,6 +1096,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
         statusFilter = allowedStatuses;
       }
       
+      // Store base where clause without status filtering for accurate calculations
+      const baseWhereClause = whereClause;
+      const baseParams = [...params];
+      
       // Apply status filtering to query (only if we have statuses to filter)
       if (statusFilter.length > 0) {
         const statusPlaceholders = statusFilter.map((_, index) => `$${params.length + index + 1}`).join(', ');
@@ -1105,17 +1109,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       const query = `
         SELECT 
-          COALESCE(SUM(amount::decimal), 0) as total_sales,
+          COALESCE(SUM(CASE WHEN status != 'refunded' THEN amount::decimal ELSE 0 END), 0) as total_sales,
           COALESCE(SUM(CASE WHEN status = 'refunded' THEN amount::decimal ELSE 0 END), 0) as total_refunds,
-          COUNT(*) as total_orders,
-          COALESCE(SUM(amount::decimal * 0.07), 0) as platform_fees,
-          COALESCE(SUM(amount::decimal * 0.029 + 0.30), 0) as stripe_fees,
-          COALESCE(SUM(amount::decimal - (amount::decimal * 0.07) - (amount::decimal * 0.029 + 0.30)), 0) as net_deposit
+          COUNT(CASE WHEN status != 'refunded' THEN 1 END) as total_orders,
+          COALESCE(SUM(CASE WHEN status != 'refunded' THEN amount::decimal * 0.07 ELSE 0 END), 0) as platform_fees,
+          COALESCE(SUM(CASE WHEN status != 'refunded' THEN (amount::decimal * 0.029 + 0.30) ELSE 0 END), 0) as stripe_fees,
+          COALESCE(SUM(CASE WHEN status != 'refunded' THEN amount::decimal - (amount::decimal * 0.07) - (amount::decimal * 0.029 + 0.30) ELSE 0 END), 0) as net_deposit
         FROM woo_orders 
-        ${whereClause}
+        ${baseWhereClause}
       `;
 
-      const result = await pool.query(query, params);
+      const result = await pool.query(query, baseParams);
       const row = result.rows[0] as any;
 
       const summary = {
@@ -1220,32 +1224,26 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       
       const query = `
-        WITH sales_data AS (
+        WITH all_orders AS (
           SELECT 
             TO_CHAR(order_date, 'YYYY-MM') as month,
-            COALESCE(SUM(CASE WHEN status != 'refunded' THEN amount::decimal ELSE 0 END), 0) as total_sales,
-            COUNT(CASE WHEN status != 'refunded' THEN 1 END) as total_orders,
-            COALESCE(SUM(CASE WHEN status != 'refunded' THEN (amount::decimal - (amount::decimal * 0.07) - (amount::decimal * 0.029 + 0.30)) ELSE 0 END), 0) as net_amount
-          FROM woo_orders 
-          ${whereClause}
-          GROUP BY TO_CHAR(order_date, 'YYYY-MM')
-        ),
-        refund_data AS (
-          SELECT 
-            TO_CHAR(order_date, 'YYYY-MM') as month,
-            COALESCE(SUM(CASE WHEN status = 'refunded' THEN amount::decimal ELSE 0 END), 0) as total_refunds
+            SUM(amount::decimal) as gross_sales,
+            COUNT(*) as total_orders,
+            SUM(CASE WHEN status = 'refunded' THEN amount::decimal ELSE 0 END) as total_refunds,
+            SUM(CASE WHEN status != 'refunded' THEN amount::decimal ELSE 0 END) as net_sales,
+            COUNT(CASE WHEN status != 'refunded' THEN 1 END) as successful_orders
           FROM woo_orders 
           ${baseWhereClause}
           GROUP BY TO_CHAR(order_date, 'YYYY-MM')
         )
         SELECT 
-          COALESCE(s.month, r.month) as month,
-          COALESCE(s.total_sales, 0) as total_sales,
-          COALESCE(s.total_orders, 0) as total_orders,
-          COALESCE(r.total_refunds, 0) as total_refunds,
-          COALESCE(s.net_amount, 0) as net_amount
-        FROM sales_data s
-        FULL OUTER JOIN refund_data r ON s.month = r.month
+          month,
+          net_sales as total_sales,
+          successful_orders as total_orders,
+          total_refunds,
+          -- Calculate net amount: net_sales - platform_fees - stripe_fees + stripe_fee_refunds
+          (net_sales - (net_sales * 0.07) - (successful_orders * 0.30 + net_sales * 0.029)) as net_amount
+        FROM all_orders
         ORDER BY month DESC
       `;
 
