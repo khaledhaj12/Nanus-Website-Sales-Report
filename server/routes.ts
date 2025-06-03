@@ -579,14 +579,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
         platform,
         isActive,
         intervalMinutes: intervalMinutes || 5,
-        nextSyncAt: nextSync
+        isRunning: false,
+        lastSyncAt: null,
+        nextSyncAt: isActive ? nextSync : null
       });
       
-      // Restart auto sync with new settings
+      // Control auto sync based on settings
       if (isActive) {
-        await restartAutoSync();
+        await startAutoSync(platform);
       } else {
-        await stopAutoSync();
+        await stopAutoSync(platform);
       }
       
       res.json({ success: true, settings });

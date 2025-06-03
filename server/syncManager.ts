@@ -54,6 +54,24 @@ export async function restartAutoSync(platform: string = 'woocommerce') {
   await startAutoSync(platform);
 }
 
+export function getSyncStatus(platform?: string) {
+  if (platform) {
+    const manager = syncManagers.get(platform);
+    return {
+      isRunning: manager?.isRunning || false,
+      platform: platform
+    };
+  }
+  
+  // Return overall sync status
+  const allManagers = Array.from(syncManagers.values());
+  return {
+    isRunning: allManagers.some(m => m.isRunning),
+    activeConnections: allManagers.filter(m => m.isRunning).length,
+    totalConnections: allManagers.length
+  };
+}
+
 async function performSync(platform: string = 'woocommerce') {
   try {
     console.log(`=== AUTO SYNC STARTED for ${platform} ===`);
@@ -266,12 +284,4 @@ async function fetchWooCommerceOrders(
   }
 
   return { imported, skipped };
-}
-
-export function getSyncStatus(platform: string = 'woocommerce') {
-  const manager = syncManagers.get(platform);
-  return {
-    isRunning: manager ? manager.isRunning : false,
-    hasInterval: manager ? manager.intervalId !== null : false
-  };
 }
