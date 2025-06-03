@@ -1,10 +1,11 @@
-import { useState } from "react";
+import { useState, useCallback } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { ChevronRight, ChevronDown, ChevronUp, Search, Trash2 } from "lucide-react";
 import { formatCurrency } from "@/lib/feeCalculations";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
@@ -61,6 +62,7 @@ export default function MonthlyBreakdown({
   const [sortField, setSortField] = useState<string>("");
   const [sortDirection, setSortDirection] = useState<"asc" | "desc">("desc");
   const [selectedOrders, setSelectedOrders] = useState<number[]>([]);
+  const [showDeleteDialog, setShowDeleteDialog] = useState(false);
 
   const { toast } = useToast();
   const queryClient = useQueryClient();
@@ -92,22 +94,37 @@ export default function MonthlyBreakdown({
     },
   });
 
-  // Selection handlers
-  const handleSelectOrder = (orderId: number, checked: boolean) => {
-    if (checked) {
-      setSelectedOrders(prev => [...prev, orderId]);
-    } else {
-      setSelectedOrders(prev => prev.filter(id => id !== orderId));
-    }
+  // Optimized selection handlers with useCallback
+  const handleSelectOrder = useCallback((orderId: number, checked: boolean) => {
+    setSelectedOrders(prev => {
+      if (checked) {
+        return prev.includes(orderId) ? prev : [...prev, orderId];
+      } else {
+        return prev.filter(id => id !== orderId);
+      }
+    });
+  }, []);
+
+  const handleSelectAll = useCallback((monthOrders: Order[], checked: boolean) => {
+    const orderIds = monthOrders.map(order => order.id);
+    setSelectedOrders(prev => {
+      if (checked) {
+        const newIds = orderIds.filter(id => !prev.includes(id));
+        return [...prev, ...newIds];
+      } else {
+        return prev.filter(id => !orderIds.includes(id));
+      }
+    });
+  }, []);
+
+  // Handle delete confirmation
+  const handleDeleteClick = () => {
+    setShowDeleteDialog(true);
   };
 
-  const handleSelectAll = (monthOrders: Order[], checked: boolean) => {
-    const orderIds = monthOrders.map(order => order.id);
-    if (checked) {
-      setSelectedOrders(prev => [...new Set([...prev, ...orderIds])]);
-    } else {
-      setSelectedOrders(prev => prev.filter(id => !orderIds.includes(id)));
-    }
+  const handleDeleteConfirm = () => {
+    deleteOrdersMutation.mutate(selectedOrders);
+    setShowDeleteDialog(false);
   };
 
   const handleSort = (field: string) => {
@@ -212,7 +229,7 @@ export default function MonthlyBreakdown({
             {isAdmin && selectedOrders.length > 0 && (
               <Button
                 variant="destructive"
-                onClick={() => deleteOrdersMutation.mutate(selectedOrders)}
+                onClick={handleDeleteClick}
                 disabled={deleteOrdersMutation.isPending}
               >
                 <Trash2 className="h-4 w-4 mr-2" />
