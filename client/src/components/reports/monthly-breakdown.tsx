@@ -243,6 +243,15 @@ export default function ReportsMonthlyBreakdown({
                                     </div>
                                   </div>
                                 </TableHead>
+                                <TableHead className="cursor-pointer hover:bg-gray-50" onClick={() => handleSort('orderDate')}>
+                                  <div className="flex items-center space-x-1">
+                                    <span>Time</span>
+                                    <div className="flex flex-col">
+                                      <ChevronUp className="h-3 w-3 text-gray-400" />
+                                      <ChevronDown className="h-3 w-3 text-gray-400 -mt-1" />
+                                    </div>
+                                  </div>
+                                </TableHead>
                                 <TableHead className="cursor-pointer hover:bg-gray-50" onClick={() => handleSort('orderId')}>
                                   <div className="flex items-center space-x-1">
                                     <span>Order ID</span>
@@ -295,6 +304,14 @@ export default function ReportsMonthlyBreakdown({
                               {filteredOrders.map((order) => (
                                 <TableRow key={order.id}>
                                   <TableCell>{new Date(order.orderDate).toLocaleDateString()}</TableCell>
+                                  <TableCell>
+                                    {new Date(order.orderDate).toLocaleTimeString('en-US', { 
+                                      timeZone: 'UTC',
+                                      hour: 'numeric',
+                                      minute: '2-digit',
+                                      hour12: true
+                                    })}
+                                  </TableCell>
                                   <TableCell className="font-mono text-blue-600">{order.orderId}</TableCell>
                                   <TableCell>
                                     <div>
