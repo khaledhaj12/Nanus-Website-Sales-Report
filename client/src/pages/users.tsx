@@ -133,7 +133,7 @@ export default function Users({ onMenuClick }: UsersProps) {
 
   const deleteUserMutation = useMutation({
     mutationFn: async (userId: number) => {
-      await apiRequest(`/api/users/${userId}`, "DELETE");
+      await apiRequest("DELETE", `/api/users/${userId}`);
     },
     onSuccess: () => {
       toast({

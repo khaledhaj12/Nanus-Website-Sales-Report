@@ -320,6 +320,30 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Delete user route
+  app.delete('/api/users/:id', isAuthenticated, async (req, res) => {
+    try {
+      const userId = parseInt(req.params.id);
+      await storage.deleteUser(userId);
+      res.json({ message: "User deleted successfully" });
+    } catch (error) {
+      console.error("Delete user error:", error);
+      res.status(500).json({ message: "Failed to delete user" });
+    }
+  });
+
+  // User page permissions routes
+  app.get('/api/auth/permissions', isAuthenticated, async (req, res) => {
+    try {
+      const userId = req.session.user.id;
+      const permissions = await storage.getUserPagePermissions(userId);
+      res.json(permissions);
+    } catch (error) {
+      console.error("Get user permissions error:", error);
+      res.status(500).json({ message: "Failed to get user permissions" });
+    }
+  });
+
   // User status access routes
   app.get('/api/users/:id/statuses', isAuthenticated, async (req, res) => {
     try {

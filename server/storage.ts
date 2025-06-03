@@ -4,6 +4,7 @@ import {
   orders,
   userLocationAccess,
   userStatusAccess,
+  userPagePermissions,
   syncSettings,
   storeConnections,
   restApiSettings,
@@ -632,6 +633,24 @@ export class DatabaseStorage implements IStorage {
 
   async deleteLogoSettings(): Promise<void> {
     await db.delete(logoSettings);
+  }
+
+  // User page permissions operations
+  async getUserPagePermissions(userId: number): Promise<Record<string, { canView: boolean; canEdit: boolean }>> {
+    const permissions = await db
+      .select()
+      .from(userPagePermissions)
+      .where(eq(userPagePermissions.userId, userId));
+    
+    const result: Record<string, { canView: boolean; canEdit: boolean }> = {};
+    permissions.forEach(permission => {
+      result[permission.pageName] = {
+        canView: permission.canView,
+        canEdit: permission.canEdit
+      };
+    });
+    
+    return result;
   }
 }
 
