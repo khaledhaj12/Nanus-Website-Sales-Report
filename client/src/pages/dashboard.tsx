@@ -105,9 +105,9 @@ export default function Dashboard({ onMenuClick }: DashboardProps) {
       />
       
       <main className="flex-1 overflow-auto p-4 md:p-6 bg-slate-50">
-        {/* Date Range, Location, and Status Filters */}
+        {/* Date Range and Status Filters */}
         <div className="mb-6">
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
                 Date Range
@@ -121,27 +121,6 @@ export default function Dashboard({ onMenuClick }: DashboardProps) {
                 className="w-full"
               />
             </div>
-            
-            {isAdmin && (
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Location
-                </label>
-                <Select value={selectedLocation} onValueChange={setSelectedLocation}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="All Locations" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">All Locations</SelectItem>
-                    {locations.map((location: any) => (
-                      <SelectItem key={location.id} value={location.id.toString()}>
-                        {location.name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-            )}
 
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
