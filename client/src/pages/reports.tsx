@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import Header from "@/components/layout/header";
@@ -26,12 +26,23 @@ export default function Reports({ onMenuClick }: ReportsProps) {
 
 
 
-  const { data: locations = [] } = useQuery({
+  const { data: rawLocations = [] } = useQuery({
     queryKey: ["/api/locations"],
   });
 
-  // Debug: Log locations to see what we're getting
-  console.log("Reports page locations data:", locations);
+  // Ensure unique locations using useMemo
+  const locations = useMemo(() => {
+    if (!Array.isArray(rawLocations)) return [];
+    const uniqueMap = new Map();
+    rawLocations.forEach((location: any) => {
+      if (location && location.id && !uniqueMap.has(location.id)) {
+        uniqueMap.set(location.id, location);
+      }
+    });
+    return Array.from(uniqueMap.values());
+  }, [rawLocations]);
+
+
 
   const { data: summaryData, isLoading: isSummaryLoading } = useQuery({
     queryKey: ["/api/reports/summary", { location: selectedLocation, startMonth, endMonth, statuses: selectedStatuses }],
