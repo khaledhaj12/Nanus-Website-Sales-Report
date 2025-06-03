@@ -90,7 +90,7 @@ export default function Login() {
         <CardHeader className="text-center">
           {logoSettings?.logoPath && (
             <div className="flex justify-center mb-4">
-              <div className="w-16 h-16 bg-gradient-to-r from-blue-500 to-purple-600 rounded-xl flex items-center justify-center shadow-lg overflow-hidden">
+              <div className="w-16 h-16">
                 <img 
                   src={logoSettings.logoPath} 
                   alt="Logo" 

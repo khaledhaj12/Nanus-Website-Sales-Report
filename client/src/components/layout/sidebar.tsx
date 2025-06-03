@@ -100,17 +100,19 @@ export default function Sidebar({ activeSection, onSectionChange, isOpen, onTogg
         <div className="p-6 border-b border-slate-700">
           <div className="flex items-center justify-between">
             <div className="flex items-center space-x-3">
-              <div className="w-10 h-10 bg-gradient-to-r from-blue-500 to-purple-600 rounded-xl flex items-center justify-center shadow-lg overflow-hidden">
-                {logoSettings?.logoPath ? (
+              {logoSettings?.logoPath ? (
+                <div className="w-10 h-10 rounded-xl overflow-hidden">
                   <img 
                     src={logoSettings.logoPath} 
                     alt="Logo" 
                     className="w-full h-full object-contain"
                   />
-                ) : (
+                </div>
+              ) : (
+                <div className="w-10 h-10 bg-gradient-to-r from-blue-500 to-purple-600 rounded-xl flex items-center justify-center shadow-lg">
                   <BarChart3 className="h-6 w-6 text-white" />
-                )}
-              </div>
+                </div>
+              )}
               <div>
                 <h1 className="text-lg font-bold text-white">Import Sales</h1>
                 <p className="text-xs text-slate-300 mt-1">
