@@ -17,13 +17,19 @@ interface Order {
   id: number;
   orderId: string;
   customerName: string;
-  customerEmail: string;
-  cardLast4: string;
+  customerEmail?: string;
+  cardLast4?: string;
   refundAmount: string;
   amount: string;
   status: string;
   orderDate: string;
   locationName?: string;
+  billingFirstName?: string;
+  billingLastName?: string;
+  billingAddress1?: string;
+  shippingFirstName?: string;
+  shippingLastName?: string;
+  shippingAddress1?: string;
 }
 
 interface MonthData {
@@ -42,6 +48,9 @@ interface MonthlyBreakdownProps {
   startMonth?: string;
   endMonth?: string;
   isMultipleMonths?: boolean;
+  startDate?: string;
+  endDate?: string;
+  isMultipleDays?: boolean;
 }
 
 export default function MonthlyBreakdown({ 

@@ -42,6 +42,9 @@ interface ReportsMonthlyBreakdownProps {
   startMonth?: string;
   endMonth?: string;
   isMultipleMonths?: boolean;
+  startDate?: string;
+  endDate?: string;
+  isMultipleDays?: boolean;
 }
 
 export default function ReportsMonthlyBreakdown({
@@ -51,6 +54,9 @@ export default function ReportsMonthlyBreakdown({
   startMonth,
   endMonth,
   isMultipleMonths = false,
+  startDate,
+  endDate,
+  isMultipleDays = false,
 }: ReportsMonthlyBreakdownProps) {
   const [expandedMonths, setExpandedMonths] = useState<Set<string>>(new Set());
   const [searchTerm, setSearchTerm] = useState("");
