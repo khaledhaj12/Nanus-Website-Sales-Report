@@ -24,14 +24,10 @@ export default function Reports({ onMenuClick }: ReportsProps) {
   // Fixed statuses for reports page - only show completed business transactions
   const selectedStatuses = ["processing", "completed", "refunded"];
 
-  // Clear locations cache on component mount to ensure fresh data
-  useEffect(() => {
-    queryClient.invalidateQueries({ queryKey: ["/api/locations"] });
-  }, []);
+
 
   const { data: locations = [] } = useQuery({
-    queryKey: ["/api/locations", Date.now()], // Force fresh data with timestamp
-    staleTime: 0,
+    queryKey: ["/api/locations"],
   });
 
   const { data: summaryData, isLoading: isSummaryLoading } = useQuery({
