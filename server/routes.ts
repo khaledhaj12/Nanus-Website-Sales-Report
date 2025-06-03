@@ -362,9 +362,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // User page permissions routes
   app.get('/api/auth/permissions', isAuthenticated, async (req, res) => {
     try {
-      const userId = req.session.user.id;
+      // Get user ID from session - handle different session structures
+      const userId = req.session?.user?.id || req.user?.id;
+      
+      if (!userId) {
+        return res.status(401).json({ message: "User ID not found in session" });
+      }
+
+      // For admin user (ID 1), return admin permissions
+      if (userId === 1) {
+        return res.json({ isAdmin: true });
+      }
+
+      // For other users, get their specific permissions
       const permissions = await storage.getUserPagePermissions(userId);
-      res.json(permissions);
+      res.json(permissions || {});
     } catch (error) {
       console.error("Get user permissions error:", error);
       res.status(500).json({ message: "Failed to get user permissions" });
