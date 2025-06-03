@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
@@ -14,6 +14,7 @@ import { MapPin, Shield, Eye, Edit } from "lucide-react";
 interface CreateUserModalProps {
   isOpen: boolean;
   onClose: () => void;
+  editingUser?: any;
 }
 
 const MENU_PAGES = [
@@ -32,9 +33,10 @@ const ORDER_STATUSES = [
   'completed', 'processing', 'refunded', 'cancelled', 'on-hold', 'pending', 'failed'
 ];
 
-export default function CreateUserModal({ isOpen, onClose }: CreateUserModalProps) {
+export default function CreateUserModal({ isOpen, onClose, editingUser }: CreateUserModalProps) {
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  const isEditMode = Boolean(editingUser);
   
   const [formData, setFormData] = useState({
     username: '',
@@ -57,6 +59,52 @@ export default function CreateUserModal({ isOpen, onClose }: CreateUserModalProp
     queryKey: ['/api/locations'],
   });
 
+  // Fetch user locations if editing
+  const { data: userLocations = [] } = useQuery({
+    queryKey: [`/api/users/${editingUser?.id}/locations`],
+    enabled: Boolean(editingUser?.id),
+  });
+
+  // Fetch user statuses if editing
+  const { data: userStatuses = [] } = useQuery({
+    queryKey: [`/api/users/${editingUser?.id}/statuses`],
+    enabled: Boolean(editingUser?.id),
+  });
+
+  // Populate form data when editing user
+  useEffect(() => {
+    if (editingUser) {
+      setFormData({
+        username: editingUser.username || '',
+        firstName: editingUser.firstName || '',
+        lastName: editingUser.lastName || '',
+        email: editingUser.email || '',
+        phoneNumber: editingUser.phoneNumber || '',
+        password: '', // Don't populate password when editing
+        mustChangePassword: editingUser.mustChangePassword || false,
+        isActive: editingUser.isActive !== undefined ? editingUser.isActive : true,
+        selectedLocations: userLocations || [],
+        pagePermissions: {},
+        orderStatuses: userStatuses || [],
+      });
+    } else {
+      // Reset form for new user
+      setFormData({
+        username: '',
+        firstName: '',
+        lastName: '',
+        email: '',
+        phoneNumber: '',
+        password: '',
+        mustChangePassword: true,
+        isActive: true,
+        selectedLocations: [],
+        pagePermissions: {},
+        orderStatuses: [],
+      });
+    }
+  }, [editingUser, userLocations, userStatuses]);
+
   const validatePassword = (password: string) => {
     const minLength = password.length >= 8;
     const hasAlpha = /[a-zA-Z]/.test(password);
@@ -71,29 +119,57 @@ export default function CreateUserModal({ isOpen, onClose }: CreateUserModalProp
     return true;
   };
 
-  const createUserMutation = useMutation({
+  const userMutation = useMutation({
     mutationFn: async (userData: any) => {
-      // Create user
-      const userResponse = await apiRequest('POST', '/api/users', {
-        username: userData.username,
-        firstName: userData.firstName,
-        lastName: userData.lastName,
-        email: userData.email,
-        phoneNumber: userData.phoneNumber,
-        password: userData.password,
-        mustChangePassword: userData.mustChangePassword,
-        isActive: userData.isActive,
-        role: 'user'
-      });
+      // Validate password for new users or when password is provided for existing users
+      if (!isEditMode || userData.password) {
+        if (!validatePassword(userData.password)) {
+          throw new Error('Password does not meet complexity requirements');
+        }
+      }
 
-      const newUser = await userResponse.json();
+      let user;
+      if (isEditMode) {
+        // Update existing user
+        const userPayload: any = {
+          username: userData.username,
+          firstName: userData.firstName,
+          lastName: userData.lastName,
+          email: userData.email,
+          phoneNumber: userData.phoneNumber,
+          mustChangePassword: userData.mustChangePassword,
+          isActive: userData.isActive,
+        };
+
+        // Only include password if it's provided
+        if (userData.password) {
+          userPayload.password = userData.password;
+        }
+
+        const userResponse = await apiRequest('PUT', `/api/users/${editingUser.id}`, userPayload);
+        user = await userResponse.json();
+      } else {
+        // Create new user
+        const userResponse = await apiRequest('POST', '/api/users', {
+          username: userData.username,
+          firstName: userData.firstName,
+          lastName: userData.lastName,
+          email: userData.email,
+          phoneNumber: userData.phoneNumber,
+          password: userData.password,
+          mustChangePassword: userData.mustChangePassword,
+          isActive: userData.isActive,
+          role: 'user'
+        });
+        user = await userResponse.json();
+      }
+
+      const userId = user.id;
 
       // Set location access
-      if (userData.selectedLocations.length > 0) {
-        await apiRequest('POST', `/api/users/${newUser.id}/locations`, {
-          locationIds: userData.selectedLocations
-        });
-      }
+      await apiRequest('POST', `/api/users/${userId}/locations`, {
+        locationIds: userData.selectedLocations
+      });
 
       // Set page permissions
       const permissions = Object.entries(userData.pagePermissions)
@@ -104,20 +180,16 @@ export default function CreateUserModal({ isOpen, onClose }: CreateUserModalProp
           canEdit: perms.canEdit
         }));
 
-      if (permissions.length > 0) {
-        await apiRequest('POST', `/api/users/${newUser.id}/permissions`, {
-          permissions
-        });
-      }
+      await apiRequest('POST', `/api/users/${userId}/permissions`, {
+        permissions
+      });
 
       // Set order status access
-      if (userData.orderStatuses.length > 0) {
-        await apiRequest('POST', `/api/users/${newUser.id}/statuses`, {
-          statuses: userData.orderStatuses
-        });
-      }
+      await apiRequest('POST', `/api/users/${userId}/statuses`, {
+        statuses: userData.orderStatuses
+      });
 
-      return newUser;
+      return user;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/users'] });
@@ -170,7 +242,7 @@ export default function CreateUserModal({ isOpen, onClose }: CreateUserModalProp
       return;
     }
 
-    createUserMutation.mutate(formData);
+    userMutation.mutate(formData);
   };
 
   const handleLocationToggle = (locationId: number) => {
