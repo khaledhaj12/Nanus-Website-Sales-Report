@@ -320,6 +320,25 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Update user route
+  app.put('/api/users/:id', isAuthenticated, async (req, res) => {
+    try {
+      const userId = parseInt(req.params.id);
+      const updateData = req.body;
+      
+      // Hash password if provided
+      if (updateData.password) {
+        updateData.password = await bcrypt.hash(updateData.password, 10);
+      }
+      
+      const updatedUser = await storage.updateUser(userId, updateData);
+      res.json(updatedUser);
+    } catch (error) {
+      console.error("Update user error:", error);
+      res.status(500).json({ message: "Failed to update user" });
+    }
+  });
+
   // Delete user route
   app.delete('/api/users/:id', isAuthenticated, async (req, res) => {
     try {

@@ -339,6 +339,7 @@ export default function Users({ onMenuClick }: UsersProps) {
           setIsUserModalOpen(false);
           setEditingUser(null);
         }}
+        editingUser={editingUser}
       />
     </div>
   );

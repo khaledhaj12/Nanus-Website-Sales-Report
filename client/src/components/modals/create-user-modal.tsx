@@ -484,8 +484,8 @@ export default function CreateUserModal({ isOpen, onClose, editingUser }: Create
             <Button type="button" variant="outline" onClick={onClose}>
               Cancel
             </Button>
-            <Button type="submit" disabled={createUserMutation.isPending}>
-              {createUserMutation.isPending ? "Creating..." : "Create User"}
+            <Button type="submit" disabled={userMutation.isPending}>
+              {userMutation.isPending ? (isEditMode ? "Updating..." : "Creating...") : (isEditMode ? "Update User" : "Create User")}
             </Button>
           </DialogFooter>
         </form>

@@ -186,15 +186,25 @@ export default function Sidebar({ activeSection, onSectionChange, isOpen, onTogg
             </div>
           </div>
           
-          <Button
-            variant="ghost"
-            onClick={() => logoutMutation.mutate()}
-            disabled={logoutMutation.isPending}
-            className="w-full justify-start text-slate-300 hover:text-white hover:bg-slate-700/50"
-          >
-            <LogOut className="mr-3 h-5 w-5" />
-            {logoutMutation.isPending ? "Signing Out..." : "Sign Out"}
-          </Button>
+          <div className="space-y-2">
+            <Button
+              variant="ghost"
+              onClick={() => navigate('/')}
+              className="w-full justify-start text-slate-300 hover:text-white hover:bg-slate-700/50"
+            >
+              <Home className="mr-3 h-5 w-5" />
+              Home
+            </Button>
+            <Button
+              variant="ghost"
+              onClick={() => logoutMutation.mutate()}
+              disabled={logoutMutation.isPending}
+              className="w-full justify-start text-slate-300 hover:text-white hover:bg-slate-700/50"
+            >
+              <LogOut className="mr-3 h-5 w-5" />
+              {logoutMutation.isPending ? "Signing Out..." : "Sign Out"}
+            </Button>
+          </div>
         </div>
       </div>
     </>
