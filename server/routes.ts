@@ -59,8 +59,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
   const initializeAdmin = async () => {
     try {
       const adminUsername = process.env.ADMIN_USERNAME || 'admin';
+      console.log(`Checking for admin user: ${adminUsername}`);
       const adminUser = await storage.getUserByUsername(adminUsername);
+      console.log(`Admin user exists:`, adminUser ? 'Yes' : 'No');
+      
       if (!adminUser) {
+        console.log('Creating new admin user...');
         const hashedPassword = await bcrypt.hash(process.env.ADMIN_PASSWORD || 'admin123', 10);
         await storage.createUser({
           username: adminUsername,
@@ -71,6 +75,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
           role: 'admin',
         });
         console.log(`Admin user created with username: ${adminUsername}`);
+      } else {
+        console.log(`Admin user already exists with username: ${adminUsername}`);
+        // Update existing admin user's password to use environment variable
+        console.log('Updating admin user password with environment variable...');
+        const newHashedPassword = await bcrypt.hash(process.env.ADMIN_PASSWORD || 'admin123', 10);
+        await storage.updateUser(adminUser.id, {
+          password: newHashedPassword
+        });
+        console.log('Admin user password updated successfully');
       }
     } catch (error) {
       console.error('Error initializing admin user:', error);
@@ -176,7 +189,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
       }
       
+      console.log(`Login attempt for username: ${username}`);
       const user = await storage.validateUser(username, password);
+      console.log(`User found:`, user ? 'Yes' : 'No');
       
       if (user) {
         req.session.user = user;
