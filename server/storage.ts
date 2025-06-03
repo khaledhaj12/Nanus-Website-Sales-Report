@@ -694,8 +694,40 @@ export class DatabaseStorage implements IStorage {
     return result;
   }
 
-  async deleteStoreConnection(connectionId: string): Promise<void> {
-    await db.delete(storeConnections).where(eq(storeConnections.connectionId, connectionId));
+  async deleteStoreConnection(id: number): Promise<void> {
+    await db.delete(storeConnections).where(eq(storeConnections.id, id.toString()));
+  }
+
+  async updateStoreConnectionLocation(connectionId: string, locationId: number): Promise<void> {
+    await db.update(storeConnections)
+      .set({ 
+        defaultLocationId: locationId,
+        updatedAt: new Date()
+      })
+      .where(eq(storeConnections.id, connectionId));
+  }
+
+  async updateUnknownLocationOrders(connectionId: string, locationId: number): Promise<void> {
+    // Get the store connection to find its URL
+    const connection = await this.getStoreConnection(connectionId);
+    if (!connection) return;
+
+    // Update orders that have "Unknown Location" or missing location metadata
+    await db.update(orders)
+      .set({ 
+        locationId: locationId,
+        updatedAt: new Date()
+      })
+      .where(
+        and(
+          eq(orders.storeUrl, connection.storeUrl),
+          or(
+            eq(orders.locationMeta, 'Unknown Location'),
+            isNull(orders.locationMeta),
+            eq(orders.locationMeta, '')
+          )
+        )
+      );
   }
 
   // Footer settings operations
