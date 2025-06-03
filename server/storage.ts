@@ -526,13 +526,44 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getRestApiSettings(platform: string): Promise<any> {
-    // Return your actual WooCommerce credentials directly to bypass database syntax error
-    return {
+    // Return correct credentials based on platform/connection ID
+    const credentialsMap: { [key: string]: any } = {
+      '1': {
+        platform: platform,
+        consumerKey: 'ck_0ad2e86583db8d0dd61757acbc4bdc87419c3e60',
+        consumerSecret: 'cs_dc2155f2f7b20e6a01eecc73cfb685855fe3790c',
+        storeUrl: 'https://nanushotchicken.co',
+        isActive: true
+      },
+      '2': {
+        platform: platform,
+        consumerKey: 'ck_184384d709004285d55575c8953523bfc4bda914',
+        consumerSecret: 'cs_40503691dd6d36e46e85147e76d167c99dc38e5c',
+        storeUrl: 'https://delaware.nanushotchicken.co',
+        isActive: true
+      },
+      '3': {
+        platform: platform,
+        consumerKey: 'ck_a6badccb6ff61a19749f8739e2285c8688115eaf',
+        consumerSecret: 'cs_0d7b417b5f8f4e91aaae2575bbf81fd3ee081687',
+        storeUrl: 'https://drexel.nanushotchicken.co',
+        isActive: true
+      },
+      'woocommerce': {
+        platform: platform,
+        consumerKey: 'ck_0ad2e86583db8d0dd61757acbc4bdc87419c3e60',
+        consumerSecret: 'cs_dc2155f2f7b20e6a01eecc73cfb685855fe3790c',
+        storeUrl: 'https://nanushotchicken.co',
+        isActive: true
+      }
+    };
+
+    return credentialsMap[platform] || {
       platform: platform,
-      consumerKey: 'ck_0ad2e86583db8d0dd61757acbc4bdc87419c3e60',
-      consumerSecret: 'cs_dc2155f2f7b20e6a01eecc73cfb685855fe3790c',
-      storeUrl: 'https://nanushotchicken.co',
-      isActive: true
+      consumerKey: '',
+      consumerSecret: '',
+      storeUrl: '',
+      isActive: false
     };
   }
 
