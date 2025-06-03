@@ -612,19 +612,16 @@ function ApiConnections({ onMenuClick }: ApiConnectionsProps) {
     queryKey: ["/api/store-connections"],
   });
 
-  // Add default main store connection to the list
-  const connections = [
-    {
-      connectionId: 'woocommerce',
-      name: 'Main Store',
-      domain: 'Main Store',
-      platform: 'woocommerce',
-      isDefault: true
-    },
-    ...(Array.isArray(dbConnections) ? dbConnections : [])
-  ];
+  // Use only the database connections
+  const connections = Array.isArray(dbConnections) ? dbConnections.map(conn => ({
+    connectionId: conn.id,
+    name: conn.name,
+    domain: conn.name,
+    platform: 'woocommerce',
+    isDefault: conn.id === '1'
+  })) : [];
   
-  const [activeConnectionId, setActiveConnectionId] = useState('woocommerce');
+  const [activeConnectionId, setActiveConnectionId] = useState('1');
   const [newConnectionName, setNewConnectionName] = useState('');
   const [showAddConnection, setShowAddConnection] = useState(false);
 
@@ -707,7 +704,7 @@ function ApiConnections({ onMenuClick }: ApiConnectionsProps) {
   };
 
   const removeConnection = (connectionId: string) => {
-    if (connectionId === 'woocommerce') {
+    if (connectionId === '1') {
       toast({
         title: "Error",
         description: "Cannot remove the main store connection",
@@ -719,7 +716,7 @@ function ApiConnections({ onMenuClick }: ApiConnectionsProps) {
     deleteConnectionMutation.mutate(connectionId, {
       onSuccess: () => {
         if (activeConnectionId === connectionId) {
-          setActiveConnectionId('woocommerce');
+          setActiveConnectionId('1');
         }
       }
     });
@@ -753,7 +750,7 @@ function ApiConnections({ onMenuClick }: ApiConnectionsProps) {
                 <Globe className="h-4 w-4" />
                 {connection.domain || connection.name}
               </TabsTrigger>
-              {connection.connectionId !== 'woocommerce' && (
+              {connection.connectionId !== '1' && (
                 <AlertDialog>
                   <AlertDialogTrigger asChild>
                     <Button
