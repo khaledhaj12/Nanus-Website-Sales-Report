@@ -13,6 +13,7 @@ import Dashboard from "@/pages/dashboard";
 import Reports from "@/pages/reports";
 
 import Locations from "@/pages/locations";
+import Profile from "@/pages/profile";
 import Users from "@/pages/users";
 
 import ApiConnections from "@/pages/api-connections";
@@ -86,6 +87,8 @@ function AppRouter() {
 
       case "locations":
         return <Locations {...commonProps} />;
+      case "profile":
+        return <Profile {...commonProps} />;
       case "users":
         return isAdmin ? <Users {...commonProps} /> : <Dashboard {...commonProps} />;
       case "api-connections":

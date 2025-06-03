@@ -47,6 +47,8 @@ export interface IStorage {
   
   // Authentication
   validateUser(username: string, password: string): Promise<User | null>;
+  updateUserProfile(id: number, profileData: Partial<Pick<InsertUser, 'username' | 'firstName' | 'lastName' | 'email' | 'phoneNumber'>>): Promise<User>;
+  changeUserPassword(id: number, currentPassword: string, newPassword: string): Promise<boolean>;
   
   // Location operations
   getLocation(id: number): Promise<Location | undefined>;
