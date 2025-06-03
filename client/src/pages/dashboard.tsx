@@ -25,15 +25,21 @@ export default function Dashboard({ onMenuClick }: DashboardProps) {
   const [startDate, setStartDate] = useState(todayStr);
   const [endDate, setEndDate] = useState(todayStr);
   const [selectedLocation, setSelectedLocation] = useState("");
-  // Define allowed statuses based on user role
+  // Fetch user's allowed statuses from database
+  const { data: userStatuses = [] } = useQuery({
+    queryKey: [`/api/users/${user?.id}/statuses`],
+    enabled: !isAdmin && !!user?.id,
+  });
+
+  // Define allowed statuses based on user role and database permissions
   const allowedStatuses = useMemo(() => {
     if (isAdmin) {
       return ["completed", "processing", "refunded", "on-hold", "checkout-draft", "failed", "pending", "cancelled"];
     } else {
-      // Non-admin users can ONLY see these three statuses
-      return ["completed", "processing", "refunded"];
+      // Non-admin users: use statuses from database, fallback to safe defaults
+      return userStatuses.length > 0 ? userStatuses : ["completed", "processing", "refunded"];
     }
-  }, [isAdmin]);
+  }, [isAdmin, userStatuses]);
 
   const [selectedStatuses, setSelectedStatuses] = useState<string[]>([]);
 

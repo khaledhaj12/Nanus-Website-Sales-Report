@@ -999,13 +999,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
 
 
-  // Helper function to get allowed statuses based on user role
-  function getAllowedStatuses(isAdmin: boolean): string[] {
+  // Helper function to get allowed statuses from database
+  async function getAllowedStatuses(userId: number, isAdmin: boolean): Promise<string[]> {
     if (isAdmin) {
+      // Admin users can see all statuses
       return ["completed", "processing", "refunded", "on-hold", "checkout-draft", "failed", "pending", "cancelled"];
     } else {
-      // Non-admin users can ONLY see these three statuses - NO EXCEPTIONS
-      return ["completed", "processing", "refunded"];
+      // Non-admin users: get their allowed statuses from user_status_access table
+      const userStatuses = await storage.getUserStatusAccess(userId);
+      
+      // If no specific statuses assigned, default to the three safe statuses
+      if (!userStatuses || userStatuses.length === 0) {
+        return ["completed", "processing", "refunded"];
+      }
+      
+      return userStatuses;
     }
   }
 
@@ -1017,10 +1025,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Get user's admin status
       const userId = req.session?.user?.id;
       const user = await storage.getUser(userId);
-      const isAdmin = user?.isAdmin || false;
+      const isAdmin = user?.role === 'admin';
       
-      // Get allowed statuses for this user
-      const allowedStatuses = getAllowedStatuses(isAdmin);
+      // Get allowed statuses for this user from database
+      const allowedStatuses = await getAllowedStatuses(userId, isAdmin);
       
       // Use raw SQL query to bypass ORM date issues
       const { pool } = await import('./db');
@@ -1060,22 +1068,28 @@ export async function registerRoutes(app: Express): Promise<Server> {
         params.push(month);
       }
       
-      // Handle status filtering - properly parse multiple status parameters
+      // Handle status filtering - ENFORCE security restrictions for non-admin users
+      let statusFilter: string[] = [];
       if (statuses) {
-        let statusFilter: string[] = [];
         if (Array.isArray(statuses)) {
           statusFilter = statuses.filter(s => typeof s === 'string') as string[];
         } else {
-          // Single status or comma-separated statuses
           statusFilter = [statuses as string];
         }
         
-        if (statusFilter.length > 0) {
-          const statusPlaceholders = statusFilter.map((_, index) => `$${params.length + index + 1}`).join(', ');
-          whereClause += ` AND status IN (${statusPlaceholders})`;
-          params.push(...statusFilter);
-        }
+        // SECURITY: Filter out any statuses not allowed for this user
+        statusFilter = statusFilter.filter(status => allowedStatuses.includes(status));
       }
+      
+      // If no valid statuses provided, default to allowed statuses for this user
+      if (statusFilter.length === 0) {
+        statusFilter = allowedStatuses;
+      }
+      
+      // Apply status filtering to query
+      const statusPlaceholders = statusFilter.map((_, index) => `$${params.length + index + 1}`).join(', ');
+      whereClause += ` AND status IN (${statusPlaceholders})`;
+      params.push(...statusFilter);
       
       const query = `
         SELECT 

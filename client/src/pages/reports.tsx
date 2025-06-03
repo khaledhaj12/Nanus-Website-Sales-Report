@@ -20,15 +20,21 @@ export default function Reports({ onMenuClick }: ReportsProps) {
   const [endDate, setEndDate] = useState(todayStr);
   const [selectedLocation, setSelectedLocation] = useState("");
 
-  // Define allowed statuses based on user role
+  // Fetch user's allowed statuses from database
+  const { data: userStatuses = [] } = useQuery({
+    queryKey: [`/api/users/${user?.id}/statuses`],
+    enabled: !isAdmin && !!user?.id,
+  });
+
+  // Define allowed statuses based on user role and database permissions
   const selectedStatuses = useMemo(() => {
     if (isAdmin) {
       return ["processing", "completed", "refunded", "pending", "failed", "cancelled", "on-hold", "checkout-draft"];
     } else {
-      // Non-admin users can ONLY see these three statuses
-      return ["completed", "processing", "refunded"];
+      // Non-admin users: use statuses from database, fallback to safe defaults
+      return userStatuses.length > 0 ? userStatuses : ["completed", "processing", "refunded"];
     }
-  }, [isAdmin]);
+  }, [isAdmin, userStatuses]);
 
   // Fetch all locations for admin users
   const { data: allLocations = [] } = useQuery({
