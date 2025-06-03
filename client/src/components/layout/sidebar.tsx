@@ -41,7 +41,7 @@ const navigationItems = [
 ];
 
 export default function Sidebar({ activeSection, onSectionChange, isOpen, onToggle }: SidebarProps) {
-  const { user, isAdmin } = useAuth();
+  const { user, isAdmin, permissions } = useAuth();
   const [, setLocation] = useLocation();
   const { toast } = useToast();
   const queryClient = useQueryClient();
@@ -79,9 +79,20 @@ export default function Sidebar({ activeSection, onSectionChange, isOpen, onTogg
     }
   };
 
-  const filteredItems = navigationItems.filter(item => 
-    !item.adminOnly || isAdmin
-  );
+  // Filter items based on admin status and user permissions
+  const filteredItems = navigationItems.filter(item => {
+    // Admin users can see all items
+    if (isAdmin) return true;
+    
+    // For admin-only items, check if user is admin
+    if (item.adminOnly) return false;
+    
+    // For regular items, check permissions (profile is always accessible)
+    if (item.id === 'profile') return true;
+    
+    // Check if user has permission to view this page
+    return permissions[item.id]?.canView === true;
+  });
 
   return (
     <>

@@ -14,13 +14,20 @@ export function useAuth() {
     retry: false,
   });
 
+  const { data: permissions = {}, isLoading: permissionsLoading } = useQuery({
+    queryKey: ["/api/auth/permissions"],
+    enabled: Boolean(user),
+    retry: false,
+  });
+
   // Safe computation of authentication state
   const isAuthenticated = Boolean(user);
   const isAdmin = Boolean(user && user.role === 'admin');
 
   return {
     user,
-    isLoading,
+    permissions,
+    isLoading: isLoading || permissionsLoading,
     isAuthenticated,
     isAdmin,
   };
