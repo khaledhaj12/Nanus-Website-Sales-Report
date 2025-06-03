@@ -952,15 +952,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Handle date filtering - prioritize startDate/endDate over startMonth/endMonth over month
       if (startDate && endDate) {
         // Precise date range filtering (new functionality)
+        // Add time to handle full day ranges properly
+        const startDateTime = `${startDate} 00:00:00`;
+        const endDateTime = `${endDate} 23:59:59`;
         whereClause += ` AND order_date >= $${params.length + 1} AND order_date <= $${params.length + 2}`;
-        params.push(startDate);
-        params.push(endDate);
+        params.push(startDateTime);
+        params.push(endDateTime);
       } else if (startMonth && endMonth) {
         // Month range filtering (existing functionality)
-        const monthStartDate = `${startMonth}-01`;
+        const monthStartDate = `${startMonth}-01 00:00:00`;
         const [endYear, endMonthNum] = (endMonth as string).split('-');
         const lastDay = new Date(parseInt(endYear), parseInt(endMonthNum), 0).getDate();
-        const monthEndDate = `${endMonth}-${lastDay.toString().padStart(2, '0')}`;
+        const monthEndDate = `${endMonth}-${lastDay.toString().padStart(2, '0')} 23:59:59`;
         
         whereClause += ` AND order_date >= $${params.length + 1} AND order_date <= $${params.length + 2}`;
         params.push(monthStartDate);
@@ -1040,9 +1043,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Handle date filtering - prioritize startDate/endDate over startMonth/endMonth over year
       if (startDate && endDate) {
         // Precise date range filtering (new functionality)
+        // Add time to handle full day ranges properly
+        const startDateTime = `${startDate} 00:00:00`;
+        const endDateTime = `${endDate} 23:59:59`;
         whereClause += ` AND order_date >= $${params.length + 1} AND order_date <= $${params.length + 2}`;
-        params.push(startDate);
-        params.push(endDate);
+        params.push(startDateTime);
+        params.push(endDateTime);
       } else if (startMonth && endMonth) {
         // Month range filtering (existing functionality)
         const monthStartDate = `${startMonth}-01`;
