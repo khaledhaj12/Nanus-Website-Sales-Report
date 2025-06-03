@@ -78,15 +78,25 @@ export default function Dashboard({ onMenuClick }: DashboardProps) {
     }
   }, [isAdmin, allLocations, rawLocations, userLocationIds]);
 
+  // Check if user should see "All Locations" option
+  const shouldShowAllLocations = useMemo(() => {
+    if (isAdmin) return true;
+    
+    // For non-admin users, only show "All Locations" if they have access to ALL available locations
+    if (!Array.isArray(rawLocations) || !Array.isArray(userLocationIds)) return false;
+    
+    return rawLocations.length > 0 && userLocationIds.length === rawLocations.length;
+  }, [isAdmin, rawLocations, userLocationIds]);
+
   // Set default selected location based on user role
   useEffect(() => {
-    if (isAdmin) {
+    if (shouldShowAllLocations) {
       setSelectedLocation("all");
     } else if (locations.length > 0 && !selectedLocation) {
-      // For non-admin users, select their first assigned location
+      // For users without "All Locations" access, select their first assigned location
       setSelectedLocation(locations[0].id.toString());
     }
-  }, [isAdmin, locations, selectedLocation]);
+  }, [shouldShowAllLocations, locations, selectedLocation]);
 
   // Memoize the SelectItems to prevent re-rendering
   const locationItems = useMemo(() => {
@@ -193,7 +203,7 @@ export default function Dashboard({ onMenuClick }: DashboardProps) {
                   <SelectValue placeholder="Select location" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="all">All Locations</SelectItem>
+                  {shouldShowAllLocations && <SelectItem value="all">All Locations</SelectItem>}
                   {locationItems}
                 </SelectContent>
               </Select>

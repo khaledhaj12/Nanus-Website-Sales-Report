@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import Header from "@/components/layout/header";
@@ -12,33 +12,88 @@ interface ReportsProps {
 }
 
 export default function Reports({ onMenuClick }: ReportsProps) {
-  const { user, isAuthenticated } = useAuth();
+  const { isAdmin, user } = useAuth();
   const currentDate = new Date();
   const todayStr = `${currentDate.getFullYear()}-${(currentDate.getMonth() + 1).toString().padStart(2, '0')}-${currentDate.getDate().toString().padStart(2, '0')}`;
   
   const [startDate, setStartDate] = useState(todayStr);
   const [endDate, setEndDate] = useState(todayStr);
-  const [selectedLocation, setSelectedLocation] = useState("all");
+  const [selectedLocation, setSelectedLocation] = useState("");
 
   
   // Include all statuses to show actual order data
   const selectedStatuses = ["processing", "completed", "refunded", "pending", "failed", "cancelled", "on-hold", "checkout-draft"];
 
-  const { data: rawLocations = [] } = useQuery({
+  // Fetch all locations for admin users
+  const { data: allLocations = [] } = useQuery({
     queryKey: ["/api/locations"],
+    enabled: isAdmin,
   });
 
-  // Ensure unique locations using useMemo
+  // Fetch user's assigned location IDs for non-admin users
+  const { data: userLocationIds = [] } = useQuery({
+    queryKey: [`/api/users/${user?.id}/locations`],
+    enabled: !isAdmin && !!user?.id,
+  });
+
+  // Fetch all locations for filtering by user's assigned locations
+  const { data: rawLocations = [] } = useQuery({
+    queryKey: ["/api/locations"],
+    enabled: !isAdmin,
+  });
+
+  // Filter locations based on user role and permissions
   const locations = useMemo(() => {
-    if (!Array.isArray(rawLocations)) return [];
-    const uniqueMap = new Map();
-    rawLocations.forEach((location: any) => {
-      if (location && location.id && !uniqueMap.has(location.id)) {
-        uniqueMap.set(location.id, location);
-      }
-    });
-    return Array.from(uniqueMap.values());
-  }, [rawLocations]);
+    if (isAdmin) {
+      // Admin sees all locations
+      if (!Array.isArray(allLocations)) return [];
+      
+      const uniqueMap = new Map();
+      allLocations.forEach((location: any) => {
+        if (location && location.id && !uniqueMap.has(location.id)) {
+          uniqueMap.set(location.id, location);
+        }
+      });
+      
+      return Array.from(uniqueMap.values());
+    } else {
+      // Non-admin users see only their assigned locations
+      if (!Array.isArray(rawLocations) || !Array.isArray(userLocationIds)) return [];
+      
+      const filteredLocations = rawLocations.filter((location: any) => 
+        location && location.id && userLocationIds.includes(location.id)
+      );
+      
+      const uniqueMap = new Map();
+      filteredLocations.forEach((location: any) => {
+        if (location && location.id && !uniqueMap.has(location.id)) {
+          uniqueMap.set(location.id, location);
+        }
+      });
+      
+      return Array.from(uniqueMap.values());
+    }
+  }, [isAdmin, allLocations, rawLocations, userLocationIds]);
+
+  // Check if user should see "All Locations" option
+  const shouldShowAllLocations = useMemo(() => {
+    if (isAdmin) return true;
+    
+    // For non-admin users, only show "All Locations" if they have access to ALL available locations
+    if (!Array.isArray(rawLocations) || !Array.isArray(userLocationIds)) return false;
+    
+    return rawLocations.length > 0 && userLocationIds.length === rawLocations.length;
+  }, [isAdmin, rawLocations, userLocationIds]);
+
+  // Set default selected location based on user role
+  useEffect(() => {
+    if (shouldShowAllLocations) {
+      setSelectedLocation("all");
+    } else if (locations.length > 0 && !selectedLocation) {
+      // For users without "All Locations" access, select their first assigned location
+      setSelectedLocation(locations[0].id.toString());
+    }
+  }, [shouldShowAllLocations, locations, selectedLocation]);
 
   // Memoize the SelectItems to prevent re-rendering
   const locationItems = useMemo(() => {
@@ -131,7 +186,7 @@ export default function Reports({ onMenuClick }: ReportsProps) {
                     <SelectValue placeholder="Select location" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="all">All Locations</SelectItem>
+                    {shouldShowAllLocations && <SelectItem value="all">All Locations</SelectItem>}
                     {locationItems}
                   </SelectContent>
                 </Select>
