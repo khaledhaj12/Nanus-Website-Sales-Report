@@ -614,8 +614,19 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getAllStoreConnections(): Promise<StoreConnection[]> {
-    const connections = await db.select().from(storeConnections).orderBy(storeConnections.createdAt);
-    return connections;
+    try {
+      const connections = await db.select().from(storeConnections).orderBy(storeConnections.createdAt);
+      
+      // If no connections in database, return the hardcoded ones
+      if (connections.length === 0) {
+        return this.getLegacyStoreConnections();
+      }
+      
+      return connections;
+    } catch (error) {
+      console.log('Database query failed, falling back to legacy connections');
+      return this.getLegacyStoreConnections();
+    }
   }
 
   async getStoreConnection(id: string): Promise<StoreConnection | undefined> {
