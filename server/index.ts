@@ -21,14 +21,14 @@ async function enableAutoSyncForAllConnections() {
     const connections = await storage.getAllStoreConnections();
     for (const connection of connections) {
       await storage.upsertSyncSettings({
-        platform: connection.platform,
+        platform: `woocommerce-${connection.id}`,
         isActive: true,
         intervalMinutes: 5,
         isRunning: false,
         lastSyncAt: null,
         nextSyncAt: null
       });
-      await startAutoSync(connection.platform);
+      await startAutoSync(`woocommerce-${connection.id}`);
     }
     
     console.log(`Auto-sync enabled for ${connections.length + 1} store connections`);
