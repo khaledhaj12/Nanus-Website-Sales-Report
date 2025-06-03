@@ -363,6 +363,30 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // User location access routes
+  app.get('/api/users/:id/locations', isAuthenticated, async (req, res) => {
+    try {
+      const userId = parseInt(req.params.id);
+      const locationIds = await storage.getUserLocationAccess(userId);
+      res.json(locationIds);
+    } catch (error) {
+      console.error("Get user locations error:", error);
+      res.status(500).json({ message: "Failed to get user locations" });
+    }
+  });
+
+  app.post('/api/users/:id/locations', isAuthenticated, async (req, res) => {
+    try {
+      const userId = parseInt(req.params.id);
+      const { locationIds } = req.body;
+      await storage.setUserLocationAccess(userId, locationIds || []);
+      res.json({ message: "User location access updated successfully" });
+    } catch (error) {
+      console.error("Update user locations error:", error);
+      res.status(500).json({ message: "Failed to update user locations" });
+    }
+  });
+
   // User status access routes
   app.get('/api/users/:id/statuses', isAuthenticated, async (req, res) => {
     try {

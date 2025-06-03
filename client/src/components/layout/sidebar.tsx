@@ -89,8 +89,8 @@ export default function Sidebar({ activeSection, onSectionChange, isOpen, onTogg
     // For admin-only items, check if user is admin
     if (item.adminOnly) return false;
     
-    // For regular items, check permissions (profile is always accessible)
-    if (item.id === 'profile') return true;
+    // For regular items, check permissions (home and profile are always accessible)
+    if (item.id === 'home' || item.id === 'profile') return true;
     
     // Check if user has permission to view this page
     return permissions[item.id]?.canView === true;

@@ -18,31 +18,76 @@ interface DashboardProps {
 }
 
 export default function Dashboard({ onMenuClick }: DashboardProps) {
-  const { isAdmin } = useAuth();
+  const { isAdmin, user } = useAuth();
   const queryClient = useQueryClient();
   const currentDate = new Date();
   const currentMonth = `${currentDate.getFullYear()}-${(currentDate.getMonth() + 1).toString().padStart(2, '0')}`;
   
   const [startMonth, setStartMonth] = useState(currentMonth);
   const [endMonth, setEndMonth] = useState(currentMonth);
-  const [selectedLocation, setSelectedLocation] = useState(isAdmin ? "all" : "");
+  const [selectedLocation, setSelectedLocation] = useState("");
   const [selectedStatuses, setSelectedStatuses] = useState<string[]>(["completed", "processing", "refunded", "on-hold", "checkout-draft"]);
 
-  const { data: rawLocations = [] } = useQuery({
+  // Fetch all locations for admin users
+  const { data: allLocations = [] } = useQuery({
     queryKey: ["/api/locations"],
+    enabled: isAdmin,
   });
 
-  // Ensure unique locations using useMemo
+  // Fetch user's assigned location IDs for non-admin users
+  const { data: userLocationIds = [] } = useQuery({
+    queryKey: [`/api/users/${user?.id}/locations`],
+    enabled: !isAdmin && !!user?.id,
+  });
+
+  // Fetch all locations for filtering by user's assigned locations
+  const { data: rawLocations = [] } = useQuery({
+    queryKey: ["/api/locations"],
+    enabled: !isAdmin,
+  });
+
+  // Filter locations based on user role and permissions
   const locations = useMemo(() => {
-    if (!Array.isArray(rawLocations)) return [];
-    const uniqueMap = new Map();
-    rawLocations.forEach((location: any) => {
-      if (location && location.id && !uniqueMap.has(location.id)) {
-        uniqueMap.set(location.id, location);
-      }
-    });
-    return Array.from(uniqueMap.values());
-  }, [rawLocations]);
+    if (isAdmin) {
+      // Admin sees all locations
+      if (!Array.isArray(allLocations)) return [];
+      
+      const uniqueMap = new Map();
+      allLocations.forEach((location: any) => {
+        if (location && location.id && !uniqueMap.has(location.id)) {
+          uniqueMap.set(location.id, location);
+        }
+      });
+      
+      return Array.from(uniqueMap.values());
+    } else {
+      // Non-admin users see only their assigned locations
+      if (!Array.isArray(rawLocations) || !Array.isArray(userLocationIds)) return [];
+      
+      const filteredLocations = rawLocations.filter((location: any) => 
+        location && location.id && userLocationIds.includes(location.id)
+      );
+      
+      const uniqueMap = new Map();
+      filteredLocations.forEach((location: any) => {
+        if (location && location.id && !uniqueMap.has(location.id)) {
+          uniqueMap.set(location.id, location);
+        }
+      });
+      
+      return Array.from(uniqueMap.values());
+    }
+  }, [isAdmin, allLocations, rawLocations, userLocationIds]);
+
+  // Set default selected location based on user role
+  useEffect(() => {
+    if (isAdmin) {
+      setSelectedLocation("all");
+    } else if (locations.length > 0 && !selectedLocation) {
+      // For non-admin users, select their first assigned location
+      setSelectedLocation(locations[0].id.toString());
+    }
+  }, [isAdmin, locations, selectedLocation]);
 
   // Memoize the SelectItems to prevent re-rendering
   const locationItems = useMemo(() => {
