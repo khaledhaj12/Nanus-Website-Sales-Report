@@ -244,9 +244,10 @@ export function DateRangePicker({
             variant="outline"
             size="sm"
             onClick={() => {
-              const today = new Date().toISOString().split('T')[0];
-              onStartChange(today);
-              onEndChange(today);
+              const today = new Date();
+              const todayStr = `${today.getFullYear()}-${(today.getMonth() + 1).toString().padStart(2, '0')}-${today.getDate().toString().padStart(2, '0')}`;
+              onStartChange(todayStr);
+              onEndChange(todayStr);
               setSelectingStart(true);
               setIsOpen(false);
             }}

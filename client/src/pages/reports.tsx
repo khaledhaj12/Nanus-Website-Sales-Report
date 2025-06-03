@@ -14,7 +14,7 @@ interface ReportsProps {
 export default function Reports({ onMenuClick }: ReportsProps) {
   const { user, isAuthenticated } = useAuth();
   const currentDate = new Date();
-  const todayStr = currentDate.toISOString().split('T')[0];
+  const todayStr = `${currentDate.getFullYear()}-${(currentDate.getMonth() + 1).toString().padStart(2, '0')}-${currentDate.getDate().toString().padStart(2, '0')}`;
   
   const [startDate, setStartDate] = useState(todayStr);
   const [endDate, setEndDate] = useState(todayStr);
