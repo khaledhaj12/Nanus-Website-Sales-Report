@@ -99,11 +99,11 @@ export default function Sidebar({ activeSection, onSectionChange, isOpen, onTogg
         isOpen ? "translate-x-0" : "-translate-x-full md:translate-x-0"
       )}>
         {/* Header */}
-        <div className="p-4 border-b border-slate-700">
+        <div className="p-3 border-b border-slate-700">
           <div className="flex items-center justify-between">
-            <div className="flex flex-col items-center space-y-2 w-full">
+            <div className="flex flex-col items-center space-y-1 w-full">
               {logoSettings?.logoPath ? (
-                <div className="w-48 h-48 rounded-xl overflow-hidden">
+                <div className="w-32 h-32 rounded-lg overflow-hidden">
                   <img 
                     src={logoSettings.logoPath} 
                     alt="Logo" 
@@ -134,7 +134,7 @@ export default function Sidebar({ activeSection, onSectionChange, isOpen, onTogg
         </div>
         
         {/* Navigation */}
-        <nav className="flex-1 overflow-y-auto p-4 space-y-1">
+        <nav className="flex-1 overflow-y-auto p-3 space-y-1">
           {filteredItems.map((item) => {
             const Icon = item.icon;
             const isActive = activeSection === item.id;
