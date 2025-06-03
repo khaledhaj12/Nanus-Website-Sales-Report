@@ -169,7 +169,6 @@ export default function Profile({ onMenuClick }: ProfilePageProps) {
       <main className="flex-1 overflow-auto p-4 md:p-6 bg-slate-50">
         <div className="max-w-6xl mx-auto">
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          
             {/* Profile Information Card */}
             <Card className="lg:col-span-1">
             <CardHeader>
@@ -253,7 +252,7 @@ export default function Profile({ onMenuClick }: ProfilePageProps) {
                     )}
                   />
 
-                  <div className="flex justify-end">
+                  <div className="flex justify-end pt-2">
                     <Button 
                       type="submit" 
                       disabled={updateProfileMutation.isPending}
@@ -268,8 +267,10 @@ export default function Profile({ onMenuClick }: ProfilePageProps) {
             </CardContent>
           </Card>
 
-          {/* Password Change Card */}
-          <Card>
+            {/* Right Column */}
+            <div className="lg:col-span-1 space-y-6">
+              {/* Password Change Card */}
+              <Card>
             <CardHeader>
               <CardTitle>Change Password</CardTitle>
             </CardHeader>
@@ -375,7 +376,7 @@ export default function Profile({ onMenuClick }: ProfilePageProps) {
                     )}
                   />
 
-                  <div className="flex justify-end">
+                  <div className="flex justify-end pt-2">
                     <Button 
                       type="submit" 
                       disabled={changePasswordMutation.isPending}
@@ -397,27 +398,30 @@ export default function Profile({ onMenuClick }: ProfilePageProps) {
             </CardHeader>
             <CardContent>
               <div className="space-y-3 text-sm">
-                <div className="flex justify-between">
+                <div className="flex justify-between items-center">
                   <span className="text-muted-foreground">Role:</span>
                   <span className="font-medium">
                     {currentUser?.role === 'admin' ? 'Administrator' : 'User'}
                   </span>
                 </div>
-                <div className="flex justify-between">
+                <Separator />
+                <div className="flex justify-between items-center">
                   <span className="text-muted-foreground">Account Status:</span>
-                  <span className={currentUser?.isActive ? "text-green-600" : "text-red-600"}>
+                  <span className={currentUser?.isActive ? "text-green-600 font-medium" : "text-red-600 font-medium"}>
                     {currentUser?.isActive ? 'Active' : 'Inactive'}
                   </span>
                 </div>
-                <div className="flex justify-between">
+                <Separator />
+                <div className="flex justify-between items-center">
                   <span className="text-muted-foreground">Member Since:</span>
-                  <span>
+                  <span className="font-medium">
                     {currentUser?.createdAt ? new Date(currentUser.createdAt).toLocaleDateString() : 'N/A'}
                   </span>
                 </div>
               </div>
             </CardContent>
           </Card>
+            </div>
           </div>
         </div>
       </main>
