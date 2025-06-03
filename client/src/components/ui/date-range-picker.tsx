@@ -69,9 +69,19 @@ export function DateRangePicker({
     
     if (selectingStart) {
       onStartChange(dateValue);
+      // If no end date is set, set the same date as end date (for single day selection)
+      if (!endValue) {
+        onEndChange(dateValue);
+      }
       setSelectingStart(false);
     } else {
-      onEndChange(dateValue);
+      // Ensure end date is not before start date
+      if (startValue && dateValue < startValue) {
+        onStartChange(dateValue);
+        onEndChange(startValue);
+      } else {
+        onEndChange(dateValue);
+      }
       setSelectingStart(true);
       setIsOpen(false);
     }
@@ -79,7 +89,8 @@ export function DateRangePicker({
 
   const isDateSelected = (year: number, month: number, day: number, isStart: boolean) => {
     const dateValue = `${year}-${(month + 1).toString().padStart(2, '0')}-${day.toString().padStart(2, '0')}`;
-    return isStart ? startValue === dateValue : endValue === dateValue;
+    // Show selected dates on both calendars
+    return startValue === dateValue || endValue === dateValue;
   };
 
   const isDateInRange = (year: number, month: number, day: number) => {
@@ -148,8 +159,9 @@ export function DateRangePicker({
           className={cn(
             "h-8 w-8 p-0 text-xs",
             isInRange && !isSelected && "bg-blue-50 hover:bg-blue-100",
-            isSelected && isStart && "bg-green-600 hover:bg-green-700 text-white",
-            isSelected && !isStart && "bg-red-600 hover:bg-red-700 text-white"
+            isSelected && startValue === `${year}-${(month + 1).toString().padStart(2, '0')}-${day.toString().padStart(2, '0')}` && "bg-green-600 hover:bg-green-700 text-white",
+            isSelected && endValue === `${year}-${(month + 1).toString().padStart(2, '0')}-${day.toString().padStart(2, '0')}` && startValue !== endValue && "bg-red-600 hover:bg-red-700 text-white",
+            isSelected && startValue === endValue && startValue === `${year}-${(month + 1).toString().padStart(2, '0')}-${day.toString().padStart(2, '0')}` && "bg-blue-600 hover:bg-blue-700 text-white"
           )}
           onClick={() => handleDateSelect(year, month, day)}
         >
@@ -228,6 +240,19 @@ export function DateRangePicker({
           </div>
         </div>
         <div className="p-3 border-t flex gap-2">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => {
+              const today = new Date().toISOString().split('T')[0];
+              onStartChange(today);
+              onEndChange(today);
+              setSelectingStart(true);
+              setIsOpen(false);
+            }}
+          >
+            Today
+          </Button>
           <Button
             variant="outline"
             size="sm"
