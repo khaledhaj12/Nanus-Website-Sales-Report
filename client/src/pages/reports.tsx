@@ -32,6 +32,7 @@ export default function Reports({ onMenuClick }: ReportsProps) {
 
   // Ensure unique locations using useMemo
   const locations = useMemo(() => {
+    console.log("Raw locations from API:", rawLocations);
     if (!Array.isArray(rawLocations)) return [];
     const uniqueMap = new Map();
     rawLocations.forEach((location: any) => {
@@ -39,7 +40,9 @@ export default function Reports({ onMenuClick }: ReportsProps) {
         uniqueMap.set(location.id, location);
       }
     });
-    return Array.from(uniqueMap.values());
+    const uniqueLocations = Array.from(uniqueMap.values());
+    console.log("Unique locations after processing:", uniqueLocations);
+    return uniqueLocations;
   }, [rawLocations]);
 
 
