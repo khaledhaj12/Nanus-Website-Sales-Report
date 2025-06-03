@@ -1,0 +1,20 @@
+
+Now i want to work on adding users to this platform with specific permisions to specific locations and to certain pages (from the left menu)
+all passwords must be 8 with mix alpha numberic with at least 1 symbole. (add text helper in red small text under password field)
+when i create a new user. i want to be able to assig them a password, but have a check mark "User Much Change password on next login" I am the only one that can set a simpple first time password. then if they sign in with the correct password for the first time, they are forced to change their password to match password requriemetns. 
+on the users page, i wan to be able to assign them one or multiple locations. this will allow them to select that location from the drop down to view sales and orders.
+i would also need to assign them what pages from the menue they can access. for example Dashoard, Reports, Location, User access etc.. each will give me the option to view or edit access. so i may give someone access to view edit dashboard and but view users. so that can delete orders but not make user changes.
+finally, every user will by default have thir "profile at the bottom of their menue, and any page and accecss i assign them will be visible to them above their profile on the menue. 
+we already have the order status which will allow me to add what order statuses the users can view. 
+so in short. when i add a user here are the steps from my end. 
+add new user. 
+enter their user info (firt, last, email and phone) assign them locations (on or more)
+assign them menu pages to access view or edit
+click user must change password and set a simple passowrd. 
+
+When user logs in, if the correct simple password then they are forced to update it. 
+they will see all assigned pages i assigned them in the back end.
+they will be able to select the locations from the drop down (only the ones they have access to)
+they can click their profile to udpate their personal seettings and change their password and log out. 
+
+uiser the same layout we currenly have (the same template as wel built for me the admin) ecept  now i can edit the other uesrs rols

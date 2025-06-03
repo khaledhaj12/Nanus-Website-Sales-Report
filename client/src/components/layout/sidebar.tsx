@@ -95,7 +95,7 @@ export default function Sidebar({ activeSection, onSectionChange, isOpen, onTogg
       
       {/* Sidebar */}
       <div className={cn(
-        "bg-gradient-to-b from-slate-900 via-slate-800 to-slate-900 w-64 shadow-2xl flex flex-col transition-transform duration-300 ease-in-out fixed md:relative z-50 h-full",
+        "bg-gradient-to-b from-slate-900 via-slate-800 to-slate-900 w-64 shadow-2xl flex flex-col transition-transform duration-300 ease-in-out fixed md:relative z-50 h-full max-h-screen",
         isOpen ? "translate-x-0" : "-translate-x-full md:translate-x-0"
       )}>
         {/* Header */}
@@ -134,7 +134,7 @@ export default function Sidebar({ activeSection, onSectionChange, isOpen, onTogg
         </div>
         
         {/* Navigation */}
-        <nav className="flex-1 p-4 space-y-1">
+        <nav className="flex-1 overflow-y-auto p-4 space-y-1">
           {filteredItems.map((item) => {
             const Icon = item.icon;
             const isActive = activeSection === item.id;
@@ -164,7 +164,7 @@ export default function Sidebar({ activeSection, onSectionChange, isOpen, onTogg
         </nav>
         
         {/* User Info */}
-        <div className="p-4 border-t border-slate-700">
+        <div className="flex-shrink-0 p-4 border-t border-slate-700">
           <div className="mb-3 p-3 bg-slate-800/50 rounded-lg border border-slate-700">
             <div className="text-xs text-slate-400 mb-1">Logged in as</div>
             <div className="text-sm font-medium text-white truncate">
