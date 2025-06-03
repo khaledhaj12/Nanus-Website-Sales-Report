@@ -9,6 +9,7 @@ import axios from "axios";
 import multer from "multer";
 import path from "path";
 import fs from "fs/promises";
+import bcrypt from "bcrypt";
 
 // Simple authentication middleware for this demo
 const isAuthenticated = (req: any, res: any, next: any) => {

@@ -11,8 +11,8 @@ import ReCAPTCHA from "react-google-recaptcha";
 
 export default function Login() {
   const [, setLocation] = useLocation();
-  const [username, setUsername] = useState("admin");
-  const [password, setPassword] = useState("admin");
+  const [username, setUsername] = useState("");
+  const [password, setPassword] = useState("");
   const [recaptchaToken, setRecaptchaToken] = useState<string | null>(null);
   const { toast } = useToast();
   const queryClient = useQueryClient();
