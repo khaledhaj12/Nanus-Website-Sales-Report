@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import Header from "@/components/layout/header";
@@ -6,6 +6,7 @@ import { MonthRangePicker } from "@/components/ui/month-range-picker";
 import ReportsMonthlyBreakdown from "@/components/reports/monthly-breakdown";
 import SummaryCards from "@/components/dashboard/summary-cards";
 import { useAuth } from "@/hooks/useAuth";
+import { queryClient } from "@/lib/queryClient";
 
 interface ReportsProps {
   onMenuClick: () => void;
@@ -23,8 +24,14 @@ export default function Reports({ onMenuClick }: ReportsProps) {
   // Fixed statuses for reports page - only show completed business transactions
   const selectedStatuses = ["processing", "completed", "refunded"];
 
+  // Clear locations cache on component mount to ensure fresh data
+  useEffect(() => {
+    queryClient.invalidateQueries({ queryKey: ["/api/locations"] });
+  }, []);
+
   const { data: locations = [] } = useQuery({
-    queryKey: ["/api/locations"],
+    queryKey: ["/api/locations", Date.now()], // Force fresh data with timestamp
+    staleTime: 0,
   });
 
   const { data: summaryData, isLoading: isSummaryLoading } = useQuery({
