@@ -129,7 +129,10 @@ export default function Dashboard({ onMenuClick }: DashboardProps) {
                 </label>
                 <Select value={selectedLocation} onValueChange={setSelectedLocation}>
                   <SelectTrigger>
-                    <SelectValue placeholder="Select location" />
+                    <SelectValue>
+                      {selectedLocation === "all" ? "All Locations" : 
+                       locations.find((loc: any) => loc.id.toString() === selectedLocation)?.name || "All Locations"}
+                    </SelectValue>
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="all">All Locations</SelectItem>
