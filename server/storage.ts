@@ -174,6 +174,53 @@ export class DatabaseStorage implements IStorage {
     return isValid ? user : null;
   }
 
+  async updateUserProfile(id: number, profileData: Partial<Pick<InsertUser, 'username' | 'firstName' | 'lastName' | 'email' | 'phoneNumber'>>): Promise<User> {
+    const updateData = {
+      ...profileData,
+      updatedAt: new Date(),
+    };
+
+    const [user] = await db
+      .update(users)
+      .set(updateData)
+      .where(eq(users.id, id))
+      .returning();
+    
+    if (!user) {
+      throw new Error('User not found');
+    }
+    
+    return user;
+  }
+
+  async changeUserPassword(id: number, currentPassword: string, newPassword: string): Promise<boolean> {
+    // Get the current user
+    const [user] = await db.select().from(users).where(eq(users.id, id));
+    if (!user) {
+      throw new Error('User not found');
+    }
+
+    // Verify current password
+    const isCurrentPasswordValid = await bcrypt.compare(currentPassword, user.password);
+    if (!isCurrentPasswordValid) {
+      throw new Error('Current password is incorrect');
+    }
+
+    // Hash the new password
+    const hashedNewPassword = await bcrypt.hash(newPassword, 10);
+
+    // Update the password
+    await db
+      .update(users)
+      .set({ 
+        password: hashedNewPassword,
+        updatedAt: new Date(),
+      })
+      .where(eq(users.id, id));
+
+    return true;
+  }
+
   async getLocation(id: number): Promise<Location | undefined> {
     const [location] = await db.select().from(locations).where(eq(locations.id, id));
     return location || undefined;
