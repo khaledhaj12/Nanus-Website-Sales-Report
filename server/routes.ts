@@ -934,7 +934,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Dashboard routes
   app.get('/api/dashboard/summary', isAuthenticated, async (req, res) => {
     try {
-      const { location, locationId, month, startMonth, endMonth, statuses } = req.query;
+      const { location, locationId, month, startMonth, endMonth, startDate, endDate, statuses } = req.query;
       
       // Use raw SQL query to bypass ORM date issues
       const { pool } = await import('./db');
@@ -949,17 +949,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
         params.push(parseInt(targetLocationId as string));
       }
       
-      // Handle date filtering - prioritize startMonth/endMonth over month
-      if (startMonth && endMonth) {
-        // Date range filtering
-        const startDate = `${startMonth}-01`;
-        const [endYear, endMonthNum] = (endMonth as string).split('-');
-        const lastDay = new Date(parseInt(endYear), parseInt(endMonthNum), 0).getDate();
-        const endDate = `${endMonth}-${lastDay.toString().padStart(2, '0')}`;
-        
+      // Handle date filtering - prioritize startDate/endDate over startMonth/endMonth over month
+      if (startDate && endDate) {
+        // Precise date range filtering (new functionality)
         whereClause += ` AND order_date >= $${params.length + 1} AND order_date <= $${params.length + 2}`;
         params.push(startDate);
         params.push(endDate);
+      } else if (startMonth && endMonth) {
+        // Month range filtering (existing functionality)
+        const monthStartDate = `${startMonth}-01`;
+        const [endYear, endMonthNum] = (endMonth as string).split('-');
+        const lastDay = new Date(parseInt(endYear), parseInt(endMonthNum), 0).getDate();
+        const monthEndDate = `${endMonth}-${lastDay.toString().padStart(2, '0')}`;
+        
+        whereClause += ` AND order_date >= $${params.length + 1} AND order_date <= $${params.length + 2}`;
+        params.push(monthStartDate);
+        params.push(monthEndDate);
       } else if (month) {
         // Single month filtering (for backward compatibility)
         whereClause += ` AND TO_CHAR(order_date, 'YYYY-MM') = $${params.length + 1}`;
@@ -1016,7 +1021,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.get('/api/dashboard/monthly-breakdown', isAuthenticated, async (req, res) => {
     try {
-      const { year, locationId, location, startMonth, endMonth, statuses } = req.query;
+      const { year, locationId, location, startMonth, endMonth, startDate, endDate, statuses } = req.query;
       const { pool } = await import('./db');
       
       let whereClause = "WHERE 1=1";
@@ -1032,17 +1037,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
         params.push(parseInt(targetLocationId as string));
       }
       
-      // Handle date filtering - prioritize startMonth/endMonth over year
-      if (startMonth && endMonth) {
-        // Date range filtering
-        const startDate = `${startMonth}-01`;
-        const [endYear, endMonthNum] = (endMonth as string).split('-');
-        const lastDay = new Date(parseInt(endYear), parseInt(endMonthNum), 0).getDate();
-        const endDate = `${endMonth}-${lastDay.toString().padStart(2, '0')}`;
-        
+      // Handle date filtering - prioritize startDate/endDate over startMonth/endMonth over year
+      if (startDate && endDate) {
+        // Precise date range filtering (new functionality)
         whereClause += ` AND order_date >= $${params.length + 1} AND order_date <= $${params.length + 2}`;
         params.push(startDate);
         params.push(endDate);
+      } else if (startMonth && endMonth) {
+        // Month range filtering (existing functionality)
+        const monthStartDate = `${startMonth}-01`;
+        const [endYear, endMonthNum] = (endMonth as string).split('-');
+        const lastDay = new Date(parseInt(endYear), parseInt(endMonthNum), 0).getDate();
+        const monthEndDate = `${endMonth}-${lastDay.toString().padStart(2, '0')}`;
+        
+        whereClause += ` AND order_date >= $${params.length + 1} AND order_date <= $${params.length + 2}`;
+        params.push(monthStartDate);
+        params.push(monthEndDate);
       } else if (year) {
         // Year filtering (for backward compatibility)
         const currentYear = parseInt(year as string);
@@ -1157,7 +1167,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // SEPARATE REPORTS ENDPOINTS - completely independent from dashboard
   app.get('/api/reports/summary', isAuthenticated, async (req, res) => {
     try {
-      const { locationId, location, statuses } = req.query;
+      const { locationId, location, statuses, startDate, endDate, startMonth, endMonth } = req.query;
       const { pool } = await import('./db');
       
       let whereClause = "WHERE 1=1";
@@ -1170,17 +1180,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
         params.push(parseInt(targetLocationId as string));
       }
       
-      // Handle date filtering for reports summary
-      const { startMonth, endMonth } = req.query;
-      if (startMonth && endMonth) {
-        const startDate = `${startMonth}-01`;
-        const [endYear, endMonthNum] = (endMonth as string).split('-');
-        const lastDay = new Date(parseInt(endYear), parseInt(endMonthNum), 0).getDate();
-        const endDate = `${endMonth}-${lastDay.toString().padStart(2, '0')}`;
-        
+      // Handle date filtering - prioritize startDate/endDate over startMonth/endMonth
+      if (startDate && endDate) {
+        // Precise date range filtering (new functionality)
         whereClause += ` AND order_date >= $${params.length + 1} AND order_date <= $${params.length + 2}`;
         params.push(startDate);
         params.push(endDate);
+      } else if (startMonth && endMonth) {
+        // Month range filtering (existing functionality)
+        const monthStartDate = `${startMonth}-01`;
+        const [endYear, endMonthNum] = (endMonth as string).split('-');
+        const lastDay = new Date(parseInt(endYear), parseInt(endMonthNum), 0).getDate();
+        const monthEndDate = `${endMonth}-${lastDay.toString().padStart(2, '0')}`;
+        
+        whereClause += ` AND order_date >= $${params.length + 1} AND order_date <= $${params.length + 2}`;
+        params.push(monthStartDate);
+        params.push(monthEndDate);
       }
       
       // Handle status filtering for reports
@@ -1228,7 +1243,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.get('/api/reports/monthly-breakdown', isAuthenticated, async (req, res) => {
     try {
-      const { year, locationId, location, startMonth, endMonth, statuses } = req.query;
+      const { year, locationId, location, startMonth, endMonth, startDate, endDate, statuses } = req.query;
       const { pool } = await import('./db');
       
       let whereClause = "WHERE 1=1";
@@ -1244,16 +1259,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
         params.push(parseInt(targetLocationId as string));
       }
       
-      // Handle date filtering
-      if (startMonth && endMonth) {
-        const startDate = `${startMonth}-01`;
-        const [endYear, endMonthNum] = (endMonth as string).split('-');
-        const lastDay = new Date(parseInt(endYear), parseInt(endMonthNum), 0).getDate();
-        const endDate = `${endMonth}-${lastDay.toString().padStart(2, '0')}`;
-        
+      // Handle date filtering - prioritize startDate/endDate over startMonth/endMonth over year
+      if (startDate && endDate) {
+        // Precise date range filtering (new functionality)
         whereClause += ` AND order_date >= $${params.length + 1} AND order_date <= $${params.length + 2}`;
         params.push(startDate);
         params.push(endDate);
+      } else if (startMonth && endMonth) {
+        // Month range filtering (existing functionality)
+        const monthStartDate = `${startMonth}-01`;
+        const [endYear, endMonthNum] = (endMonth as string).split('-');
+        const lastDay = new Date(parseInt(endYear), parseInt(endMonthNum), 0).getDate();
+        const monthEndDate = `${endMonth}-${lastDay.toString().padStart(2, '0')}`;
+        
+        whereClause += ` AND order_date >= $${params.length + 1} AND order_date <= $${params.length + 2}`;
+        params.push(monthStartDate);
+        params.push(monthEndDate);
       } else if (year) {
         const currentYear = parseInt(year as string);
         whereClause += ` AND EXTRACT(YEAR FROM order_date) = $${params.length + 1}`;
