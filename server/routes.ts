@@ -616,7 +616,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post('/api/start-sync', isAuthenticated, async (req, res) => {
     try {
       const { platform = 'woocommerce' } = req.body;
-      await restartAutoSync(platform);
+      
+      // First enable sync settings
+      await storage.upsertSyncSettings({
+        platform,
+        isActive: true,
+        intervalMinutes: 5,
+        isRunning: false,
+        lastSyncAt: null,
+        nextSyncAt: new Date(Date.now() + 5 * 60 * 1000)
+      });
+      
+      // Then start the sync manager
+      await startAutoSync(platform);
+      
       res.json({ success: true, message: "Auto sync started successfully" });
     } catch (error) {
       console.error("Start sync error:", error);
@@ -627,7 +640,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post('/api/stop-sync', isAuthenticated, async (req, res) => {
     try {
       const { platform = 'woocommerce' } = req.body;
+      
+      // First stop the sync manager
       await stopAutoSync(platform);
+      
+      // Then disable sync settings
+      const currentSettings = await storage.getSyncSettings(platform);
+      if (currentSettings) {
+        await storage.upsertSyncSettings({
+          ...currentSettings,
+          isActive: false,
+          isRunning: false
+        });
+      }
+      
       res.json({ success: true, message: "Auto sync stopped successfully" });
     } catch (error) {
       console.error("Stop sync error:", error);
