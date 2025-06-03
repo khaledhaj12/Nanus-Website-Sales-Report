@@ -79,7 +79,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
         console.log(`Admin user already exists with username: ${adminUsername}`);
         // Update existing admin user's password to use environment variable
         console.log('Updating admin user password with environment variable...');
-        const newHashedPassword = await bcrypt.hash(process.env.ADMIN_PASSWORD || 'admin123', 10);
+        const adminPassword = process.env.ADMIN_PASSWORD || 'admin123';
+        console.log(`Environment password length: ${adminPassword.length}`);
+        const newHashedPassword = await bcrypt.hash(adminPassword, 10);
+        console.log(`New hashed password: ${newHashedPassword.substring(0, 20)}...`);
         await storage.updateUser(adminUser.id, {
           password: newHashedPassword
         });
