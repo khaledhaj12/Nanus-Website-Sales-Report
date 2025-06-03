@@ -89,6 +89,9 @@ export default function Sidebar({ activeSection, onSectionChange, isOpen, onTogg
     // For admin-only items, show only to admin users
     if (item.adminOnly && !isAdmin) return false;
     
+    // Admin users can see all items (except userOnly items filtered above)
+    if (isAdmin) return true;
+    
     // For regular items, check permissions (home and profile are always accessible)
     if (item.id === 'home' || item.id === 'profile') return true;
     
