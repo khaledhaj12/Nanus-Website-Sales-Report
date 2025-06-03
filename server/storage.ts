@@ -118,6 +118,8 @@ export interface IStorage {
   getStoreConnectionByUrl(storeUrl: string): Promise<StoreConnection | undefined>;
   createStoreConnection(connection: InsertStoreConnection): Promise<StoreConnection>;
   deleteStoreConnection(id: number): Promise<void>;
+  updateStoreConnectionLocation(connectionId: string, locationId: number): Promise<void>;
+  updateUnknownLocationOrders(connectionId: string, locationId: number): Promise<void>;
   
   // Footer settings operations
   getFooterSettings(): Promise<FooterSettings | undefined>;
@@ -612,6 +614,31 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getAllStoreConnections(): Promise<StoreConnection[]> {
+    const connections = await db.select().from(storeConnections).orderBy(storeConnections.createdAt);
+    return connections;
+  }
+
+  async getStoreConnection(id: string): Promise<StoreConnection | undefined> {
+    const [connection] = await db.select().from(storeConnections).where(eq(storeConnections.id, id));
+    return connection;
+  }
+
+  async getStoreConnectionByUrl(storeUrl: string): Promise<StoreConnection | undefined> {
+    const [connection] = await db.select().from(storeConnections).where(eq(storeConnections.storeUrl, storeUrl));
+    return connection;
+  }
+
+  async createStoreConnection(connection: InsertStoreConnection): Promise<StoreConnection> {
+    const [result] = await db.insert(storeConnections).values(connection).returning();
+    return result;
+  }
+
+  async deleteStoreConnection(id: number): Promise<void> {
+    await db.delete(storeConnections).where(eq(storeConnections.id, id.toString()));
+  }
+
+  // Legacy method - keeping for compatibility but returning actual database data
+  async getLegacyStoreConnections(): Promise<StoreConnection[]> {
     // Return your actual store connections with proper credentials
     return [
       {
