@@ -90,7 +90,7 @@ export default function Login() {
         <CardHeader className="text-center">
           {logoSettings?.logoPath && (
             <div className="flex justify-center mb-4">
-              <div className="w-16 h-16">
+              <div className="w-48 h-48">
                 <img 
                   src={logoSettings.logoPath} 
                   alt="Logo" 
@@ -100,7 +100,7 @@ export default function Login() {
             </div>
           )}
           <CardTitle className="text-2xl font-bold text-gray-900">
-            Import Website Sales
+            Nanu's Hot Chicken
           </CardTitle>
           <p className="text-gray-600">Sign in to your account</p>
         </CardHeader>
