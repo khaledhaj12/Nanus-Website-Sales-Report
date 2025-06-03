@@ -19,6 +19,7 @@ import {
   Image,
   User,
   Home,
+  HelpCircle,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -39,6 +40,7 @@ const navigationItems = [
   { id: "recaptcha", label: "reCAPTCHA", icon: Shield, adminOnly: true },
   { id: "footer", label: "Footer", icon: Code, adminOnly: true },
   { id: "logo", label: "Logo", icon: Image, adminOnly: true },
+  { id: "help", label: "Help", icon: HelpCircle, adminOnly: true },
   { id: "profile", label: "Profile", icon: User },
 ];
 
