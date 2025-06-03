@@ -613,7 +613,7 @@ function ApiConnections({ onMenuClick }: ApiConnectionsProps) {
   const connections = [
     {
       connectionId: 'woocommerce',
-      name: 'Main Store', 
+      name: 'Main', 
       domain: 'nanushotchicken.co',
       platform: 'woocommerce',
       isDefault: true

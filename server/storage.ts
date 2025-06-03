@@ -559,6 +559,20 @@ export class DatabaseStorage implements IStorage {
         consumerSecret: 'cs_dc2155f2f7b20e6a01eecc73cfb685855fe3790c',
         storeUrl: 'https://nanushotchicken.co',
         isActive: true
+      },
+      'woocommerce-1': {
+        platform: platform,
+        consumerKey: 'ck_184384d709004285d55575c8953523bfc4bda914',
+        consumerSecret: 'cs_40503691dd6d36e46e85147e76d167c99dc38e5c',
+        storeUrl: 'https://delaware.nanushotchicken.co',
+        isActive: true
+      },
+      'woocommerce-2': {
+        platform: platform,
+        consumerKey: 'ck_a6badccb6ff61a19749f8739e2285c8688115eaf',
+        consumerSecret: 'cs_0d7b417b5f8f4e91aaae2575bbf81fd3ee081687',
+        storeUrl: 'https://drexel.nanushotchicken.co',
+        isActive: true
       }
     };
 
