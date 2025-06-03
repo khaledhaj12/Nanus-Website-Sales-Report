@@ -32,7 +32,6 @@ export default function Reports({ onMenuClick }: ReportsProps) {
 
   // Ensure unique locations using useMemo
   const locations = useMemo(() => {
-    console.log("Raw locations from API:", rawLocations);
     if (!Array.isArray(rawLocations)) return [];
     const uniqueMap = new Map();
     rawLocations.forEach((location: any) => {
@@ -40,10 +39,17 @@ export default function Reports({ onMenuClick }: ReportsProps) {
         uniqueMap.set(location.id, location);
       }
     });
-    const uniqueLocations = Array.from(uniqueMap.values());
-    console.log("Unique locations after processing:", uniqueLocations);
-    return uniqueLocations;
+    return Array.from(uniqueMap.values());
   }, [rawLocations]);
+
+  // Memoize the SelectItems to prevent re-rendering
+  const locationItems = useMemo(() => {
+    return locations.map((location: any) => (
+      <SelectItem key={`reports-location-${location.id}`} value={location.id.toString()}>
+        {location.name}
+      </SelectItem>
+    ));
+  }, [locations]);
 
 
 
@@ -120,20 +126,13 @@ export default function Reports({ onMenuClick }: ReportsProps) {
               {/* Location Filter */}
               <div>
                 <label className="text-sm font-medium text-gray-700 mb-2 block">Location</label>
-                <Select value={selectedLocation} onValueChange={setSelectedLocation}>
+                <Select key="reports-location-select" value={selectedLocation} onValueChange={setSelectedLocation}>
                   <SelectTrigger>
                     <SelectValue placeholder="Select location" />
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="all">All Locations</SelectItem>
-                    {locations.map((location: any, index: number) => {
-                      console.log(`Rendering location ${index + 1}:`, location);
-                      return (
-                        <SelectItem key={`location-${location.id}`} value={location.id.toString()}>
-                          {location.name}
-                        </SelectItem>
-                      );
-                    })}
+                    {locationItems}
                   </SelectContent>
                 </Select>
               </div>
