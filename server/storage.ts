@@ -490,16 +490,9 @@ export class DatabaseStorage implements IStorage {
 
 
 
-  async getSyncSettings(platform: string): Promise<any> {
-    // Return default settings to bypass database syntax error
-    return {
-      platform: platform,
-      isActive: false,
-      intervalMinutes: 5,
-      lastSyncAt: null,
-      nextSyncAt: null,
-      isRunning: false
-    };
+  async getSyncSettings(platform: string): Promise<SyncSettings | undefined> {
+    const [settings] = await db.select().from(syncSettings).where(eq(syncSettings.platform, platform));
+    return settings;
   }
 
   async upsertSyncSettings(settings: InsertSyncSettings): Promise<SyncSettings> {
