@@ -549,6 +549,35 @@ export class DatabaseStorage implements IStorage {
       return created;
     }
   }
+
+  // Logo settings operations
+  async getLogoSettings(): Promise<LogoSettings | undefined> {
+    const [logo] = await db.select().from(logoSettings).limit(1);
+    return logo;
+  }
+
+  async upsertLogoSettings(settings: InsertLogoSettings): Promise<LogoSettings> {
+    const existing = await this.getLogoSettings();
+    
+    if (existing) {
+      const [updated] = await db
+        .update(logoSettings)
+        .set({ ...settings, updatedAt: new Date() })
+        .where(eq(logoSettings.id, existing.id))
+        .returning();
+      return updated;
+    } else {
+      const [created] = await db
+        .insert(logoSettings)
+        .values(settings)
+        .returning();
+      return created;
+    }
+  }
+
+  async deleteLogoSettings(): Promise<void> {
+    await db.delete(logoSettings);
+  }
 }
 
 export const storage = new DatabaseStorage();
