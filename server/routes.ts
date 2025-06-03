@@ -387,6 +387,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // User page permissions routes
+  app.post('/api/users/:id/permissions', isAuthenticated, async (req, res) => {
+    try {
+      const userId = parseInt(req.params.id);
+      const { permissions } = req.body;
+      await storage.setUserPagePermissions(userId, permissions || []);
+      res.json({ message: "User page permissions updated successfully" });
+    } catch (error) {
+      console.error("Update user permissions error:", error);
+      res.status(500).json({ message: "Failed to update user permissions" });
+    }
+  });
+
   // User status access routes
   app.get('/api/users/:id/statuses', isAuthenticated, async (req, res) => {
     try {

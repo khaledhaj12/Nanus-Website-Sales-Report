@@ -652,6 +652,25 @@ export class DatabaseStorage implements IStorage {
     
     return result;
   }
+
+  async setUserPagePermissions(userId: number, permissions: Array<{ pageName: string; canView: boolean; canEdit: boolean }>): Promise<void> {
+    // First delete all existing permissions for this user
+    await db
+      .delete(userPagePermissions)
+      .where(eq(userPagePermissions.userId, userId));
+
+    // Insert new permissions
+    if (permissions.length > 0) {
+      await db
+        .insert(userPagePermissions)
+        .values(permissions.map(perm => ({
+          userId,
+          pageName: perm.pageName,
+          canView: perm.canView,
+          canEdit: perm.canEdit
+        })));
+    }
+  }
 }
 
 export const storage = new DatabaseStorage();
