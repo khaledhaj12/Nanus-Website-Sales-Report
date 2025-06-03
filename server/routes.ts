@@ -18,6 +18,14 @@ const isAuthenticated = (req: any, res: any, next: any) => {
   res.status(401).json({ message: "Not authenticated" });
 };
 
+// Admin middleware
+const requireAdmin = (req: any, res: any, next: any) => {
+  if (!req.session?.user || req.session.user.role !== 'admin') {
+    return res.status(403).json({ message: "Admin access required" });
+  }
+  next();
+};
+
 // Configure multer for logo uploads
 const logoStorage = multer.diskStorage({
   destination: async (req, file, cb) => {
@@ -477,7 +485,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // Order management endpoints
   // Bulk delete orders (admin only)
-  app.delete('/api/orders/bulk-delete', isAuthenticated, async (req, res) => {
+  app.delete('/api/orders/bulk-delete', requireAdmin, async (req, res) => {
     try {
       const { orderIds } = req.body;
       console.log("Received orderIds:", orderIds);
