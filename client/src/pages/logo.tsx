@@ -131,7 +131,7 @@ export default function LogoPage({ onMenuClick }: LogoPageProps) {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-slate-100 dark:from-slate-900 dark:via-slate-800 dark:to-slate-900">
-      <Header onMenuClick={onMenuClick} />
+      <Header title="Logo Management" onMenuClick={onMenuClick} />
       
       <div className="p-6">
         <div className="max-w-2xl mx-auto">

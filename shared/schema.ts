@@ -243,6 +243,23 @@ export const insertFooterSettingsSchema = createInsertSchema(footerSettings).omi
   updatedAt: true,
 });
 
+// Logo settings table
+export const logoSettings = pgTable("logo_settings", {
+  id: serial("id").primaryKey(),
+  logoPath: text("logo_path"), // Path to uploaded logo file
+  originalName: text("original_name"), // Original filename
+  mimeType: text("mime_type"), // Image MIME type
+  fileSize: integer("file_size"), // File size in bytes
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+export const insertLogoSettingsSchema = createInsertSchema(logoSettings).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
 // Types
 export type User = typeof users.$inferSelect;
 export type InsertUser = z.infer<typeof insertUserSchema>;
@@ -262,5 +279,7 @@ export type RecaptchaSettings = typeof recaptchaSettings.$inferSelect;
 export type InsertRecaptchaSettings = z.infer<typeof insertRecaptchaSettingsSchema>;
 export type FooterSettings = typeof footerSettings.$inferSelect;
 export type InsertFooterSettings = z.infer<typeof insertFooterSettingsSchema>;
+export type LogoSettings = typeof logoSettings.$inferSelect;
+export type InsertLogoSettings = z.infer<typeof insertLogoSettingsSchema>;
 export type UserLocationAccess = typeof userLocationAccess.$inferSelect;
 export type UserStatusAccess = typeof userStatusAccess.$inferSelect;
