@@ -167,10 +167,11 @@ export default function Profile({ onMenuClick }: ProfilePageProps) {
       <Header title="Profile Settings" onMenuClick={onMenuClick} />
       
       <main className="flex-1 overflow-auto p-4 md:p-6 bg-slate-50">
-        <div className="max-w-2xl mx-auto space-y-6">
+        <div className="max-w-6xl mx-auto">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           
-          {/* Profile Information Card */}
-          <Card>
+            {/* Profile Information Card */}
+            <Card className="lg:col-span-1">
             <CardHeader>
               <div className="flex items-center gap-2">
                 <User className="h-5 w-5 text-primary" />
@@ -180,7 +181,7 @@ export default function Profile({ onMenuClick }: ProfilePageProps) {
             <CardContent>
               <Form {...profileForm}>
                 <form onSubmit={profileForm.handleSubmit(onProfileSubmit)} className="space-y-4">
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <FormField
                       control={profileForm.control}
                       name="firstName"
@@ -417,6 +418,7 @@ export default function Profile({ onMenuClick }: ProfilePageProps) {
               </div>
             </CardContent>
           </Card>
+          </div>
         </div>
       </main>
     </div>
