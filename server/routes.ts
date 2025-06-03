@@ -9,6 +9,7 @@ import axios from "axios";
 import multer from "multer";
 import path from "path";
 import fs from "fs/promises";
+import { existsSync } from "fs";
 
 // Simple authentication middleware for this demo
 const isAuthenticated = (req: any, res: any, next: any) => {
@@ -72,7 +73,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         const logoPath = path.resolve(logoSettings.logoPath);
         
         // Check if file exists
-        if (fs.existsSync(logoPath)) {
+        if (existsSync(logoPath)) {
           // Get file extension to determine MIME type
           const ext = path.extname(logoPath).toLowerCase();
           let mimeType = 'image/png'; // Default
