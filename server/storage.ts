@@ -488,19 +488,26 @@ export class DatabaseStorage implements IStorage {
 
   async getSyncSettings(platform: string): Promise<any> {
     try {
-      // Temporary fix - return default settings until database schema is fixed
-      return {
-        id: 1,
+      // Query by platform from existing database structure
+      const [settings] = await db.select().from(syncSettings).where(eq(syncSettings.platform, platform));
+      return settings || {
         platform: platform,
-        autoSyncEnabled: false,
-        syncInterval: 5,
+        isActive: false,
+        intervalMinutes: 5,
         lastSyncAt: null,
-        createdAt: new Date(),
-        updatedAt: new Date()
+        nextSyncAt: null,
+        isRunning: false
       };
     } catch (error) {
       console.error('Error getting sync settings:', error);
-      return undefined;
+      return {
+        platform: platform,
+        isActive: false,
+        intervalMinutes: 5,
+        lastSyncAt: null,
+        nextSyncAt: null,
+        isRunning: false
+      };
     }
   }
 
@@ -533,18 +540,18 @@ export class DatabaseStorage implements IStorage {
 
   async getRestApiSettings(platform: string): Promise<any> {
     try {
-      // Temporary fix - return default settings until database schema is fixed
-      return {
-        id: 1,
-        platform: platform,
-        connectionId: null,
-        endpoint: '',
-        method: 'GET',
-        headers: {},
-        isActive: true,
-        createdAt: new Date(),
-        updatedAt: new Date()
-      };
+      // Try to get actual settings from store connections table
+      const [connection] = await db.select().from(storeConnections).where(eq(storeConnections.name, platform));
+      if (connection) {
+        return {
+          platform: platform,
+          consumerKey: connection.consumerKey,
+          consumerSecret: connection.consumerSecret,
+          storeUrl: connection.storeUrl,
+          isActive: connection.isActive
+        };
+      }
+      return undefined;
     } catch (error) {
       console.error('Error getting REST API settings:', error);
       return undefined;
