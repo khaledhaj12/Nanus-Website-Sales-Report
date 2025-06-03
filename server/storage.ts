@@ -175,10 +175,16 @@ export class DatabaseStorage implements IStorage {
   }
 
   async updateUserProfile(id: number, profileData: Partial<Pick<InsertUser, 'username' | 'firstName' | 'lastName' | 'email' | 'phoneNumber'>>): Promise<User> {
-    const updateData = {
-      ...profileData,
+    const updateData: any = {
       updatedAt: new Date(),
     };
+
+    // Map camelCase to snake_case for database
+    if (profileData.username !== undefined) updateData.username = profileData.username;
+    if (profileData.firstName !== undefined) updateData.firstName = profileData.firstName;
+    if (profileData.lastName !== undefined) updateData.lastName = profileData.lastName;
+    if (profileData.email !== undefined) updateData.email = profileData.email;
+    if (profileData.phoneNumber !== undefined) updateData.phoneNumber = profileData.phoneNumber;
 
     const [user] = await db
       .update(users)
