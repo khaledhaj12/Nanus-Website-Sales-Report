@@ -25,25 +25,10 @@ export default function Dashboard({ onMenuClick }: DashboardProps) {
   const [startDate, setStartDate] = useState(todayStr);
   const [endDate, setEndDate] = useState(todayStr);
   const [selectedLocation, setSelectedLocation] = useState("");
-  // Fetch user's allowed statuses from database (ONLY for non-admin users)
-  const { data: userStatuses = [] } = useQuery({
-    queryKey: [`/api/users/${user?.id}/statuses`],
-    enabled: !isAdmin && !!user?.id,
-  });
-
-  // Define allowed statuses based on user role
-  const allowedStatuses = useMemo(() => {
-    if (isAdmin) {
-      // Admin users: full access to all statuses, NO restrictions whatsoever
-      return ["completed", "processing", "refunded", "on-hold", "checkout-draft", "failed", "pending", "cancelled"];
-    } else {
-      // Non-admin users: restricted statuses from database
-      const allowedStatuses = Array.isArray(userStatuses) ? userStatuses : [];
-      return allowedStatuses.length > 0 ? allowedStatuses : ["completed", "processing", "refunded"];
-    }
-  }, [isAdmin, userStatuses]);
-
   const [selectedStatuses, setSelectedStatuses] = useState<string[]>([]);
+  
+  // All available statuses for admin users
+  const allStatuses = ["completed", "processing", "refunded", "on-hold", "checkout-draft", "failed", "pending", "cancelled"];
 
   // Fetch all locations for admin users
   const { data: allLocations = [] } = useQuery({
@@ -116,12 +101,12 @@ export default function Dashboard({ onMenuClick }: DashboardProps) {
     }
   }, [shouldShowAllLocations, locations, selectedLocation]);
 
-  // Initialize and enforce status restrictions based on user role
+  // Initialize status selection for admin users
   useEffect(() => {
-    if (Array.isArray(allowedStatuses) && allowedStatuses.length > 0) {
-      setSelectedStatuses(allowedStatuses);
+    if (allStatuses.length > 0) {
+      setSelectedStatuses([]);
     }
-  }, [allowedStatuses]);
+  }, []);
 
   // Memoize the SelectItems to prevent re-rendering
   const locationItems = useMemo(() => {
@@ -281,7 +266,7 @@ export default function Dashboard({ onMenuClick }: DashboardProps) {
                   <PopoverContent className="w-[280px] p-0" align="start">
                     <Command>
                       <CommandGroup className="p-2">
-                        {Array.isArray(allowedStatuses) && allowedStatuses.map((status: string) => (
+                        {allStatuses.map((status: string) => (
                           <CommandItem
                             key={status}
                             value={status}
