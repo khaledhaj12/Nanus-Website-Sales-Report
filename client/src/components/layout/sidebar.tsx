@@ -32,12 +32,12 @@ const navigationItems = [
   { id: "dashboard", label: "Dashboard", icon: PieChart },
   { id: "reports", label: "Reports", icon: BarChart3 },
   { id: "locations", label: "Locations", icon: MapPin },
-  { id: "profile", label: "Profile", icon: User },
   { id: "users", label: "User Access", icon: Users, adminOnly: true },
   { id: "api-connections", label: "API Connections", icon: Globe, adminOnly: true },
   { id: "recaptcha", label: "reCAPTCHA", icon: Shield, adminOnly: true },
   { id: "footer", label: "Footer", icon: Code, adminOnly: true },
   { id: "logo", label: "Logo", icon: Image, adminOnly: true },
+  { id: "profile", label: "Profile", icon: User },
 ];
 
 export default function Sidebar({ activeSection, onSectionChange, isOpen, onToggle }: SidebarProps) {
