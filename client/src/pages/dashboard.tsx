@@ -234,91 +234,91 @@ export default function Dashboard({ onMenuClick }: DashboardProps) {
               </Select>
             </div>
 
-            {/* Order Status Filter - Only visible to admin users */}
+            {/* Order Status Filter - Always show for admin users */}
             {isAdmin && (
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Order Status
-              </label>
-              <Popover>
-                <PopoverTrigger asChild>
-                  <Button
-                    variant="outline"
-                    role="combobox"
-                    className="w-full justify-between min-h-[40px] px-3 py-2"
-                  >
-                    {selectedStatuses.length > 0 ? (
-                      <div className="flex flex-wrap gap-1 items-center max-w-[200px]">
-                        {selectedStatuses.slice(0, 2).map((status) => (
-                          <Badge 
-                            key={status} 
-                            variant="secondary" 
-                            className={cn(
-                              "text-xs capitalize font-medium px-2 py-1",
-                              status === "processing" && "bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200",
-                              status === "completed" && "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200",
-                              status === "refunded" && "bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200",
-                              status === "pending" && "bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200",
-                              status === "cancelled" && "bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-200",
-                              status === "checkout-draft" && "bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-200",
-                              status === "on-hold" && "bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200"
-                            )}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Order Status
+                </label>
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <Button
+                      variant="outline"
+                      role="combobox"
+                      className="w-full justify-between min-h-[40px] px-3 py-2"
+                    >
+                      {selectedStatuses.length > 0 ? (
+                        <div className="flex flex-wrap gap-1 items-center max-w-[200px]">
+                          {selectedStatuses.slice(0, 2).map((status) => (
+                            <Badge 
+                              key={status} 
+                              variant="secondary" 
+                              className={cn(
+                                "text-xs capitalize font-medium px-2 py-1",
+                                status === "processing" && "bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200",
+                                status === "completed" && "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200",
+                                status === "refunded" && "bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200",
+                                status === "pending" && "bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200",
+                                status === "cancelled" && "bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-200",
+                                status === "checkout-draft" && "bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-200",
+                                status === "on-hold" && "bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200"
+                              )}
+                            >
+                              {status}
+                            </Badge>
+                          ))}
+                          {selectedStatuses.length > 2 && (
+                            <Badge variant="secondary" className="text-xs bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-400">
+                              +{selectedStatuses.length - 2}
+                            </Badge>
+                          )}
+                        </div>
+                      ) : (
+                        <span className="text-muted-foreground">Select order statuses</span>
+                      )}
+                      <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-[280px] p-0" align="start">
+                    <Command>
+                      <CommandGroup className="p-2">
+                        {Array.isArray(allowedStatuses) && allowedStatuses.map((status: string) => (
+                          <CommandItem
+                            key={status}
+                            value={status}
+                            onSelect={() => {
+                              setSelectedStatuses(prev => 
+                                prev.includes(status)
+                                  ? prev.filter(s => s !== status)
+                                  : [...prev, status]
+                              );
+                            }}
+                            className="flex items-center space-x-2 px-2 py-1.5 rounded-sm cursor-pointer hover:bg-accent"
                           >
-                            {status}
-                          </Badge>
+                            <Check
+                              className={cn(
+                                "h-4 w-4 text-primary",
+                                selectedStatuses.includes(status) ? "opacity-100" : "opacity-0"
+                              )}
+                            />
+                            <span className="capitalize font-medium flex-1">{status}</span>
+                            <div className={cn(
+                              "w-2 h-2 rounded-full",
+                              status === "processing" && "bg-blue-500",
+                              status === "completed" && "bg-green-500",
+                              status === "refunded" && "bg-red-500",
+                              status === "pending" && "bg-yellow-500",
+                              status === "cancelled" && "bg-gray-500",
+                              status === "on-hold" && "bg-orange-500",
+                              status === "failed" && "bg-red-600"
+                            )} />
+                          </CommandItem>
                         ))}
-                        {selectedStatuses.length > 2 && (
-                          <Badge variant="secondary" className="text-xs bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-400">
-                            +{selectedStatuses.length - 2}
-                          </Badge>
-                        )}
-                      </div>
-                    ) : (
-                      <span className="text-muted-foreground">Select order statuses</span>
-                    )}
-                    <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-                  </Button>
-                </PopoverTrigger>
-                <PopoverContent className="w-[280px] p-0" align="start">
-                  <Command>
-                    <CommandGroup className="p-2">
-                      {Array.isArray(allowedStatuses) && allowedStatuses.map((status: string) => (
-                        <CommandItem
-                          key={status}
-                          value={status}
-                          onSelect={() => {
-                            setSelectedStatuses(prev => 
-                              prev.includes(status)
-                                ? prev.filter(s => s !== status)
-                                : [...prev, status]
-                            );
-                          }}
-                          className="flex items-center space-x-2 px-2 py-1.5 rounded-sm cursor-pointer hover:bg-accent"
-                        >
-                          <Check
-                            className={cn(
-                              "h-4 w-4 text-primary",
-                              selectedStatuses.includes(status) ? "opacity-100" : "opacity-0"
-                            )}
-                          />
-                          <span className="capitalize font-medium flex-1">{status}</span>
-                          <div className={cn(
-                            "w-2 h-2 rounded-full",
-                            status === "processing" && "bg-blue-500",
-                            status === "completed" && "bg-green-500",
-                            status === "refunded" && "bg-red-500",
-                            status === "pending" && "bg-yellow-500",
-                            status === "cancelled" && "bg-gray-500",
-                            status === "on-hold" && "bg-orange-500",
-                            status === "failed" && "bg-red-600"
-                          )} />
-                        </CommandItem>
-                      ))}
-                    </CommandGroup>
-                  </Command>
-                </PopoverContent>
-              </Popover>
-            </div>
+                      </CommandGroup>
+                    </Command>
+                  </PopoverContent>
+                </Popover>
+              </div>
             )}
           </div>
         </div>
