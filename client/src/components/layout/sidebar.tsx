@@ -114,7 +114,7 @@ export default function Sidebar({ activeSection, onSectionChange, isOpen, onTogg
                 </div>
               )}
               <div>
-                <h1 className="text-lg font-bold text-white">Import Sales</h1>
+                <h1 className="text-lg font-bold text-white">Website Sales</h1>
                 <p className="text-xs text-slate-300 mt-1">
                   {user?.role === 'admin' ? 'Administrator' : 'User Dashboard'}
                 </p>
