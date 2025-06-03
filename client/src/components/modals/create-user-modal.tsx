@@ -229,14 +229,25 @@ export default function CreateUserModal({ isOpen, onClose, editingUser }: Create
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (!validatePassword(formData.password)) {
+    // Only validate password if it's provided or if we're creating a new user
+    if (formData.password && !validatePassword(formData.password)) {
       return;
     }
 
-    if (!formData.username.trim() || !formData.password.trim()) {
+    // For new users, password is required. For edits, it's optional
+    if (!formData.username.trim()) {
       toast({
         title: "Error",
-        description: "Username and password are required",
+        description: "Username is required",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (!isEditMode && !formData.password.trim()) {
+      toast({
+        title: "Error",
+        description: "Password is required for new users",
         variant: "destructive",
       });
       return;
