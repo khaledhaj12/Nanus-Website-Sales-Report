@@ -172,13 +172,18 @@ export class DatabaseStorage implements IStorage {
   }
 
   async validateUser(username: string, password: string): Promise<User | null> {
+    console.log(`validateUser: Looking up username "${username}"`);
     const [user] = await db.select().from(users).where(eq(users.username, username));
+    console.log(`validateUser: User found:`, user ? `Yes (ID: ${user.id})` : 'No');
+    
     if (!user) return null;
     
+    console.log(`validateUser: User isActive:`, user.isActive);
     // Check if user account is active
     if (!user.isActive) return null;
     
     const isValid = await bcrypt.compare(password, user.password);
+    console.log(`validateUser: Password valid:`, isValid);
     return isValid ? user : null;
   }
 
