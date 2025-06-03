@@ -93,13 +93,13 @@ export default function Dashboard({ onMenuClick }: DashboardProps) {
 
   // Set default selected location based on user role
   useEffect(() => {
-    if (shouldShowAllLocations) {
+    if (shouldShowAllLocations && selectedLocation === "") {
       setSelectedLocation("all");
-    } else if (locations.length > 0 && !selectedLocation) {
+    } else if (locations.length > 0 && selectedLocation === "") {
       // For users without "All Locations" access, select their first assigned location
       setSelectedLocation(locations[0].id.toString());
     }
-  }, [shouldShowAllLocations, locations, selectedLocation]);
+  }, [shouldShowAllLocations, locations]);
 
   // Initialize status selection for admin users
   useEffect(() => {
