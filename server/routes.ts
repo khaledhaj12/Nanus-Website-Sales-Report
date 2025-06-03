@@ -404,12 +404,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(401).json({ message: "User ID not found in session" });
       }
 
-      // For admin user (ID 1), return admin permissions
-      if (userId === 1) {
+      // Get user from database to check role
+      const user = await storage.getUser(userId);
+      
+      if (!user) {
+        return res.status(404).json({ message: "User not found" });
+      }
+
+      // Check if user has admin role
+      if (user.role === 'admin') {
         return res.json({ isAdmin: true });
       }
 
-      // For other users, get their specific permissions
+      // For non-admin users, get their specific permissions
       const permissions = await storage.getUserPagePermissions(userId);
       res.json(permissions || {});
     } catch (error) {
@@ -1130,6 +1137,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get('/api/dashboard/monthly-breakdown', isAuthenticated, async (req, res) => {
     try {
       const { year, locationId, location, startMonth, endMonth, startDate, endDate, statuses } = req.query;
+      
+      // Get user's admin status
+      const userId = req.session?.user?.id;
+      const user = await storage.getUser(userId);
+      const isAdmin = user?.role === 'admin';
+      
+      // Get allowed statuses for this user from database
+      const allowedStatuses = await getAllowedStatuses(userId, isAdmin);
+      
       const { pool } = await import('./db');
       
       let whereClause = "WHERE 1=1";
@@ -1171,7 +1187,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         params.push(currentYear);
       }
       
-      // Handle status filtering - properly parse multiple status parameters
+      // Handle status filtering - ENFORCE security restrictions for non-admin users ONLY
       if (statuses) {
         if (Array.isArray(statuses)) {
           statusFilter = statuses.filter(s => typeof s === 'string') as string[];
@@ -1180,11 +1196,23 @@ export async function registerRoutes(app: Express): Promise<Server> {
           statusFilter = [statuses as string];
         }
         
-        if (statusFilter.length > 0) {
-          const statusPlaceholders = statusFilter.map((_, index) => `$${params.length + index + 1}`).join(', ');
-          whereClause += ` AND status IN (${statusPlaceholders})`;
-          params.push(...statusFilter);
+        // SECURITY: Only filter statuses for non-admin users
+        if (!isAdmin) {
+          statusFilter = statusFilter.filter(status => allowedStatuses.includes(status));
         }
+      }
+      
+      // For non-admin users: If no valid statuses provided, default to their allowed statuses
+      // For admin users: If no statuses provided, don't filter by status (show all)
+      if (!isAdmin && statusFilter.length === 0) {
+        statusFilter = allowedStatuses;
+      }
+      
+      // Apply status filtering to query (only if we have statuses to filter)
+      if (statusFilter.length > 0) {
+        const statusPlaceholders = statusFilter.map((_, index) => `$${params.length + index + 1}`).join(', ');
+        whereClause += ` AND status IN (${statusPlaceholders})`;
+        params.push(...statusFilter);
       }
       
       const query = `

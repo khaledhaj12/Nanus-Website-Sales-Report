@@ -22,7 +22,7 @@ export function useAuth() {
 
   // Safe computation of authentication state
   const isAuthenticated = Boolean(user);
-  const isAdmin = Boolean(user && user.role === 'admin');
+  const isAdmin = Boolean(permissions?.isAdmin || (user && user.role === 'admin'));
 
   return {
     user,
