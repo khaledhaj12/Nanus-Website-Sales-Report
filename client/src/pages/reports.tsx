@@ -126,11 +126,14 @@ export default function Reports({ onMenuClick }: ReportsProps) {
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="all">All Locations</SelectItem>
-                    {locations.map((location: any) => (
-                      <SelectItem key={location.id} value={location.id.toString()}>
-                        {location.name}
-                      </SelectItem>
-                    ))}
+                    {locations.map((location: any, index: number) => {
+                      console.log(`Rendering location ${index + 1}:`, location);
+                      return (
+                        <SelectItem key={`location-${location.id}`} value={location.id.toString()}>
+                          {location.name}
+                        </SelectItem>
+                      );
+                    })}
                   </SelectContent>
                 </Select>
               </div>
