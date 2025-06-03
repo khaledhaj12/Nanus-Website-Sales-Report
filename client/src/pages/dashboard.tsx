@@ -157,6 +157,8 @@ export default function Dashboard({ onMenuClick }: DashboardProps) {
               </Select>
             </div>
 
+            {/* Order Status Filter - Only visible to admin users */}
+            {isAdmin && (
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
                 Order Status
@@ -240,6 +242,7 @@ export default function Dashboard({ onMenuClick }: DashboardProps) {
                 </PopoverContent>
               </Popover>
             </div>
+            )}
           </div>
         </div>
         <SummaryCards

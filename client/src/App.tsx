@@ -80,6 +80,8 @@ function AppRouter() {
     const commonProps = { onMenuClick: toggleSidebar };
 
     switch (activeSection) {
+      case "home":
+        return <Dashboard {...commonProps} />;
       case "dashboard":
         return <Dashboard {...commonProps} />;
       case "reports":

@@ -24,12 +24,31 @@ export default function Header({
   onLocationChange,
   showFilters = false,
 }: HeaderProps) {
-  const { isAdmin } = useAuth();
+  const { isAdmin, user } = useAuth();
   
-  const { data: locations = [] } = useQuery({
+  // Fetch all locations for admin users
+  const { data: allLocations = [] } = useQuery({
     queryKey: ["/api/locations"],
-    enabled: showFilters,
+    enabled: showFilters && isAdmin,
   });
+
+  // Fetch user's assigned locations for non-admin users
+  const { data: userLocationIds = [] } = useQuery({
+    queryKey: [`/api/users/${user?.id}/locations`],
+    enabled: showFilters && !isAdmin && !!user?.id,
+  });
+
+  const { data: userLocations = [] } = useQuery({
+    queryKey: ["/api/locations"],
+    enabled: showFilters && !isAdmin,
+    select: (data: any[]) => {
+      if (!Array.isArray(userLocationIds) || userLocationIds.length === 0) return [];
+      return data.filter((location: any) => userLocationIds.includes(location.id));
+    },
+  });
+
+  // Use appropriate locations based on user role
+  const locations = isAdmin ? allLocations : userLocations;
 
 
 
