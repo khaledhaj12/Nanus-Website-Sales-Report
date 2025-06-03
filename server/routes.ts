@@ -1208,6 +1208,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
         statusFilter = allowedStatuses;
       }
       
+      // Store the base where clause without status filtering for refund calculations
+      const baseWhereClause = whereClause;
+      const baseParams = [...params];
+      
       // Apply status filtering to query (only if we have statuses to filter)
       if (statusFilter.length > 0) {
         const statusPlaceholders = statusFilter.map((_, index) => `$${params.length + index + 1}`).join(', ');
@@ -1216,15 +1220,32 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       
       const query = `
+        WITH sales_data AS (
+          SELECT 
+            TO_CHAR(order_date, 'YYYY-MM') as month,
+            COALESCE(SUM(CASE WHEN status != 'refunded' THEN amount::decimal ELSE 0 END), 0) as total_sales,
+            COUNT(CASE WHEN status != 'refunded' THEN 1 END) as total_orders,
+            COALESCE(SUM(CASE WHEN status != 'refunded' THEN (amount::decimal - (amount::decimal * 0.07) - (amount::decimal * 0.029 + 0.30)) ELSE 0 END), 0) as net_amount
+          FROM woo_orders 
+          ${whereClause}
+          GROUP BY TO_CHAR(order_date, 'YYYY-MM')
+        ),
+        refund_data AS (
+          SELECT 
+            TO_CHAR(order_date, 'YYYY-MM') as month,
+            COALESCE(SUM(CASE WHEN status = 'refunded' THEN amount::decimal ELSE 0 END), 0) as total_refunds
+          FROM woo_orders 
+          ${baseWhereClause}
+          GROUP BY TO_CHAR(order_date, 'YYYY-MM')
+        )
         SELECT 
-          TO_CHAR(order_date, 'YYYY-MM') as month,
-          COALESCE(SUM(amount::decimal), 0) as total_sales,
-          COUNT(*) as total_orders,
-          COALESCE(SUM(CASE WHEN status = 'refunded' THEN amount::decimal ELSE 0 END), 0) as total_refunds,
-          COALESCE(SUM(amount::decimal - (amount::decimal * 0.07) - (amount::decimal * 0.029 + 0.30)), 0) as net_amount
-        FROM woo_orders 
-        ${whereClause}
-        GROUP BY TO_CHAR(order_date, 'YYYY-MM')
+          COALESCE(s.month, r.month) as month,
+          COALESCE(s.total_sales, 0) as total_sales,
+          COALESCE(s.total_orders, 0) as total_orders,
+          COALESCE(r.total_refunds, 0) as total_refunds,
+          COALESCE(s.net_amount, 0) as net_amount
+        FROM sales_data s
+        FULL OUTER JOIN refund_data r ON s.month = r.month
         ORDER BY month DESC
       `;
 
