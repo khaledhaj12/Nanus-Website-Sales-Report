@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import Header from "@/components/layout/header";
 import SummaryCards from "@/components/dashboard/summary-cards";
@@ -28,9 +28,30 @@ export default function Dashboard({ onMenuClick }: DashboardProps) {
   const [selectedLocation, setSelectedLocation] = useState(isAdmin ? "all" : "");
   const [selectedStatuses, setSelectedStatuses] = useState<string[]>(["completed", "processing", "refunded", "on-hold", "checkout-draft"]);
 
-  const { data: locations = [] } = useQuery({
+  const { data: rawLocations = [] } = useQuery({
     queryKey: ["/api/locations"],
   });
+
+  // Ensure unique locations using useMemo
+  const locations = useMemo(() => {
+    if (!Array.isArray(rawLocations)) return [];
+    const uniqueMap = new Map();
+    rawLocations.forEach((location: any) => {
+      if (location && location.id && !uniqueMap.has(location.id)) {
+        uniqueMap.set(location.id, location);
+      }
+    });
+    return Array.from(uniqueMap.values());
+  }, [rawLocations]);
+
+  // Memoize the SelectItems to prevent re-rendering
+  const locationItems = useMemo(() => {
+    return locations.map((location: any) => (
+      <SelectItem key={`dashboard-location-${location.id}`} value={location.id.toString()}>
+        {location.name}
+      </SelectItem>
+    ));
+  }, [locations]);
 
   // Check if date range spans multiple months
   const isMultipleMonths = startMonth !== endMonth;
@@ -105,9 +126,9 @@ export default function Dashboard({ onMenuClick }: DashboardProps) {
       />
       
       <main className="flex-1 overflow-auto p-4 md:p-6 bg-slate-50">
-        {/* Date Range and Status Filters */}
+        {/* Date Range, Location and Status Filters */}
         <div className="mb-6">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
                 Date Range
@@ -120,6 +141,20 @@ export default function Dashboard({ onMenuClick }: DashboardProps) {
                 placeholder="Select date range"
                 className="w-full"
               />
+            </div>
+
+            {/* Location Filter */}
+            <div>
+              <label className="text-sm font-medium text-gray-700 mb-2 block">Location</label>
+              <Select key="dashboard-location-select" value={selectedLocation} onValueChange={setSelectedLocation}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Select location" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Locations</SelectItem>
+                  {locationItems}
+                </SelectContent>
+              </Select>
             </div>
 
             <div>
