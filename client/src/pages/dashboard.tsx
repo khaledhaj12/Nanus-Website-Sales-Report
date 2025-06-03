@@ -301,9 +301,9 @@ export default function Dashboard({ onMenuClick }: DashboardProps) {
           data={monthlyData}
           isLoading={monthlyLoading}
           selectedLocation={selectedLocation}
-          startMonth={startMonth}
-          endMonth={endMonth}
-          isMultipleMonths={isMultipleMonths}
+          startDate={startDate}
+          endDate={endDate}
+          isMultipleDays={isMultipleDays}
         />
       </main>
     </div>

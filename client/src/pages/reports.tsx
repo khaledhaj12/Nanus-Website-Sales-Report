@@ -2,7 +2,7 @@ import { useState, useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import Header from "@/components/layout/header";
-import { MonthRangePicker } from "@/components/ui/month-range-picker";
+import { DateRangePicker } from "@/components/ui/date-range-picker";
 import ReportsMonthlyBreakdown from "@/components/reports/monthly-breakdown";
 import SummaryCards from "@/components/dashboard/summary-cards";
 import { useAuth } from "@/hooks/useAuth";
@@ -14,10 +14,10 @@ interface ReportsProps {
 export default function Reports({ onMenuClick }: ReportsProps) {
   const { user, isAuthenticated } = useAuth();
   const currentDate = new Date();
-  const currentMonth = `${currentDate.getFullYear()}-${(currentDate.getMonth() + 1).toString().padStart(2, '0')}`;
+  const todayStr = currentDate.toISOString().split('T')[0];
   
-  const [startMonth, setStartMonth] = useState(currentMonth);
-  const [endMonth, setEndMonth] = useState(currentMonth);
+  const [startDate, setStartDate] = useState(todayStr);
+  const [endDate, setEndDate] = useState(todayStr);
   const [selectedLocation, setSelectedLocation] = useState("all");
 
   
@@ -52,17 +52,17 @@ export default function Reports({ onMenuClick }: ReportsProps) {
 
 
   const { data: summaryData, isLoading: isSummaryLoading } = useQuery({
-    queryKey: ["/api/reports/summary", { location: selectedLocation, startMonth, endMonth, statuses: selectedStatuses }],
+    queryKey: ["/api/reports/summary", { location: selectedLocation, startDate, endDate, statuses: selectedStatuses }],
     queryFn: async () => {
       const params = new URLSearchParams();
       if (selectedLocation && selectedLocation !== "all") {
         params.append("location", selectedLocation);
       }
-      if (startMonth) {
-        params.append("startMonth", startMonth);
+      if (startDate) {
+        params.append("startDate", startDate);
       }
-      if (endMonth) {
-        params.append("endMonth", endMonth);
+      if (endDate) {
+        params.append("endDate", endDate);
       }
       selectedStatuses.forEach(status => {
         params.append("statuses", status);
@@ -75,17 +75,17 @@ export default function Reports({ onMenuClick }: ReportsProps) {
   });
 
   const { data: monthlyData = [], isLoading: isMonthlyLoading } = useQuery({
-    queryKey: ["/api/reports/monthly-breakdown", { location: selectedLocation, startMonth, endMonth, statuses: selectedStatuses }],
+    queryKey: ["/api/reports/monthly-breakdown", { location: selectedLocation, startDate, endDate, statuses: selectedStatuses }],
     queryFn: async () => {
       const params = new URLSearchParams();
       if (selectedLocation && selectedLocation !== "all") {
         params.append("location", selectedLocation);
       }
-      if (startMonth) {
-        params.append("startMonth", startMonth);
+      if (startDate) {
+        params.append("startDate", startDate);
       }
-      if (endMonth) {
-        params.append("endMonth", endMonth);
+      if (endDate) {
+        params.append("endDate", endDate);
       }
       selectedStatuses.forEach(status => {
         params.append("statuses", status);
@@ -101,7 +101,7 @@ export default function Reports({ onMenuClick }: ReportsProps) {
 
 
 
-  const isMultipleMonths = startMonth !== endMonth;
+  const isMultipleDays = startDate !== endDate;
 
   return (
     <div className="flex-1 flex flex-col overflow-hidden">
@@ -115,11 +115,11 @@ export default function Reports({ onMenuClick }: ReportsProps) {
               {/* Date Range */}
               <div>
                 <label className="text-sm font-medium text-gray-700 mb-2 block">Date Range</label>
-                <MonthRangePicker
-                  startValue={startMonth}
-                  endValue={endMonth}
-                  onStartChange={setStartMonth}
-                  onEndChange={setEndMonth}
+                <DateRangePicker
+                  startValue={startDate}
+                  endValue={endDate}
+                  onStartChange={setStartDate}
+                  onEndChange={setEndDate}
                 />
               </div>
 
@@ -160,9 +160,9 @@ export default function Reports({ onMenuClick }: ReportsProps) {
           data={monthlyData} 
           isLoading={isMonthlyLoading}
           selectedLocation={selectedLocation}
-          startMonth={startMonth}
-          endMonth={endMonth}
-          isMultipleMonths={isMultipleMonths}
+          startDate={startDate}
+          endDate={endDate}
+          isMultipleDays={isMultipleDays}
         />
       </main>
     </div>
