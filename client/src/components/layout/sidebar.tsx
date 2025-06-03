@@ -83,10 +83,10 @@ export default function Sidebar({ activeSection, onSectionChange, isOpen, onTogg
 
   // Filter items based on admin status and user permissions
   const filteredItems = navigationItems.filter(item => {
-    // For user-only items, hide from admin users
+    // For user-only items (like "Home"), hide from admin users
     if (item.userOnly && isAdmin) return false;
     
-    // For admin-only items, check if user is admin
+    // For admin-only items, show only to admin users
     if (item.adminOnly && !isAdmin) return false;
     
     // For regular items, check permissions (home and profile are always accessible)
