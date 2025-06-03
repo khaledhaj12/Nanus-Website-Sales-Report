@@ -825,30 +825,28 @@ export async function registerRoutes(app: Express): Promise<Server> {
               }
               console.log(`Using orderable location: ${location.name}`);
             } else {
-              // No orderable metadata - assign default location based on store domain
-              let defaultLocationName = '';
+              // No orderable metadata - use store connection's default location
+              const storeConnection = await storage.getStoreConnectionByUrl(storeUrl);
               
-              if (storeUrl.includes('delaware.nanushotchicken.co')) {
-                defaultLocationName = '414 North Union St, Wilmington DE';
-              } else if (storeUrl.includes('drexel.nanushotchicken.co')) {
-                defaultLocationName = '3301 Market St, Philadelphia';
-              } else {
-                // Main store or any other domain
-                defaultLocationName = '4407 Chestnut St, Philadelphia';
+              if (storeConnection && storeConnection.defaultLocationId) {
+                location = await storage.getLocation(storeConnection.defaultLocationId);
+                console.log(`Using mapped location from store connection: ${location?.name} for domain: ${storeUrl}`);
               }
               
-              console.log(`No orderable metadata, using default location: ${defaultLocationName} for domain: ${storeUrl}`);
-              
-              location = await storage.getLocationByName(defaultLocationName);
+              // Fallback to creating an "Unknown Location" if no mapping exists
               if (!location) {
-                location = await storage.createLocation({ 
-                  name: defaultLocationName,
-                  code: defaultLocationName.toLowerCase().replace(/[^a-z0-9]/g, '_'),
-                  isActive: true
-                });
-                console.log(`Created new location: ${location.name}`);
-              } else {
-                console.log(`Using existing location: ${location.name}`);
+                const unknownLocationName = 'Unknown Location';
+                location = await storage.getLocationByName(unknownLocationName);
+                if (!location) {
+                  location = await storage.createLocation({ 
+                    name: unknownLocationName,
+                    code: 'unknown_location',
+                    isActive: true
+                  });
+                  console.log(`Created fallback location: ${location.name}`);
+                } else {
+                  console.log(`Using fallback location: ${location.name}`);
+                }
               }
             }
 
@@ -1167,6 +1165,52 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Get store connections error:", error);
       res.status(500).json({ message: "Failed to get store connections" });
+    }
+  });
+
+  // Update store connection location mapping
+  app.patch('/api/store-connections/:id/location', isAuthenticated, async (req, res) => {
+    try {
+      const { id } = req.params;
+      const { locationId, locationName } = req.body;
+      
+      let finalLocationId = locationId;
+      
+      // If locationName is provided but locationId is not, create or find the location
+      if (locationName && !locationId) {
+        let location = await storage.getLocationByName(locationName);
+        if (!location) {
+          location = await storage.createLocation({
+            name: locationName,
+            code: locationName.toLowerCase().replace(/[^a-z0-9]/g, '_'),
+            isActive: true
+          });
+        }
+        finalLocationId = location.id;
+      }
+      
+      // Update the store connection's default location
+      const { pool } = await import('./db');
+      await pool.query(
+        'UPDATE store_connections SET default_location_id = $1, updated_at = NOW() WHERE id = $2',
+        [finalLocationId, id]
+      );
+      
+      // Update existing "unknown location" orders for this store
+      const storeConnection = await storage.getStoreConnection(id);
+      if (storeConnection && finalLocationId) {
+        await pool.query(`
+          UPDATE woo_orders 
+          SET location_id = $1, updated_at = NOW()
+          WHERE store_url = $2 
+          AND (location_meta = 'Unknown Location' OR location_meta IS NULL OR location_meta = '')
+        `, [finalLocationId, storeConnection.storeUrl]);
+      }
+      
+      res.json({ success: true, message: "Location mapping updated successfully" });
+    } catch (error) {
+      console.error("Update store connection location error:", error);
+      res.status(500).json({ message: "Failed to update location mapping" });
     }
   });
 

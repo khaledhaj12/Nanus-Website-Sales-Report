@@ -114,6 +114,8 @@ export interface IStorage {
   
   // Store connections operations
   getAllStoreConnections(): Promise<StoreConnection[]>;
+  getStoreConnection(id: string): Promise<StoreConnection | undefined>;
+  getStoreConnectionByUrl(storeUrl: string): Promise<StoreConnection | undefined>;
   createStoreConnection(connection: InsertStoreConnection): Promise<StoreConnection>;
   deleteStoreConnection(id: number): Promise<void>;
   
