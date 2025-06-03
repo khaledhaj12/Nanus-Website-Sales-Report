@@ -22,7 +22,7 @@ export default function Reports({ onMenuClick }: ReportsProps) {
 
   
   // Include all statuses to show actual order data
-  const selectedStatuses = ["processing", "completed", "refunded", "pending", "failed", "cancelled", "on-hold"];
+  const selectedStatuses = ["processing", "completed", "refunded", "pending", "failed", "cancelled", "on-hold", "checkout-draft"];
 
   const { data: rawLocations = [] } = useQuery({
     queryKey: ["/api/locations"],
