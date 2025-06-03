@@ -44,6 +44,11 @@ export default function Sidebar({ activeSection, onSectionChange, isOpen, onTogg
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
+  // Fetch logo settings
+  const { data: logoSettings } = useQuery({
+    queryKey: ["/api/logo-settings"],
+  });
+
   const logoutMutation = useMutation({
     mutationFn: async () => {
       await apiRequest("POST", "/api/auth/logout");
@@ -95,8 +100,16 @@ export default function Sidebar({ activeSection, onSectionChange, isOpen, onTogg
         <div className="p-6 border-b border-slate-700">
           <div className="flex items-center justify-between">
             <div className="flex items-center space-x-3">
-              <div className="w-10 h-10 bg-gradient-to-r from-blue-500 to-purple-600 rounded-xl flex items-center justify-center shadow-lg">
-                <BarChart3 className="h-6 w-6 text-white" />
+              <div className="w-10 h-10 bg-gradient-to-r from-blue-500 to-purple-600 rounded-xl flex items-center justify-center shadow-lg overflow-hidden">
+                {logoSettings?.logoPath ? (
+                  <img 
+                    src={logoSettings.logoPath} 
+                    alt="Logo" 
+                    className="w-full h-full object-contain"
+                  />
+                ) : (
+                  <BarChart3 className="h-6 w-6 text-white" />
+                )}
               </div>
               <div>
                 <h1 className="text-lg font-bold text-white">Import Sales</h1>

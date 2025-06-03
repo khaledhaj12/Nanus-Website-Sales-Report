@@ -24,6 +24,12 @@ export default function Login() {
     retry: false,
   });
 
+  // Fetch logo settings
+  const { data: logoSettings } = useQuery({
+    queryKey: ["/api/logo-settings"],
+    retry: false,
+  });
+
   const loginMutation = useMutation({
     mutationFn: async (credentials: { username: string; password: string; recaptchaToken?: string }) => {
       const response = await apiRequest("POST", "/api/auth/login", credentials);
@@ -82,6 +88,17 @@ export default function Login() {
     <div className="min-h-screen bg-slate-50 flex items-center justify-center px-4">
       <Card className="w-full max-w-md">
         <CardHeader className="text-center">
+          {logoSettings?.logoPath && (
+            <div className="flex justify-center mb-4">
+              <div className="w-16 h-16 bg-gradient-to-r from-blue-500 to-purple-600 rounded-xl flex items-center justify-center shadow-lg overflow-hidden">
+                <img 
+                  src={logoSettings.logoPath} 
+                  alt="Logo" 
+                  className="w-full h-full object-contain"
+                />
+              </div>
+            </div>
+          )}
           <CardTitle className="text-2xl font-bold text-gray-900">
             Import Website Sales
           </CardTitle>
