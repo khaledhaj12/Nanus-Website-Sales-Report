@@ -1111,7 +1111,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         SELECT 
           COALESCE(SUM(CASE WHEN status != 'refunded' THEN amount::decimal ELSE 0 END), 0) as total_sales,
           COALESCE(SUM(CASE WHEN status = 'refunded' THEN amount::decimal ELSE 0 END), 0) as total_refunds,
-          COUNT(CASE WHEN status != 'refunded' THEN 1 END) as total_orders,
+          COUNT(*) as total_orders,
           COALESCE(SUM(CASE WHEN status != 'refunded' THEN amount::decimal * 0.07 ELSE 0 END), 0) as platform_fees,
           COALESCE(SUM(CASE WHEN status != 'refunded' THEN (amount::decimal * 0.029 + 0.30) ELSE 0 END), 0) as stripe_fees,
           COALESCE(SUM(CASE WHEN status != 'refunded' THEN amount::decimal - (amount::decimal * 0.07) - (amount::decimal * 0.029 + 0.30) ELSE 0 END), 0) as net_deposit
@@ -1239,7 +1239,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         SELECT 
           month,
           net_sales as total_sales,
-          successful_orders as total_orders,
+          total_orders,
           total_refunds,
           -- Calculate net amount: net_sales - platform_fees - stripe_fees + stripe_fee_refunds
           (net_sales - (net_sales * 0.07) - (successful_orders * 0.30 + net_sales * 0.029)) as net_amount
