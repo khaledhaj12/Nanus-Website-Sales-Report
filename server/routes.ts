@@ -525,11 +525,24 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ message: "Invalid location IDs" });
       }
       
+      // Check if any locations are assigned to store connections
+      const idsString = ids.join(', ');
+      const storeConnections = await pool.query(`SELECT name, default_location_id FROM store_connections WHERE default_location_id IN (${idsString})`);
+      
+      if (storeConnections.rows.length > 0) {
+        const assignedStores = storeConnections.rows.map((row: any) => row.name).join(', ');
+        return res.status(400).json({ 
+          message: `Cannot delete locations assigned to store connections: ${assignedStores}. Remove the assignment first.` 
+        });
+      }
+      
       await storage.deleteLocations(ids);
       res.json({ message: "Locations deleted successfully" });
     } catch (error: any) {
       console.error("Delete locations error:", error);
       if (error.message && error.message.includes("Cannot delete locations with existing orders")) {
+        res.status(400).json({ message: error.message });
+      } else if (error.message && error.message.includes("Cannot delete locations assigned to store connections")) {
         res.status(400).json({ message: error.message });
       } else {
         res.status(500).json({ message: "Failed to delete locations" });
