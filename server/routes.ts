@@ -1077,7 +1077,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       // Handle status filtering - ENFORCE security restrictions for non-admin users ONLY
       let statusFilter: string[] = [];
-      if (statuses) {
+      let hasStatusParam = false;
+      
+      if (statuses !== undefined) {
+        hasStatusParam = true;
         if (Array.isArray(statuses)) {
           statusFilter = statuses.filter(s => typeof s === 'string') as string[];
         } else {
@@ -1091,9 +1094,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       
       // For non-admin users: If no valid statuses provided, default to their allowed statuses
-      // For admin users: If no statuses provided, don't filter by status (show all)
+      // For admin users: If no statuses provided, return empty results
       if (!isAdmin && statusFilter.length === 0) {
         statusFilter = allowedStatuses;
+      } else if (isAdmin && statusFilter.length === 0 && hasStatusParam) {
+        // Admin explicitly sent empty statuses array - show no results
+        statusFilter = ['__no_matching_status__'];
       }
       
       // Store base where clause without status filtering for accurate calculations
@@ -1192,7 +1198,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       
       // Handle status filtering - ENFORCE security restrictions for non-admin users ONLY
-      if (statuses) {
+      let hasStatusParam = false;
+      
+      if (statuses !== undefined) {
+        hasStatusParam = true;
         if (Array.isArray(statuses)) {
           statusFilter = statuses.filter(s => typeof s === 'string') as string[];
         } else {
@@ -1207,9 +1216,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       
       // For non-admin users: If no valid statuses provided, default to their allowed statuses
-      // For admin users: If no statuses provided, don't filter by status (show all)
+      // For admin users: If no statuses provided, return empty results
       if (!isAdmin && statusFilter.length === 0) {
         statusFilter = allowedStatuses;
+      } else if (isAdmin && statusFilter.length === 0 && hasStatusParam) {
+        // Admin explicitly sent empty statuses array - show no results
+        statusFilter = ['__no_matching_status__'];
       }
       
       // Apply status filtering to the main query
