@@ -876,6 +876,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       while (hasMore) {
         let url = `${storeUrl}/wp-json/wc/v3/orders?per_page=100&page=${page}&orderby=date&order=desc&consumer_key=${consumerKey}&consumer_secret=${consumerSecret}`;
         
+        // Filter by specific order statuses (processing, completed, refunded)
+        url += `&status=processing,completed,refunded`;
+        
         // Add date range filtering if provided
         if (startDate) {
           url += `&after=${startDate}T00:00:00`;
