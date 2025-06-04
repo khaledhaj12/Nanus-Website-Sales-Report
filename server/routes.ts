@@ -2,6 +2,7 @@ import type { Express } from "express";
 import express from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
+import { pool } from "./db";
 import { startAutoSync, stopAutoSync, restartAutoSync, getSyncStatus } from "./syncManager";
 import session from "express-session";
 import { z } from "zod";
