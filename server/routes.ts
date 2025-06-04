@@ -1212,16 +1212,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
         statusFilter = allowedStatuses;
       }
       
-      // Store the base where clause without status filtering for refund calculations
+      // Store the base where clause and params for the monthly breakdown CTE
       const baseWhereClause = whereClause;
       const baseParams = [...params];
-      
-      // Apply status filtering to query (only if we have statuses to filter)
-      if (statusFilter.length > 0) {
-        const statusPlaceholders = statusFilter.map((_, index) => `$${params.length + index + 1}`).join(', ');
-        whereClause += ` AND status IN (${statusPlaceholders})`;
-        params.push(...statusFilter);
-      }
       
       const query = `
         WITH all_orders AS (
