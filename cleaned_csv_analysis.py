@@ -155,7 +155,40 @@ def analyze_cleaned_csv():
         if not (sales_match and orders_match and refund_match and refunded_orders_match):
             total_discrepancies += 1
     
+    # Calculate totals
+    csv_total_processing_sales = sum(data['csv_processing_sales'] for data in results.values())
+    csv_total_processing_orders = sum(data['csv_processing_orders'] for data in results.values())
+    csv_total_refunds = sum(data['csv_refunds'] for data in results.values())
+    csv_total_refunded_orders = sum(data['csv_refunded_orders'] for data in results.values())
+    
+    platform_total_processing_sales = sum(data['platform_processing_sales'] for data in results.values())
+    platform_total_processing_orders = sum(data['platform_processing_orders'] for data in results.values())
+    platform_total_refunds = sum(data['platform_refunds'] for data in results.values())
+    platform_total_refunded_orders = sum(data['platform_refunded_orders'] for data in results.values())
+    
     # Summary
+    print(f"\n{'='*80}")
+    print("TOTALS COMPARISON:")
+    print(f"Processing Sales:")
+    print(f"  CSV Total: ${csv_total_processing_sales:.2f}")
+    print(f"  Platform Total: ${platform_total_processing_sales:.2f}")
+    print(f"  Difference: ${abs(csv_total_processing_sales - platform_total_processing_sales):.2f}")
+    
+    print(f"Processing Orders:")
+    print(f"  CSV Total: {csv_total_processing_orders}")
+    print(f"  Platform Total: {platform_total_processing_orders}")
+    print(f"  Difference: {abs(csv_total_processing_orders - platform_total_processing_orders)}")
+    
+    print(f"Refunds:")
+    print(f"  CSV Total: ${csv_total_refunds:.2f}")
+    print(f"  Platform Total: ${platform_total_refunds:.2f}")
+    print(f"  Difference: ${abs(csv_total_refunds - platform_total_refunds):.2f}")
+    
+    print(f"Refunded Orders:")
+    print(f"  CSV Total: {csv_total_refunded_orders}")
+    print(f"  Platform Total: {platform_total_refunded_orders}")
+    print(f"  Difference: {abs(csv_total_refunded_orders - platform_total_refunded_orders)}")
+    
     print(f"\n{'='*80}")
     print("FINAL SUMMARY:")
     print(f"Total locations analyzed: {len(results)}")
