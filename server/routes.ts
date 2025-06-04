@@ -1116,10 +1116,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
           COALESCE(SUM(CASE WHEN status != 'refunded' THEN (amount::decimal * 0.029 + 0.30) ELSE 0 END), 0) as stripe_fees,
           COALESCE(SUM(CASE WHEN status != 'refunded' THEN amount::decimal - (amount::decimal * 0.07) - (amount::decimal * 0.029 + 0.30) ELSE 0 END), 0) as net_deposit
         FROM woo_orders 
-        ${baseWhereClause}
+        ${whereClause}
       `;
 
-      const result = await pool.query(query, baseParams);
+      const result = await pool.query(query, params);
       const row = result.rows[0] as any;
 
       const summary = {
@@ -1212,9 +1212,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
         statusFilter = allowedStatuses;
       }
       
-      // Store the base where clause and params for the monthly breakdown CTE
-      const baseWhereClause = whereClause;
-      const baseParams = [...params];
+      // Apply status filtering to the main query
+      if (statusFilter.length > 0) {
+        const statusPlaceholders = statusFilter.map((_, index) => `$${params.length + index + 1}`).join(', ');
+        whereClause += ` AND status IN (${statusPlaceholders})`;
+        params.push(...statusFilter);
+      }
       
       const query = `
         WITH all_orders AS (
@@ -1226,7 +1229,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
             SUM(CASE WHEN status != 'refunded' THEN amount::decimal ELSE 0 END) as net_sales,
             COUNT(CASE WHEN status != 'refunded' THEN 1 END) as successful_orders
           FROM woo_orders 
-          ${baseWhereClause}
+          ${whereClause}
           GROUP BY TO_CHAR(order_date, 'YYYY-MM')
         )
         SELECT 
@@ -1240,7 +1243,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         ORDER BY month DESC
       `;
 
-      const result = await pool.query(query, baseParams);
+      const result = await pool.query(query, params);
       
       // Capture statusFilter for use in nested function
       const capturedStatusFilter = statusFilter;
