@@ -101,12 +101,12 @@ export default function Dashboard({ onMenuClick }: DashboardProps) {
     }
   }, [shouldShowAllLocations, locations]);
 
-  // Initialize status selection for admin users
+  // Initialize status selection with default statuses
   useEffect(() => {
-    if (allStatuses.length > 0) {
-      setSelectedStatuses([]);
+    if (allStatuses.length > 0 && selectedStatuses.length === 0) {
+      setSelectedStatuses(['completed', 'processing', 'refunded']);
     }
-  }, []);
+  }, [allStatuses]);
 
   // Memoize the SelectItems to prevent re-rendering
   const locationItems = useMemo(() => {
