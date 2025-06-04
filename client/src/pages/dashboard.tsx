@@ -25,7 +25,7 @@ export default function Dashboard({ onMenuClick }: DashboardProps) {
   const [startDate, setStartDate] = useState(todayStr);
   const [endDate, setEndDate] = useState(todayStr);
   const [selectedLocation, setSelectedLocation] = useState("");
-  const [selectedStatuses, setSelectedStatuses] = useState<string[]>([]);
+  const [selectedStatuses, setSelectedStatuses] = useState<string[]>(["completed", "processing", "refunded"]);
   
   // All available statuses for admin users
   const allStatuses = ["completed", "processing", "refunded", "on-hold", "checkout-draft", "failed", "pending", "cancelled"];
