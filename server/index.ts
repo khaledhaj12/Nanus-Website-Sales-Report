@@ -59,9 +59,6 @@ app.use((req, res, next) => {
 
 (async () => {
   const server = await registerRoutes(app);
-  
-  // Auto-enable sync for all store connections on startup
-  await enableAutoSyncForAllConnections();
 
   app.use((err: any, _req: Request, res: Response, _next: NextFunction) => {
     const status = err.status || err.statusCode || 500;
@@ -90,5 +87,10 @@ app.use((req, res, next) => {
     reusePort: true,
   }, () => {
     log(`serving on port ${port}`);
+    
+    // Enable auto-sync after server is running
+    setTimeout(() => {
+      enableAutoSyncForAllConnections();
+    }, 2000);
   });
 })();
