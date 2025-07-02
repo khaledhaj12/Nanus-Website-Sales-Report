@@ -455,7 +455,10 @@ export class DatabaseStorage implements IStorage {
     
     for (const order of result) {
       const orderDate = order.orderDate instanceof Date ? order.orderDate : new Date(order.orderDate);
-      const monthKey = orderDate.toISOString().substring(0, 7);
+      // Use local date format to avoid UTC timezone conversion
+      const year = orderDate.getFullYear();
+      const month = String(orderDate.getMonth() + 1).padStart(2, '0');
+      const monthKey = `${year}-${month}`;
       if (!monthlyData.has(monthKey)) {
         monthlyData.set(monthKey, {
           month: monthKey,
