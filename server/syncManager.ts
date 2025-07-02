@@ -179,7 +179,7 @@ async function fetchWooCommerceOrders(
   let hasMore = true;
 
   while (hasMore) {
-    const url = `${storeUrl}/wp-json/wc/v3/orders?per_page=100&page=${page}&orderby=date&order=desc&consumer_key=${consumerKey}&consumer_secret=${consumerSecret}&modified_after=${startDate}&modified_before=${endDate}&status=processing,completed,refunded`;
+    const url = `${storeUrl}/wp-json/wc/v3/orders?per_page=100&page=${page}&orderby=date&order=desc&consumer_key=${consumerKey}&consumer_secret=${consumerSecret}&after=${startDate}&before=${endDate}&status=processing,completed,refunded,checkout-draft`;
     
     console.log(`Fetching auto sync page ${page}...`);
     const response = await axios.get(url);

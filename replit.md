@@ -110,6 +110,7 @@ Changelog:
 - July 02, 2025. Completed location duplicate consolidation - eliminated 4 duplicate locations affecting 580+ orders, consolidated into 3 standardized locations with proper naming conventions
 - July 02, 2025. Fixed monthly breakdown date filtering bug in both dashboard and reports pages - orders now correctly display under their proper month sections with month-first filtering logic
 - July 02, 2025. Fixed timezone double-conversion issue - removed incorrect UTC to Eastern timezone conversion since WooCommerce orders are already stored in local timezone, ensuring orders appear in correct date groups (order 16196 now correctly shows as July 2nd instead of July 1st)
+- July 02, 2025. Fixed auto-sync query parameters - changed from modified_after/modified_before to after/before to catch newly created orders instead of only modified orders, and added checkout-draft status to filter. Missing orders 30682, 30683, 30685 now successfully imported and visible on dashboard
 ```
 
 ## User Preferences
