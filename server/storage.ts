@@ -491,9 +491,10 @@ export class DatabaseStorage implements IStorage {
         monthData.netAmount += (amount - platformFee - stripeFee);
       }
       
-      // Fix timezone issue: Database stores UTC, need to convert to Eastern (UTC-4 for EDT)
-      // Add 4 hours to convert from UTC to Eastern Daylight Time
-      const easternTime = new Date(orderDate.getTime() + (4 * 60 * 60 * 1000));
+      // Fix timezone issue: Database stores Eastern time but is treated as UTC
+      // WooCommerce sends Eastern time but it gets stored as if it were UTC
+      // So we need to treat the stored time as Eastern directly, not convert from UTC
+      const easternTime = orderDate; // Use the time as-is since it's already Eastern
       
       const orderWithFixedDate = {
         ...order,
