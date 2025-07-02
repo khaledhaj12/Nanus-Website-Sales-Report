@@ -148,16 +148,43 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // Session middleware
   app.use(session({
-    secret: 'your-secret-key',
+    secret: process.env.SESSION_SECRET || 'fallback-dev-secret-key-' + Math.random(),
     resave: false,
     saveUninitialized: false,
-    cookie: { secure: false }
+    cookie: { 
+      secure: process.env.NODE_ENV === 'production',
+      httpOnly: true,
+      maxAge: 24 * 60 * 60 * 1000 // 24 hours
+    }
   }));
+
+  // Rate limiting for login attempts
+  const loginAttempts = new Map();
+  const MAX_LOGIN_ATTEMPTS = 5;
+  const LOCKOUT_TIME = 15 * 60 * 1000; // 15 minutes
 
   // Auth routes
   app.post('/api/auth/login', async (req, res) => {
     try {
       const { username, password, recaptchaToken } = req.body;
+      const clientIP = req.ip || req.connection.remoteAddress || 'unknown';
+      
+      // Check rate limiting
+      const now = Date.now();
+      const attemptData = loginAttempts.get(clientIP) || { count: 0, lastAttempt: 0 };
+      
+      if (attemptData.count >= MAX_LOGIN_ATTEMPTS) {
+        const timeSinceLastAttempt = now - attemptData.lastAttempt;
+        if (timeSinceLastAttempt < LOCKOUT_TIME) {
+          const remainingTime = Math.ceil((LOCKOUT_TIME - timeSinceLastAttempt) / (60 * 1000));
+          return res.status(429).json({ 
+            message: `Too many login attempts. Please try again in ${remainingTime} minutes.` 
+          });
+        } else {
+          // Reset attempts after lockout period
+          loginAttempts.delete(clientIP);
+        }
+      }
       
       // Check reCAPTCHA if enabled
       const recaptchaSettings = await storage.getRecaptchaSettings();
@@ -190,9 +217,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
       console.log(`User found:`, user ? 'Yes' : 'No');
       
       if (user) {
+        // Successful login - reset attempts for this IP
+        loginAttempts.delete(clientIP);
         req.session.user = user;
         res.json(user);
       } else {
+        // Failed login - increment attempts for this IP
+        const newAttemptData = {
+          count: attemptData.count + 1,
+          lastAttempt: now
+        };
+        loginAttempts.set(clientIP, newAttemptData);
         res.status(401).json({ message: "Invalid credentials" });
       }
     } catch (error) {
@@ -728,19 +763,30 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
 
 
-  // REST API settings endpoints
-  app.get('/api/rest-api-settings/:platform', isAuthenticated, async (req, res) => {
+  // REST API settings endpoints - SECURE VERSION (no secrets exposed)
+  app.get('/api/rest-api-settings/:platform', isAuthenticated, requireAdmin, async (req, res) => {
     try {
       const { platform } = req.params;
       const settings = await storage.getRestApiSettings(platform);
-      res.json(settings || { platform, consumerKey: '', consumerSecret: '', storeUrl: '', isActive: true });
+      
+      if (settings) {
+        // Never expose consumer secrets to frontend
+        const { consumerSecret, ...safeSettings } = settings;
+        res.json({
+          ...safeSettings,
+          consumerSecret: '***HIDDEN***', // Show that secret exists but hide value
+          hasConsumerSecret: !!consumerSecret
+        });
+      } else {
+        res.json({ platform, consumerKey: '', consumerSecret: '***HIDDEN***', storeUrl: '', isActive: true, hasConsumerSecret: false });
+      }
     } catch (error) {
       console.error("Get REST API settings error:", error);
       res.status(500).json({ message: "Failed to get REST API settings" });
     }
   });
 
-  app.post('/api/rest-api-settings', isAuthenticated, async (req, res) => {
+  app.post('/api/rest-api-settings', isAuthenticated, requireAdmin, async (req, res) => {
     try {
       const settings = await storage.upsertRestApiSettings(req.body);
       res.json({ success: true, settings });
@@ -769,18 +815,27 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Full reCAPTCHA settings endpoint (authenticated, returns secret key for settings page)
-  app.get('/api/recaptcha-settings/admin', isAuthenticated, async (req, res) => {
+  // Full reCAPTCHA settings endpoint (admin only, secrets hidden)
+  app.get('/api/recaptcha-settings/admin', isAuthenticated, requireAdmin, async (req, res) => {
     try {
       const settings = await storage.getRecaptchaSettings();
-      res.json(settings || { siteKey: '', secretKey: '', isActive: false });
+      if (settings) {
+        res.json({
+          siteKey: settings.siteKey,
+          secretKey: '***HIDDEN***', // Never expose secret to frontend
+          isActive: settings.isActive,
+          hasSecretKey: !!settings.secretKey
+        });
+      } else {
+        res.json({ siteKey: '', secretKey: '***HIDDEN***', isActive: false, hasSecretKey: false });
+      }
     } catch (error) {
       console.error("Get reCAPTCHA admin settings error:", error);
       res.status(500).json({ message: "Failed to get reCAPTCHA settings" });
     }
   });
 
-  app.post('/api/recaptcha-settings', isAuthenticated, async (req, res) => {
+  app.post('/api/recaptcha-settings', isAuthenticated, requireAdmin, async (req, res) => {
     try {
       const settings = await storage.upsertRecaptchaSettings(req.body);
       res.json({ success: true, settings });
