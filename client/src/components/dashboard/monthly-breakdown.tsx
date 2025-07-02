@@ -406,11 +406,10 @@ export default function MonthlyBreakdown({
                                   </TableCell>
                                 )}
                                 <TableCell>
-                                  {new Date(order.orderDate).toLocaleDateString('en-US', { timeZone: 'UTC' })}
+                                  {new Date(order.orderDate).toLocaleDateString()}
                                 </TableCell>
                                 <TableCell>
                                   {new Date(order.orderDate).toLocaleTimeString('en-US', { 
-                                    timeZone: 'UTC',
                                     hour: 'numeric',
                                     minute: '2-digit',
                                     hour12: true
