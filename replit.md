@@ -111,6 +111,8 @@ Changelog:
 - July 02, 2025. Fixed monthly breakdown date filtering bug in both dashboard and reports pages - orders now correctly display under their proper month sections with month-first filtering logic
 - July 02, 2025. Fixed timezone double-conversion issue - removed incorrect UTC to Eastern timezone conversion since WooCommerce orders are already stored in local timezone, ensuring orders appear in correct date groups (order 16196 now correctly shows as July 2nd instead of July 1st)
 - July 02, 2025. Fixed auto-sync query parameters - changed from modified_after/modified_before to after/before to catch newly created orders instead of only modified orders, and added checkout-draft status to filter. Missing orders 30682, 30683, 30685 now successfully imported and visible on dashboard
+- July 02, 2025. Fixed Reports page monthly grouping inconsistency - added user permission logic and status filtering to Reports endpoint to exactly match Dashboard behavior, ensuring both pages show identical monthly breakdown filtering
+- July 02, 2025. Synchronized default status filtering between Dashboard and Reports pages - both now default to ["completed", "processing", "refunded"] for consistent filtering experience across the platform
 ```
 
 ## User Preferences

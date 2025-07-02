@@ -27,10 +27,11 @@ export default function Reports({ onMenuClick }: ReportsProps) {
   });
 
   // Define allowed statuses based on user role and database permissions
+  // MATCH DASHBOARD DEFAULTS EXACTLY
   const selectedStatuses = useMemo(() => {
     if (isAdmin) {
-      // Admin users: full access to all statuses, NO restrictions
-      return ["processing", "completed", "refunded", "pending", "failed", "cancelled", "on-hold", "checkout-draft"];
+      // Admin users: use same default as dashboard
+      return ["completed", "processing", "refunded"];
     } else {
       // Non-admin users: use statuses from database, fallback to safe defaults
       const allowedStatuses = Array.isArray(userStatuses) ? userStatuses : [];
