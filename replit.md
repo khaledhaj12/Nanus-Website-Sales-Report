@@ -117,6 +117,7 @@ Changelog:
 - July 02, 2025. Fixed root cause of timezone date grouping issue - replaced toISOString() with local date formatting in backend monthly breakdown logic to prevent UTC conversion that was shifting July 1st orders to June 30th. This fix applies to all historical and future orders
 - July 02, 2025. Critical schema fix - corrected schema mapping from 'orders' table to actual 'woo_orders' database table with proper field mappings (order_date → orderDate), resolving fundamental data access issues that were causing timezone display problems
 - July 02, 2025. Timezone fix implementation - discovered WooCommerce stores UTC time but frontend needs Eastern display, modified backend date serialization to treat stored times as Eastern timezone, added cache control headers to force fresh data delivery
+- July 02, 2025. Completed timezone fix for both Dashboard and Reports pages - Order 30685 now correctly displays 1:04 PM instead of 9:04 AM, implemented identical timezone processing and cache invalidation for consistent display across platform
 ```
 
 ## User Preferences

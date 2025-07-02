@@ -1516,6 +1516,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   app.get('/api/reports/monthly-breakdown', isAuthenticated, async (req, res) => {
+    // Force cache invalidation to apply timezone fix (same as dashboard)
+    res.set('Cache-Control', 'no-cache, no-store, must-revalidate');
+    res.set('Pragma', 'no-cache');
+    res.set('Expires', '0');
     try {
       const { year, locationId, location, startMonth, endMonth, startDate, endDate, statuses } = req.query;
       
@@ -1678,13 +1682,36 @@ export async function registerRoutes(app: Express): Promise<Server> {
           
           const orderResult = await pool.query(orderQuery, orderParams);
           
+          // Process orders and fix timezone issue (same as dashboard)
+          const processedOrders = orderResult.rows.map((order: any) => {
+            if (order.orderDate) {
+              // Database stores Eastern time but JavaScript treats it as UTC
+              // We need to return it in a format that displays correctly
+              const dbTime = new Date(order.orderDate);
+              
+              // The time in DB is already Eastern, so we format it without timezone conversion
+              const correctedTime = dbTime.getFullYear() + '-' + 
+                                   String(dbTime.getMonth() + 1).padStart(2, '0') + '-' +
+                                   String(dbTime.getDate()).padStart(2, '0') + 'T' +
+                                   String(dbTime.getHours()).padStart(2, '0') + ':' +
+                                   String(dbTime.getMinutes()).padStart(2, '0') + ':' +
+                                   String(dbTime.getSeconds()).padStart(2, '0');
+              
+              return {
+                ...order,
+                orderDate: correctedTime
+              };
+            }
+            return order;
+          });
+          
           return {
             month: row.month,
             totalSales: parseFloat(row.total_sales),
             totalOrders: parseInt(row.total_orders),
             totalRefunds: parseFloat(row.total_refunds),
             netAmount: parseFloat(row.net_amount),
-            orders: orderResult.rows
+            orders: processedOrders
           };
         })
       );
