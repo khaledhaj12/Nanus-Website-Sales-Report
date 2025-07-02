@@ -1286,16 +1286,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
         result.rows.map(async (row: any) => {
           const month = row.month;
           
-          // Get orders for this specific period - apply same date filtering as main query
+          // Get orders for this specific month ONLY - always filter by month first
           let orderWhereClause = `WHERE TO_CHAR(w.order_date, 'YYYY-MM') = $1`;
           const orderParams: any[] = [month];
           
-          // If we have specific date filtering, apply it to individual orders too
+          // If we have specific date filtering, add it as additional constraints (not replacement)
           if (capturedStartDate && capturedEndDate) {
             const startDateTime = `${capturedStartDate} 00:00:00`;
             const endDateTime = `${capturedEndDate} 23:59:59`;
-            orderWhereClause = `WHERE w.order_date >= $1 AND w.order_date <= $2`;
-            orderParams.splice(0, 1, startDateTime, endDateTime); // Replace month param with date range
+            orderWhereClause += ` AND w.order_date >= $${orderParams.length + 1} AND w.order_date <= $${orderParams.length + 2}`;
+            orderParams.push(startDateTime, endDateTime);
           }
           
           if (targetLocationId && targetLocationId !== 'all') {
