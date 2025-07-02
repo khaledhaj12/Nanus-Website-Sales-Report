@@ -509,7 +509,10 @@ export class DatabaseStorage implements IStorage {
     }
 
     const finalResult = Array.from(monthlyData.values()).sort((a, b) => b.month.localeCompare(a.month));
-    console.log('TIMEZONE DEBUG - Sample order date sent to frontend:', finalResult[0]?.orders[0]?.orderDate);
+    if (finalResult[0]?.orders?.length > 0) {
+      console.log('TIMEZONE DEBUG - Order 30685 date sent to frontend:', 
+        finalResult[0].orders.find(o => o.orderId === '30685')?.orderDate);
+    }
     return finalResult;
   }
 

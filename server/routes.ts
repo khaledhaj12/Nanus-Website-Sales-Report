@@ -1162,6 +1162,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   app.get('/api/dashboard/monthly-breakdown', isAuthenticated, async (req, res) => {
+    // Force cache invalidation to apply timezone fix
+    res.set('Cache-Control', 'no-cache, no-store, must-revalidate');
+    res.set('Pragma', 'no-cache');
+    res.set('Expires', '0');
     try {
       const { year, locationId, location, startMonth, endMonth, startDate, endDate, statuses } = req.query;
       
