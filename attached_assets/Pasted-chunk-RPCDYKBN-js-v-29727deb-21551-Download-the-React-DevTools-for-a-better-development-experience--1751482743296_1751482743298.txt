@@ -1,0 +1,46 @@
+chunk-RPCDYKBN.js?v=29727deb:21551 Download the React DevTools for a better development experience: https://reactjs.org/link/react-devtools
+queryClient.ts:32 
+            
+            
+           GET https://ee4b7f00-6d45-4ffc-a131-b72a4d989a18-00-9t5valsb7bpr.worf.replit.dev/api/auth/user 401 (Unauthorized)
+(anonymous) @ queryClient.ts:32
+fetchFn @ @tanstack_react-query.js?v=29727deb:840
+run @ @tanstack_react-query.js?v=29727deb:494
+start @ @tanstack_react-query.js?v=29727deb:536
+fetch @ @tanstack_react-query.js?v=29727deb:926
+executeFetch_fn @ @tanstack_react-query.js?v=29727deb:2211
+onSubscribe @ @tanstack_react-query.js?v=29727deb:1898
+subscribe @ @tanstack_react-query.js?v=29727deb:24
+(anonymous) @ @tanstack_react-query.js?v=29727deb:3022
+subscribeToStore @ chunk-RPCDYKBN.js?v=29727deb:11984
+commitHookEffectListMount @ chunk-RPCDYKBN.js?v=29727deb:16915
+commitPassiveMountOnFiber @ chunk-RPCDYKBN.js?v=29727deb:18156
+commitPassiveMountEffects_complete @ chunk-RPCDYKBN.js?v=29727deb:18129
+commitPassiveMountEffects_begin @ chunk-RPCDYKBN.js?v=29727deb:18119
+commitPassiveMountEffects @ chunk-RPCDYKBN.js?v=29727deb:18109
+flushPassiveEffectsImpl @ chunk-RPCDYKBN.js?v=29727deb:19490
+flushPassiveEffects @ chunk-RPCDYKBN.js?v=29727deb:19447
+performSyncWorkOnRoot @ chunk-RPCDYKBN.js?v=29727deb:18868
+flushSyncCallbacks @ chunk-RPCDYKBN.js?v=29727deb:9119
+commitRootImpl @ chunk-RPCDYKBN.js?v=29727deb:19432
+commitRoot @ chunk-RPCDYKBN.js?v=29727deb:19277
+finishConcurrentRender @ chunk-RPCDYKBN.js?v=29727deb:18805
+performConcurrentWorkOnRoot @ chunk-RPCDYKBN.js?v=29727deb:18718
+workLoop @ chunk-RPCDYKBN.js?v=29727deb:197
+flushWork @ chunk-RPCDYKBN.js?v=29727deb:176
+performWorkUntilDeadline @ chunk-RPCDYKBN.js?v=29727deb:384
+
+                
+          
+          
+          
+         Chrome is moving towards a new experience that allows users to choose to browse without third-party cookies.
+bframe:1 Blocked aria-hidden on an element because its descendant retained focus. The focus must not be hidden from assistive technology users. Avoid using aria-hidden on a focused element or its ancestor. Consider using the inert attribute instead, which will also prevent focus. For more details, see the aria-hidden section of the WAI-ARIA specification at https://w3c.github.io/aria/#aria-hidden.
+Element with focus: <td.rc-imageselect-tile>
+Ancestor with aria-hidden: <div.rc-imageselect-target#rc-imageselect-target> <div id=​"rc-imageselect-target" class=​"rc-imageselect-target" dir=​"ltr" role=​"presentation" aria-hidden=​"true">​…​</div>​
+bframe:1 Blocked aria-hidden on an element because its descendant retained focus. The focus must not be hidden from assistive technology users. Avoid using aria-hidden on a focused element or its ancestor. Consider using the inert attribute instead, which will also prevent focus. For more details, see the aria-hidden section of the WAI-ARIA specification at https://w3c.github.io/aria/#aria-hidden.
+Element with focus: <td.rc-imageselect-tile>
+Ancestor with aria-hidden: <div.rc-imageselect-target#rc-imageselect-target> <div id=​"rc-imageselect-target" class=​"rc-imageselect-target" dir=​"ltr" role=​"presentation" aria-hidden=​"true">​…​</div>​
+bframe:1 Blocked aria-hidden on an element because its descendant retained focus. The focus must not be hidden from assistive technology users. Avoid using aria-hidden on a focused element or its ancestor. Consider using the inert attribute instead, which will also prevent focus. For more details, see the aria-hidden section of the WAI-ARIA specification at https://w3c.github.io/aria/#aria-hidden.
+Element with focus: <td.rc-imageselect-tile>
+Ancestor with aria-hidden: <div.rc-imageselect-target#rc-imageselect-target> <div id=​"rc-imageselect-target" class=​"rc-imageselect-target" dir=​"ltr" role=​"presentation" aria-hidden=​"true">​…​</div>​

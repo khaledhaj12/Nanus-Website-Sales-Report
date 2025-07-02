@@ -496,6 +496,8 @@ export class DatabaseStorage implements IStorage {
       // So we need to treat the stored time as Eastern directly, not convert from UTC
       const easternTime = orderDate; // Use the time as-is since it's already Eastern
       
+      console.log(`DEBUG Order ${order.orderId}: DB time: ${orderDate.toISOString()}, Eastern time: ${easternTime.toISOString()}`);
+      
       const orderWithFixedDate = {
         ...order,
         orderDate: easternTime.getFullYear() + '-' + 
@@ -511,7 +513,9 @@ export class DatabaseStorage implements IStorage {
     const finalResult = Array.from(monthlyData.values()).sort((a, b) => b.month.localeCompare(a.month));
     if (finalResult[0]?.orders?.length > 0) {
       console.log('TIMEZONE DEBUG - Order 30685 date sent to frontend:', 
-        finalResult[0].orders.find(o => o.orderId === '30685')?.orderDate);
+        finalResult[0].orders.find((o: any) => o.orderId === '30685')?.orderDate);
+      console.log('TIMEZONE DEBUG - Sample order data:', finalResult[0].orders[0]?.orderDate);
+      console.log('TIMEZONE DEBUG - Total orders returned:', finalResult[0].orders.length);
     }
     return finalResult;
   }
