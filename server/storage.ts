@@ -440,7 +440,7 @@ export class DatabaseStorage implements IStorage {
   }>> {
     const currentYear = year || new Date().getFullYear();
     const whereConditions = [
-      sql`EXTRACT(YEAR FROM ${orders.dateCreated}) = ${currentYear}`
+      sql`EXTRACT(YEAR FROM ${orders.orderDate}) = ${currentYear}`
     ];
     
     if (locationId) {
@@ -448,13 +448,13 @@ export class DatabaseStorage implements IStorage {
     }
 
     const result = await db.select().from(orders)
-      .where(whereConditions.length > 1 ? and(...whereConditions) : whereConditions[0])
-      .orderBy(desc(orders.dateCreated));
+      .where(and(...whereConditions))
+      .orderBy(desc(orders.orderDate));
 
     const monthlyData = new Map();
     
     for (const order of result) {
-      const orderDate = order.dateCreated instanceof Date ? order.dateCreated : new Date(order.dateCreated || order.createdAt || '');
+      const orderDate = order.orderDate instanceof Date ? order.orderDate : new Date(order.orderDate);
       const monthKey = orderDate.toISOString().substring(0, 7);
       if (!monthlyData.has(monthKey)) {
         monthlyData.set(monthKey, {
@@ -468,7 +468,7 @@ export class DatabaseStorage implements IStorage {
       }
       
       const monthData = monthlyData.get(monthKey);
-      const amount = parseFloat(order.total || '0');
+      const amount = parseFloat(order.amount.toString());
       
       if (order.status === 'refunded') {
         monthData.totalRefunds += amount;
