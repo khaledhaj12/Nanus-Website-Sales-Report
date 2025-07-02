@@ -1324,7 +1324,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
                    w.customer_email as "customerEmail",
                    w.amount, w.status, w.billing_address_1 as "cardLast4", 
                    CASE WHEN w.status = 'refunded' THEN w.amount ELSE 0 END as "refundAmount",
-                   l.name as "locationName"
+                   l.name as "locationName",
+                   w.order_date as "orderDate"
             FROM woo_orders w
             LEFT JOIN locations l ON w.location_id = l.id
             ${orderWhereClause}
@@ -1333,13 +1334,39 @@ export async function registerRoutes(app: Express): Promise<Server> {
           
           const orderResult = await pool.query(orderQuery, orderParams);
           
+          // Process orders and fix timezone issue
+          const processedOrders = orderResult.rows.map((order: any) => {
+            if (order.orderDate) {
+              // Database stores Eastern time but JavaScript treats it as UTC
+              // We need to return it in a format that displays correctly
+              const dbTime = new Date(order.orderDate);
+              console.log(`TIMEZONE DEBUG - Order ${order.orderId}: DB raw time: ${order.orderDate}, JS Date: ${dbTime.toISOString()}`);
+              
+              // The time in DB is already Eastern, so we format it without timezone conversion
+              const correctedTime = dbTime.getFullYear() + '-' + 
+                                   String(dbTime.getMonth() + 1).padStart(2, '0') + '-' +
+                                   String(dbTime.getDate()).padStart(2, '0') + 'T' +
+                                   String(dbTime.getHours()).padStart(2, '0') + ':' +
+                                   String(dbTime.getMinutes()).padStart(2, '0') + ':' +
+                                   String(dbTime.getSeconds()).padStart(2, '0');
+              
+              console.log(`TIMEZONE DEBUG - Order ${order.orderId}: Corrected time sent to frontend: ${correctedTime}`);
+              
+              return {
+                ...order,
+                orderDate: correctedTime
+              };
+            }
+            return order;
+          });
+          
           return {
             month: row.month,
             totalSales: parseFloat(row.total_sales || '0'),
             totalOrders: parseInt(row.total_orders || '0'),
             totalRefunds: parseFloat(row.total_refunds || '0'),
             netAmount: parseFloat(row.net_amount || '0'),
-            orders: orderResult.rows
+            orders: processedOrders
           };
         })
       );
