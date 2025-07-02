@@ -455,6 +455,7 @@ export class DatabaseStorage implements IStorage {
     
     for (const order of result) {
       // Use the correct field name from database: order_date (mapped to orderDate)
+      if (!order.orderDate) continue; // Skip orders without dates
       const orderDate = order.orderDate instanceof Date ? order.orderDate : new Date(order.orderDate);
       // Use local date format to avoid UTC timezone conversion
       const year = orderDate.getFullYear();
@@ -472,6 +473,7 @@ export class DatabaseStorage implements IStorage {
       }
       
       const monthData = monthlyData.get(monthKey);
+      if (!order.amount) continue; // Skip orders without amounts
       const amount = parseFloat(order.amount.toString());
       
       if (order.status === 'refunded') {
@@ -489,7 +491,17 @@ export class DatabaseStorage implements IStorage {
         monthData.netAmount += (amount - platformFee - stripeFee);
       }
       
-      monthData.orders.push(order);
+      // Fix timezone issue by converting date to local string format before adding to response
+      const orderWithFixedDate = {
+        ...order,
+        orderDate: orderDate.getFullYear() + '-' + 
+                   String(orderDate.getMonth() + 1).padStart(2, '0') + '-' +
+                   String(orderDate.getDate()).padStart(2, '0') + 'T' +
+                   String(orderDate.getHours()).padStart(2, '0') + ':' +
+                   String(orderDate.getMinutes()).padStart(2, '0') + ':' +
+                   String(orderDate.getSeconds()).padStart(2, '0')
+      };
+      monthData.orders.push(orderWithFixedDate);
     }
 
     return Array.from(monthlyData.values()).sort((a, b) => b.month.localeCompare(a.month));
