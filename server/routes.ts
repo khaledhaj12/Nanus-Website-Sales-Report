@@ -1088,7 +1088,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         params.push(monthEndDate);
       } else if (month) {
         // Single month filtering (for backward compatibility) using Eastern Time
-        whereClause += ` AND TO_CHAR(order_date AT TIME ZONE 'UTC' AT TIME ZONE 'America/New_York', 'YYYY-MM') = $${params.length + 1}`;
+        whereClause += ` AND TO_CHAR(order_date, 'YYYY-MM') = $${params.length + 1}`;
         params.push(month);
       }
       
@@ -1251,7 +1251,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const query = `
         WITH all_orders AS (
           SELECT 
-            TO_CHAR(order_date AT TIME ZONE 'UTC' AT TIME ZONE 'America/New_York', 'YYYY-MM') as month,
+            TO_CHAR(order_date, 'YYYY-MM') as month,
             SUM(amount::decimal) as gross_sales,
             COUNT(*) as total_orders,
             SUM(CASE WHEN status = 'refunded' THEN amount::decimal ELSE 0 END) as total_refunds,
@@ -1259,7 +1259,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
             COUNT(CASE WHEN status != 'refunded' THEN 1 END) as successful_orders
           FROM woo_orders 
           ${whereClause}
-          GROUP BY TO_CHAR(order_date AT TIME ZONE 'UTC' AT TIME ZONE 'America/New_York', 'YYYY-MM')
+          GROUP BY TO_CHAR(order_date, 'YYYY-MM')
         )
         SELECT 
           month,
@@ -1285,7 +1285,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           const month = row.month;
           
           // Get orders for this specific month ONLY - always filter by month first using Eastern Time
-          let orderWhereClause = `WHERE TO_CHAR(w.order_date AT TIME ZONE 'UTC' AT TIME ZONE 'America/New_York', 'YYYY-MM') = $1`;
+          let orderWhereClause = `WHERE TO_CHAR(w.order_date, 'YYYY-MM') = $1`;
           const orderParams: any[] = [month];
           
           // ALWAYS filter by month first, then apply additional date constraints if needed
@@ -1541,14 +1541,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       const query = `
         SELECT 
-          TO_CHAR(order_date AT TIME ZONE 'UTC' AT TIME ZONE 'America/New_York', 'YYYY-MM') as month,
+          TO_CHAR(order_date, 'YYYY-MM') as month,
           COALESCE(SUM(amount::decimal), 0) as total_sales,
           COUNT(*) as total_orders,
           COALESCE(SUM(CASE WHEN status = 'refunded' THEN amount::decimal ELSE 0 END), 0) as total_refunds,
           COALESCE(SUM(amount::decimal - (amount::decimal * 0.07) - (amount::decimal * 0.029 + 0.30)), 0) as net_amount
         FROM woo_orders 
         ${whereClause}
-        GROUP BY TO_CHAR(order_date AT TIME ZONE 'UTC' AT TIME ZONE 'America/New_York', 'YYYY-MM')
+        GROUP BY TO_CHAR(order_date, 'YYYY-MM')
         ORDER BY month DESC
       `;
 
@@ -1565,7 +1565,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           const month = row.month;
           
           // Get orders for this specific month ONLY - always filter by month first using Eastern Time
-          let orderWhereClause = `WHERE TO_CHAR(w.order_date AT TIME ZONE 'UTC' AT TIME ZONE 'America/New_York', 'YYYY-MM') = $1`;
+          let orderWhereClause = `WHERE TO_CHAR(w.order_date, 'YYYY-MM') = $1`;
           const orderParams: any[] = [month];
           
           // ALWAYS filter by month first, then apply additional date constraints if needed
