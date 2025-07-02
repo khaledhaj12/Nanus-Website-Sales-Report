@@ -491,16 +491,18 @@ export class DatabaseStorage implements IStorage {
         monthData.netAmount += (amount - platformFee - stripeFee);
       }
       
-      // Fix timezone issue: Database stores Eastern time directly, so use it as-is
-      // Don't apply timezone conversion - the stored time is already in Eastern timezone
+      // Fix timezone issue: Database stores UTC, need to convert to Eastern (UTC-4 for EDT)
+      // Add 4 hours to convert from UTC to Eastern Daylight Time
+      const easternTime = new Date(orderDate.getTime() + (4 * 60 * 60 * 1000));
+      
       const orderWithFixedDate = {
         ...order,
-        orderDate: orderDate.getFullYear() + '-' + 
-                   String(orderDate.getMonth() + 1).padStart(2, '0') + '-' +
-                   String(orderDate.getDate()).padStart(2, '0') + 'T' +
-                   String(orderDate.getHours()).padStart(2, '0') + ':' +
-                   String(orderDate.getMinutes()).padStart(2, '0') + ':' +
-                   String(orderDate.getSeconds()).padStart(2, '0')
+        orderDate: easternTime.getFullYear() + '-' + 
+                   String(easternTime.getMonth() + 1).padStart(2, '0') + '-' +
+                   String(easternTime.getDate()).padStart(2, '0') + 'T' +
+                   String(easternTime.getHours()).padStart(2, '0') + ':' +
+                   String(easternTime.getMinutes()).padStart(2, '0') + ':' +
+                   String(easternTime.getSeconds()).padStart(2, '0')
       };
       monthData.orders.push(orderWithFixedDate);
     }
