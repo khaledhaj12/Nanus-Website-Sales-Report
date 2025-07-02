@@ -440,7 +440,7 @@ export class DatabaseStorage implements IStorage {
   }>> {
     const currentYear = year || new Date().getFullYear();
     const whereConditions = [
-      sql`EXTRACT(YEAR FROM ${orders.orderDate}) = ${currentYear}`
+      sql`EXTRACT(YEAR FROM ${orders.dateCreated}) = ${currentYear}`
     ];
     
     if (locationId) {
@@ -448,8 +448,8 @@ export class DatabaseStorage implements IStorage {
     }
 
     const result = await db.select().from(orders)
-      .where(and(...whereConditions))
-      .orderBy(desc(orders.orderDate));
+      .where(whereConditions.length > 1 ? and(...whereConditions) : whereConditions[0])
+      .orderBy(desc(orders.dateCreated));
 
     const monthlyData = new Map();
     
