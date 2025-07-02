@@ -109,6 +109,7 @@ Changelog:
 - July 02, 2025. Initial setup
 - July 02, 2025. Completed location duplicate consolidation - eliminated 4 duplicate locations affecting 580+ orders, consolidated into 3 standardized locations with proper naming conventions
 - July 02, 2025. Fixed monthly breakdown date filtering bug in both dashboard and reports pages - orders now correctly display under their proper month sections with month-first filtering logic
+- July 02, 2025. Applied timezone consistency fix across entire platform - all date grouping now uses Eastern Time (America/New_York) to ensure orders are grouped by business timezone rather than server UTC timezone, preventing month boundary crossing issues
 ```
 
 ## User Preferences
