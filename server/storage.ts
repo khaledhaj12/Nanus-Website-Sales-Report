@@ -447,13 +447,13 @@ export class DatabaseStorage implements IStorage {
       whereConditions.push(eq(orders.locationId, locationId));
     }
 
-    const result = await db.select().from(orders)
+    const dbResult = await db.select().from(orders)
       .where(and(...whereConditions))
       .orderBy(desc(orders.orderDate));
 
     const monthlyData = new Map();
     
-    for (const order of result) {
+    for (const order of dbResult) {
       // Use the correct field name from database: order_date (mapped to orderDate)
       if (!order.orderDate) continue; // Skip orders without dates
       const orderDate = order.orderDate instanceof Date ? order.orderDate : new Date(order.orderDate);
@@ -508,7 +508,9 @@ export class DatabaseStorage implements IStorage {
       monthData.orders.push(orderWithFixedDate);
     }
 
-    return Array.from(monthlyData.values()).sort((a, b) => b.month.localeCompare(a.month));
+    const finalResult = Array.from(monthlyData.values()).sort((a, b) => b.month.localeCompare(a.month));
+    console.log('TIMEZONE DEBUG - Sample order date sent to frontend:', finalResult[0]?.orders[0]?.orderDate);
+    return finalResult;
   }
 
 
