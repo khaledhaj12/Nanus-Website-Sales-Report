@@ -121,8 +121,11 @@ async function performSync(platform: string = 'woocommerce') {
     }
 
     // Calculate date range - sync orders from last sync time or last 24 hours
+    // Add 10-minute buffer to catch orders created during sync windows
     const now = new Date();
-    const lastSync = settings.lastSyncAt || new Date(now.getTime() - 24 * 60 * 60 * 1000);
+    const lastSync = settings.lastSyncAt ? 
+      new Date(settings.lastSyncAt.getTime() - 10 * 60 * 1000) : // 10 minutes before last sync
+      new Date(now.getTime() - 24 * 60 * 60 * 1000); // or last 24 hours
     const nextSync = new Date(now.getTime() + (settings.intervalMinutes || 5) * 60 * 1000);
     
     // Fetch new/updated orders

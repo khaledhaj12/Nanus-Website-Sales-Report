@@ -118,6 +118,7 @@ Changelog:
 - July 02, 2025. Critical schema fix - corrected schema mapping from 'orders' table to actual 'woo_orders' database table with proper field mappings (order_date → orderDate), resolving fundamental data access issues that were causing timezone display problems
 - July 02, 2025. Timezone fix implementation - discovered WooCommerce stores UTC time but frontend needs Eastern display, modified backend date serialization to treat stored times as Eastern timezone, added cache control headers to force fresh data delivery
 - July 02, 2025. Completed timezone fix for both Dashboard and Reports pages - Order 30685 now correctly displays 1:04 PM instead of 9:04 AM, implemented identical timezone processing and cache invalidation for consistent display across platform
+- July 02, 2025. Critical auto-sync bug fix - discovered sync was missing orders created within minute of sync window, added 10-minute buffer to catch orders created during sync intervals, manually imported missing order 30691 and reset sync timestamps to ensure future orders are captured
 ```
 
 ## User Preferences
