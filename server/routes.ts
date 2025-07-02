@@ -1487,13 +1487,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get('/api/reports/monthly-breakdown', isAuthenticated, async (req, res) => {
     try {
       const { year, locationId, location, startMonth, endMonth, startDate, endDate, statuses } = req.query;
+      
+      // Get user's admin status
+      const userId = req.session?.user?.id;
+      const user = await storage.getUser(userId);
+      const isAdmin = user?.role === 'admin';
+      
+      // Get allowed statuses for this user from database
+      const allowedStatuses = await getAllowedStatuses(userId, isAdmin);
+      
       const { pool } = await import('./db');
       
       let whereClause = "WHERE 1=1";
       const params: any[] = [];
-      
-      // Initialize status filter at the top level scope
-      let statusFilter: string[] = [];
       
       // Handle location parameter for reports
       const targetLocationId = location || locationId;
@@ -1527,16 +1533,42 @@ export async function registerRoutes(app: Express): Promise<Server> {
         params.push(currentYear);
       }
       
-      // Handle status filtering for reports - NO default filtering
-      if (statuses && Array.isArray(statuses) && statuses.length > 0) {
-        statusFilter = statuses as string[];
+      // Handle status filtering - ENFORCE security restrictions for non-admin users ONLY
+      let statusFilter: string[] = [];
+      let hasStatusParam = false;
+      
+      if (statuses !== undefined) {
+        hasStatusParam = true;
+        if (Array.isArray(statuses)) {
+          statusFilter = statuses.filter(s => typeof s === 'string') as string[];
+        } else {
+          statusFilter = [statuses as string];
+        }
+        
+        // SECURITY: Only filter statuses for non-admin users
+        if (!isAdmin) {
+          statusFilter = statusFilter.filter(status => allowedStatuses.includes(status));
+        }
+      }
+      
+      // For non-admin users: If no valid statuses provided, default to their allowed statuses
+      // For admin users: If no statuses provided, return empty results  
+      if (!isAdmin && statusFilter.length === 0) {
+        statusFilter = allowedStatuses;
+      } else if (isAdmin && statusFilter.length === 0 && hasStatusParam) {
+        // Admin explicitly sent empty statuses array - show no results
+        statusFilter = ['__no_matching_status__'];
+      }
+      
+      // Store base where clause without status filtering for accurate calculations
+      const baseWhereClause = whereClause;
+      const baseParams = [...params];
+      
+      // Apply status filtering to query (only if we have statuses to filter)
+      if (statusFilter.length > 0) {
         const statusPlaceholders = statusFilter.map((_, index) => `$${params.length + index + 1}`).join(', ');
         whereClause += ` AND status IN (${statusPlaceholders})`;
         params.push(...statusFilter);
-      } else if (statuses && !Array.isArray(statuses)) {
-        statusFilter = [statuses as string];
-        whereClause += ` AND status = $${params.length + 1}`;
-        params.push(statuses);
       }
       
       const query = `
