@@ -1554,17 +1554,28 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       const result = await pool.query(query, params);
       
-      // Capture statusFilter for use in nested function
+      // Capture variables for use in nested function
       const capturedStatusFilter = statusFilter;
+      const capturedStartDate = startDate;
+      const capturedEndDate = endDate;
       
       // Fetch individual orders for each month
       const breakdown = await Promise.all(
         result.rows.map(async (row: any) => {
           const month = row.month;
           
-          // Get orders for this specific month
+          // Get orders for this specific month ONLY - always filter by month first
           let orderWhereClause = `WHERE TO_CHAR(w.order_date, 'YYYY-MM') = $1`;
           const orderParams: any[] = [month];
+          
+          // ALWAYS filter by month first, then apply additional date constraints if needed
+          // This ensures each month section only shows orders from that specific month
+          if (capturedStartDate && capturedEndDate) {
+            const startDateTime = `${capturedStartDate} 00:00:00`;
+            const endDateTime = `${capturedEndDate} 23:59:59`;
+            orderWhereClause += ` AND w.order_date >= $${orderParams.length + 1} AND w.order_date <= $${orderParams.length + 2}`;
+            orderParams.push(startDateTime, endDateTime);
+          }
           
           if (targetLocationId && targetLocationId !== 'all') {
             orderWhereClause += ` AND w.location_id = $${orderParams.length + 1}`;
