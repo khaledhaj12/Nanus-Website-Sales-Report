@@ -491,7 +491,8 @@ export class DatabaseStorage implements IStorage {
         monthData.netAmount += (amount - platformFee - stripeFee);
       }
       
-      // Fix timezone issue by converting date to local string format before adding to response
+      // Fix timezone issue: Database stores Eastern time directly, so use it as-is
+      // Don't apply timezone conversion - the stored time is already in Eastern timezone
       const orderWithFixedDate = {
         ...order,
         orderDate: orderDate.getFullYear() + '-' + 
