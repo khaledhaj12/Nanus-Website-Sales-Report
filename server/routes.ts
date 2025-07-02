@@ -1443,6 +1443,45 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Google reCAPTCHA verification route
+  app.post('/api/verify-recaptcha', async (req, res) => {
+    try {
+      const { token } = req.body;
+      
+      if (!token) {
+        return res.status(400).json({ success: false, message: 'reCAPTCHA token is required' });
+      }
+
+      // Get reCAPTCHA settings from database
+      const recaptchaSettings = await storage.getRecaptchaSettings();
+      
+      if (!recaptchaSettings || !recaptchaSettings.secretKey || !recaptchaSettings.isActive) {
+        return res.status(400).json({ success: false, message: 'reCAPTCHA is not configured' });
+      }
+
+      // Verify token with Google
+      const verifyUrl = 'https://www.google.com/recaptcha/api/siteverify';
+      const verifyResponse = await fetch(verifyUrl, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/x-www-form-urlencoded',
+        },
+        body: `secret=${recaptchaSettings.secretKey}&response=${token}`,
+      });
+
+      const verifyData = await verifyResponse.json();
+
+      if (verifyData.success) {
+        res.json({ success: true, message: 'reCAPTCHA verified successfully' });
+      } else {
+        res.status(400).json({ success: false, message: 'reCAPTCHA verification failed', errors: verifyData['error-codes'] });
+      }
+    } catch (error) {
+      console.error('reCAPTCHA verification error:', error);
+      res.status(500).json({ success: false, message: 'Failed to verify reCAPTCHA' });
+    }
+  });
+
   const httpServer = createServer(app);
   return httpServer;
 }

@@ -454,7 +454,7 @@ export class DatabaseStorage implements IStorage {
     const monthlyData = new Map();
     
     for (const order of result) {
-      const orderDate = order.orderDate instanceof Date ? order.orderDate : new Date(order.orderDate);
+      const orderDate = order.dateCreated instanceof Date ? order.dateCreated : new Date(order.dateCreated || order.createdAt || '');
       const monthKey = orderDate.toISOString().substring(0, 7);
       if (!monthlyData.has(monthKey)) {
         monthlyData.set(monthKey, {
@@ -468,7 +468,7 @@ export class DatabaseStorage implements IStorage {
       }
       
       const monthData = monthlyData.get(monthKey);
-      const amount = parseFloat(order.amount.toString());
+      const amount = parseFloat(order.total || '0');
       
       if (order.status === 'refunded') {
         monthData.totalRefunds += amount;
