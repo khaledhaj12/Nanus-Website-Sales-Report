@@ -1,5 +1,6 @@
 import { storage } from "./storage";
 import axios from "axios";
+import { findOrCreateLocation, getStandardLocationForDomain } from "./locationUtils";
 
 interface SyncManager {
   intervalId: NodeJS.Timeout | null;
@@ -198,38 +199,20 @@ async function fetchWooCommerceOrders(
           continue;
         }
 
-        // Location assignment logic with domain-based defaults
-        let location = null;
+        // Enhanced location assignment logic with normalization and duplicate prevention
+        let targetLocationName = '';
         const orderableLocationMeta = order.meta_data?.find((meta: any) => meta.key === '_orderable_location_name')?.value;
         
         if (orderableLocationMeta) {
           // Use orderable metadata if available
-          location = await storage.getLocationByName(orderableLocationMeta);
-          if (!location) {
-            location = await storage.createLocation({ name: orderableLocationMeta });
-          }
+          targetLocationName = orderableLocationMeta;
         } else {
           // No orderable metadata - assign default location based on store domain
-          let defaultLocationName = '';
-          
-          if (storeUrl.includes('delaware.nanushotchicken.co')) {
-            defaultLocationName = '414 North Union St, Wilmington DE';
-          } else if (storeUrl.includes('drexel.nanushotchicken.co')) {
-            defaultLocationName = '3301 Market St, Philadelphia';
-          } else {
-            // Main store or any other domain
-            defaultLocationName = '4407 Chestnut St, Philadelphia';
-          }
-          
-          location = await storage.getLocationByName(defaultLocationName);
-          if (!location) {
-            location = await storage.createLocation({ 
-              name: defaultLocationName,
-              code: defaultLocationName.toLowerCase().replace(/[^a-z0-9]/g, '_'),
-              isActive: true
-            });
-          }
+          targetLocationName = getStandardLocationForDomain(storeUrl);
         }
+        
+        // Use the enhanced location finder
+        const location = await findOrCreateLocation(targetLocationName);
 
         // Extract comprehensive order data
         const orderData = {
