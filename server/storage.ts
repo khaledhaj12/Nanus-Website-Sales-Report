@@ -511,12 +511,18 @@ export class DatabaseStorage implements IStorage {
     }
 
     const finalResult = Array.from(monthlyData.values()).sort((a, b) => b.month.localeCompare(a.month));
+    
+    // Add timezone debugging for EVERY order
+    console.log('TIMEZONE DEBUG - Monthly breakdown called, total months:', finalResult.length);
     if (finalResult[0]?.orders?.length > 0) {
-      console.log('TIMEZONE DEBUG - Order 30685 date sent to frontend:', 
-        finalResult[0].orders.find((o: any) => o.orderId === '30685')?.orderDate);
-      console.log('TIMEZONE DEBUG - Sample order data:', finalResult[0].orders[0]?.orderDate);
-      console.log('TIMEZONE DEBUG - Total orders returned:', finalResult[0].orders.length);
+      console.log('TIMEZONE DEBUG - Total orders in first month:', finalResult[0].orders.length);
+      finalResult[0].orders.forEach((order: any) => {
+        if (order.orderId === '30685') {
+          console.log(`TIMEZONE DEBUG - Order ${order.orderId}: Final date sent to frontend: ${order.orderDate}`);
+        }
+      });
     }
+    
     return finalResult;
   }
 
