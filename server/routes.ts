@@ -1274,17 +1274,29 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       const result = await pool.query(query, params);
       
-      // Capture statusFilter for use in nested function
+      // Capture variables for use in nested function
       const capturedStatusFilter = statusFilter;
+      const capturedStartDate = startDate as string;
+      const capturedEndDate = endDate as string;
+      const capturedStartMonth = startMonth as string;
+      const capturedEndMonth = endMonth as string;
       
       // Fetch individual orders for each month
       const breakdown = await Promise.all(
         result.rows.map(async (row: any) => {
           const month = row.month;
           
-          // Get orders for this specific month
+          // Get orders for this specific period - apply same date filtering as main query
           let orderWhereClause = `WHERE TO_CHAR(w.order_date, 'YYYY-MM') = $1`;
           const orderParams: any[] = [month];
+          
+          // If we have specific date filtering, apply it to individual orders too
+          if (capturedStartDate && capturedEndDate) {
+            const startDateTime = `${capturedStartDate} 00:00:00`;
+            const endDateTime = `${capturedEndDate} 23:59:59`;
+            orderWhereClause = `WHERE w.order_date >= $1 AND w.order_date <= $2`;
+            orderParams.splice(0, 1, startDateTime, endDateTime); // Replace month param with date range
+          }
           
           if (targetLocationId && targetLocationId !== 'all') {
             orderWhereClause += ` AND w.location_id = $${orderParams.length + 1}`;
