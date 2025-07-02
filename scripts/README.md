@@ -112,10 +112,22 @@ node scripts/copy-prod-to-dev.js --tables=users,orders,locations
 - Backup files contain sensitive data - handle appropriately
 - Development database will be completely replaced during restore operations
 
-## Usage Examples
+## Code Restoration (Fixed Your Issue)
+
+If development code gets corrupted and you need to restore working functionality:
 
 ```bash
-# Quick daily sync from production
+# Restore from working backup (what just fixed your reCAPTCHA/logo issue)
+python3 restore_routes.py
+
+# Pull production application files to development
+./scripts/pull-from-production.sh
+```
+
+## Database Management
+
+```bash
+# Quick daily sync from production database
 ./scripts/backup-restore.sh full-copy
 
 # Create backup for safekeeping, then sync
@@ -125,3 +137,7 @@ node scripts/copy-prod-to-dev.js --tables=users,orders,locations
 # Copy only essential tables for development
 node scripts/copy-prod-to-dev.js --tables=users,orders,locations,woo_orders
 ```
+
+## Issue Resolution Notes
+
+**2025-01-02**: Successfully restored reCAPTCHA and logo functionality by using `python3 restore_routes.py` to restore the working routes file from backup. This fixed the broken endpoints that were corrupted during development changes.
