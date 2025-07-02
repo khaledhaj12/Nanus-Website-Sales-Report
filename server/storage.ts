@@ -454,6 +454,7 @@ export class DatabaseStorage implements IStorage {
     const monthlyData = new Map();
     
     for (const order of result) {
+      // Use the correct field name from database: order_date (mapped to orderDate)
       const orderDate = order.orderDate instanceof Date ? order.orderDate : new Date(order.orderDate);
       // Use local date format to avoid UTC timezone conversion
       const year = orderDate.getFullYear();

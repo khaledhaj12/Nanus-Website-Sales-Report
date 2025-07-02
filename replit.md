@@ -115,6 +115,7 @@ Changelog:
 - July 02, 2025. Synchronized default status filtering between Dashboard and Reports pages - both now default to ["completed", "processing", "refunded"] for consistent filtering experience across the platform
 - July 02, 2025. Final timezone fix - removed UTC timezone overrides from both Dashboard and Reports date displays to ensure consistent local timezone display matching actual order receipt times (order 30635 now correctly appears under July in both pages)
 - July 02, 2025. Fixed root cause of timezone date grouping issue - replaced toISOString() with local date formatting in backend monthly breakdown logic to prevent UTC conversion that was shifting July 1st orders to June 30th. This fix applies to all historical and future orders
+- July 02, 2025. Critical schema fix - corrected schema mapping from 'orders' table to actual 'woo_orders' database table with proper field mappings (order_date → orderDate), resolving fundamental data access issues that were causing timezone display problems
 ```
 
 ## User Preferences
