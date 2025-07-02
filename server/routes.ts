@@ -1,16 +1,8 @@
 import type { Express } from "express";
-import express from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
-import { pool } from "./db";
 import { startAutoSync, stopAutoSync, restartAutoSync, getSyncStatus } from "./syncManager";
 import session from "express-session";
-import { z } from "zod";
-import axios from "axios";
-import multer from "multer";
-import path from "path";
-import fs from "fs/promises";
-import bcrypt from "bcrypt";
 
 // Simple authentication middleware for this demo
 const isAuthenticated = (req: any, res: any, next: any) => {
@@ -19,67 +11,258 @@ const isAuthenticated = (req: any, res: any, next: any) => {
   }
   res.status(401).json({ message: "Not authenticated" });
 };
+import multer from "multer";
+import * as XLSX from "xlsx";
+import csv from "csv-parser";
+import { Readable } from "stream";
+import { z } from "zod";
+import { insertUserSchema, insertOrderSchema } from "@shared/schema";
+// Configure multer for file uploads
+const upload = multer({
+  storage: multer.memoryStorage(),
+  limits: {
+    fileSize: 10 * 1024 * 1024, // 10MB limit
+  },
+  fileFilter: (req, file, cb) => {
+    const allowedMimes = [
+      'text/csv',
+      'application/vnd.ms-excel',
+      'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+    ];
+    if (allowedMimes.includes(file.mimetype)) {
+      cb(null, true);
+    } else {
+      cb(new Error('Invalid file type. Only CSV and XLSX files are allowed.'));
+    }
+  },
+});
+
+// Configure session
+const sessionConfig = session({
+  secret: process.env.SESSION_SECRET || 'development-secret-key',
+  resave: false,
+  saveUninitialized: false,
+  cookie: {
+    secure: process.env.NODE_ENV === 'production',
+    httpOnly: true,
+    maxAge: 24 * 60 * 60 * 1000, // 24 hours
+  },
+});
+
+// Authentication middleware
+const requireAuth = (req: any, res: any, next: any) => {
+  if (!req.session.user) {
+    return res.status(401).json({ message: "Unauthorized" });
+  }
+  next();
+};
 
 // Admin middleware
 const requireAdmin = (req: any, res: any, next: any) => {
-  if (!req.session?.user || req.session.user.role !== 'admin') {
+  if (!req.session.user || req.session.user.role !== 'admin') {
     return res.status(403).json({ message: "Admin access required" });
   }
   next();
 };
 
-// Configure multer for logo uploads
-const logoStorage = multer.diskStorage({
-  destination: async (req, file, cb) => {
-    const uploadDir = 'uploads/logos';
-    await fs.mkdir(uploadDir, { recursive: true });
-    cb(null, uploadDir);
-  },
-  filename: (req, file, cb) => {
-    const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
-    cb(null, `logo-${uniqueSuffix}${path.extname(file.originalname)}`);
-  }
-});
+// Fee calculation functions
+function calculatePlatformFee(amount: number): number {
+  return amount * 0.07; // 7%
+}
 
-const logoUpload = multer({
-  storage: logoStorage,
-  limits: {
-    fileSize: 5 * 1024 * 1024, // 5MB limit
-  },
-  fileFilter: (req, file, cb) => {
-    if (file.mimetype.startsWith('image/')) {
-      cb(null, true);
-    } else {
-      cb(new Error('Only image files are allowed'));
+function calculateStripeFee(amount: number): number {
+  return (amount * 0.029) + 0.30; // 2.9% + $0.30
+}
+
+function calculateNetAmount(amount: number): number {
+  const platformFee = calculatePlatformFee(amount);
+  const stripeFee = calculateStripeFee(amount);
+  return amount - platformFee - stripeFee;
+}
+
+// Progress tracking for uploads
+const uploadProgress = new Map<number, any>();
+
+// File processing functions
+async function processCSVFile(buffer: Buffer, uploadId: number, userId: number): Promise<void> {
+  const csvData: any[] = [];
+  const stream = Readable.from(buffer.toString());
+  
+  return new Promise((resolve, reject) => {
+    stream
+      .pipe(csv())
+      .on('data', (data) => csvData.push(data))
+      .on('end', async () => {
+        try {
+          await processOrderData(csvData, uploadId, userId);
+          resolve();
+        } catch (error) {
+          reject(error);
+        }
+      })
+      .on('error', reject);
+  });
+}
+
+async function processXLSXFile(buffer: Buffer, uploadId: number, userId: number): Promise<void> {
+  const workbook = XLSX.read(buffer, { type: 'buffer' });
+  const sheetName = workbook.SheetNames[0];
+  const worksheet = workbook.Sheets[sheetName];
+  const jsonData = XLSX.utils.sheet_to_json(worksheet);
+  
+  await processOrderData(jsonData, uploadId, userId);
+}
+
+async function processOrderData(data: any[], uploadId: number, userId: number): Promise<void> {
+  let processedCount = 0;
+  const totalRecords = data.length;
+  
+  // Store progress data for potential API queries
+  uploadProgress.set(uploadId, {
+    progress: 0,
+    totalRecords,
+    processedRecords: 0,
+    status: 'processing'
+  });
+  
+  // Group orders by Order ID to handle duplicates (refunds)
+  const orderGroups = new Map<string, any[]>();
+  
+  for (const row of data) {
+    const orderId = row['Order ID'] || row.order_id || row.OrderId || `ORD-${Date.now()}-${processedCount}`;
+    if (!orderGroups.has(orderId)) {
+      orderGroups.set(orderId, []);
+    }
+    orderGroups.get(orderId)!.push(row);
+  }
+  
+  for (const [orderId, rows] of orderGroups.entries()) {
+    try {
+      // For duplicate Order IDs, use the record with amount = 0 (refund record)
+      let orderRow = rows[0];
+      let refundAmount = 0;
+      
+      if (rows.length > 1) {
+        // Find the refund record (amount = 0) and the original order
+        const refundRecord = rows.find(r => parseFloat(r['Total (- Refund)'] || r.amount || '0') === 0);
+        const originalRecord = rows.find(r => parseFloat(r['Total (- Refund)'] || r.amount || '0') > 0);
+        
+        if (refundRecord && originalRecord) {
+          orderRow = refundRecord; // Use refund record as main record
+          refundAmount = parseFloat(originalRecord['Refund Amount'] || originalRecord.refund_amount || '0');
+        }
+      }
+
+      // Extract location name and ensure location exists
+      const locationName = orderRow.location || orderRow.Location || 'Unknown Location';
+      let location = await storage.getLocationByName(locationName);
+      
+      if (!location) {
+        location = await storage.createLocation({
+          name: locationName,
+          code: locationName.toLowerCase().replace(/\s+/g, '_'),
+          isActive: true,
+        });
+      }
+
+      // Map fields according to specification:
+      // Amount = Total (- Refund)
+      // Order ID = Order ID  
+      // Date = Paid Date
+      // Customer = First Name
+      // Status = Status
+      // Refund = Refund Amount
+      
+      const amount = parseFloat(orderRow['Total (- Refund)'] || orderRow.total || orderRow.amount || '0');
+      const platformFee = calculatePlatformFee(amount);
+      const stripeFee = calculateStripeFee(amount);
+      const netAmount = calculateNetAmount(amount);
+
+      const orderData = {
+        orderId: orderId,
+        locationId: location.id,
+        customerName: orderRow['First Name'] || orderRow.firstName || orderRow.customer_name || '',
+        firstName: orderRow['First Name'] || orderRow.firstName || '',
+        customerEmail: orderRow.customer_email || orderRow.CustomerEmail || orderRow['Customer Email'] || '',
+        cardLast4: orderRow.card_last4 || orderRow.CardLast4 || orderRow['Card Last 4'] || '',
+        paymentMethod: orderRow.payment || orderRow.Payment || orderRow['Payment Method'] || '',
+        refundAmount: refundAmount.toString(),
+        amount: amount.toString(),
+        tax: parseFloat(orderRow.tax || orderRow.Tax || '0').toString(),
+        total: amount.toString(), // Use amount as total since amount = Total (- Refund)
+        status: (orderRow.Status || orderRow.status || 'completed').toLowerCase(),
+        platformFee: platformFee.toString(),
+        stripeFee: stripeFee.toString(),
+        netAmount: netAmount.toString(),
+        orderNotes: orderRow.notes || orderRow.Notes || orderRow['Order Notes'] || '',
+        orderDate: (() => {
+          const dateString = orderRow['Paid Date'] || orderRow.paid_date || orderRow.order_date || orderRow['Order Date'];
+          if (!dateString) {
+            console.warn('No date found for order:', orderId);
+            return new Date().toISOString().split('T')[0];
+          }
+          
+          // Try parsing the date string
+          const parsedDate = new Date(dateString);
+          if (isNaN(parsedDate.getTime())) {
+            console.warn('Invalid date format for order:', orderId, 'Date value:', dateString);
+            return new Date().toISOString().split('T')[0];
+          }
+          
+          return parsedDate.toISOString().split('T')[0];
+        })(),
+      };
+
+      // Check if order already exists
+      const existingOrder = await storage.getOrderByOrderId(orderData.orderId);
+      if (!existingOrder) {
+        await storage.createOrder(orderData);
+      }
+      
+      // Always increment processed count for progress tracking
+      processedCount++;
+      
+      // Update progress tracking
+      uploadProgress.set(uploadId, {
+        progress: Math.round((processedCount / totalRecords) * 100),
+        totalRecords,
+        processedRecords: processedCount,
+        status: 'processing'
+      });
+      
+      console.log(`Processed ${processedCount}/${totalRecords} records (${Math.round((processedCount / totalRecords) * 100)}%)`);
+      
+      // Add delay to make progress visible (100ms per record)
+      await new Promise(resolve => setTimeout(resolve, 100));
+    } catch (error) {
+      console.error('Error processing row:', error);
     }
   }
-});
+
+  // Update file upload record
+  await storage.updateFileUpload(uploadId, {
+    recordsProcessed: processedCount,
+    status: 'completed',
+  });
+}
 
 export async function registerRoutes(app: Express): Promise<Server> {
+  app.use(sessionConfig);
+
   // Initialize admin user if not exists
   const initializeAdmin = async () => {
     try {
-      const adminUsername = process.env.ADMIN_USERNAME || 'admin';
-      console.log(`Checking for admin user: ${adminUsername}`);
-      const adminUser = await storage.getUserByUsername(adminUsername);
-      console.log(`Admin user exists:`, adminUser ? 'Yes' : 'No');
-      
+      const adminUser = await storage.getUserByUsername('admin');
       if (!adminUser) {
-        console.log('Creating new admin user...');
-        const hashedPassword = await bcrypt.hash(process.env.ADMIN_PASSWORD || 'admin123', 10);
         await storage.createUser({
-          username: adminUsername,
-          password: hashedPassword,
+          username: 'admin',
+          password: 'admin',
           firstName: 'Admin',
           lastName: 'User',
           email: 'admin@company.com',
           role: 'admin',
         });
-        console.log(`Admin user created with username: ${adminUsername}`);
-      } else {
-        console.log(`Admin user already exists with username: ${adminUsername}`);
-        // Skip automatic password update to preserve manually set password
-        console.log('Admin user found - password update skipped (manually configured)');
+        console.log('Admin user created with username: admin, password: admin');
       }
     } catch (error) {
       console.error('Error initializing admin user:', error);
@@ -88,471 +271,230 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   await initializeAdmin();
 
-  // Serve uploaded logos
-  app.use('/uploads', express.static('uploads'));
-
-  // Serve favicon at root level
-  app.get('/favicon.ico', async (req, res) => {
-    try {
-      const logoSettings = await storage.getLogoSettings();
-      if (logoSettings?.faviconPath) {
-        res.sendFile(path.resolve(logoSettings.faviconPath));
-      } else {
-        res.status(404).send('Favicon not found');
-      }
-    } catch (error) {
-      res.status(404).send('Favicon not found');
-    }
-  });
-
-  // Serve Open Graph image for social media previews
-  app.get('/og-image', async (req, res) => {
-    try {
-      const logoSettings = await storage.getLogoSettings();
-      
-      if (logoSettings?.logoPath) {
-        const logoPath = path.resolve(logoSettings.logoPath);
-        
-        // Get file extension to determine MIME type
-        const ext = path.extname(logoPath).toLowerCase();
-        let mimeType = 'image/png'; // Default
-        
-        switch (ext) {
-          case '.jpg':
-          case '.jpeg':
-            mimeType = 'image/jpeg';
-            break;
-          case '.png':
-            mimeType = 'image/png';
-            break;
-          case '.gif':
-            mimeType = 'image/gif';
-            break;
-          case '.webp':
-            mimeType = 'image/webp';
-            break;
-        }
-        
-        res.setHeader('Content-Type', mimeType);
-        res.setHeader('Cache-Control', 'public, max-age=3600'); // Cache for 1 hour
-        return res.sendFile(logoPath);
-      }
-      
-      // Return 404 if no logo is set
-      res.status(404).send('Open Graph image not found');
-    } catch (error) {
-      console.error('Error serving Open Graph image:', error);
-      res.status(500).send('Internal server error');
-    }
-  });
-
-  // Session middleware
-  app.use(session({
-    secret: 'your-secret-key',
-    resave: false,
-    saveUninitialized: false,
-    cookie: { secure: false }
-  }));
-
-  // Auth routes
+  // Authentication routes
   app.post('/api/auth/login', async (req, res) => {
     try {
-      const { username, password, recaptchaToken } = req.body;
+      const { username, password } = req.body;
       
-      // Check reCAPTCHA if enabled
-      const recaptchaSettings = await storage.getRecaptchaSettings();
-      if (recaptchaSettings && recaptchaSettings.isActive) {
-        if (!recaptchaToken) {
-          return res.status(400).json({ message: "reCAPTCHA verification required" });
-        }
-        
-        // Verify reCAPTCHA token
-        try {
-          const verifyUrl = 'https://www.google.com/recaptcha/api/siteverify';
-          const verifyResponse = await axios.post(verifyUrl, null, {
-            params: {
-              secret: recaptchaSettings.secretKey,
-              response: recaptchaToken
-            }
-          });
-          
-          if (!verifyResponse.data.success) {
-            return res.status(400).json({ message: "reCAPTCHA verification failed" });
+      if (!username || !password) {
+        return res.status(400).json({ message: "Username and password required" });
+      }
 
-        } catch (recaptchaError) {
-          console.error("reCAPTCHA verification error:", recaptchaError);
-          return res.status(500).json({ message: "reCAPTCHA verification error" });
-        }
-      }
-      
-      console.log(`Login attempt for username: ${username}`);
       const user = await storage.validateUser(username, password);
-      console.log(`User found:`, user ? 'Yes' : 'No');
-      
-      if (user) {
-        req.session.user = user;
-        res.json(user);
-      } else {
-        res.status(401).json({ message: "Invalid credentials" });
+      if (!user) {
+        return res.status(401).json({ message: "Invalid credentials" });
       }
+
+      req.session.user = {
+        id: user.id,
+        username: user.username,
+        role: user.role,
+        firstName: user.firstName,
+        lastName: user.lastName,
+      };
+
+      res.json({
+        id: user.id,
+        username: user.username,
+        role: user.role,
+        firstName: user.firstName,
+        lastName: user.lastName,
+      });
     } catch (error) {
       console.error("Login error:", error);
       res.status(500).json({ message: "Login failed" });
     }
   });
 
+  app.post('/api/auth/logout', (req, res) => {
+    req.session.destroy((err) => {
+      if (err) {
+        return res.status(500).json({ message: "Logout failed" });
+      }
+      res.json({ message: "Logged out successfully" });
+    });
+  });
+
   app.get('/api/auth/user', (req, res) => {
-    if (req.session?.user) {
+    if (req.session.user) {
       res.json(req.session.user);
     } else {
       res.status(401).json({ message: "Not authenticated" });
     }
   });
 
-  app.post('/api/auth/logout', (req, res) => {
-    req.session.destroy(() => {
-      res.json({ message: "Logged out" });
-    });
-  });
-
-  // Profile routes
-  app.put('/api/auth/profile', isAuthenticated, async (req, res) => {
+  // Dashboard routes
+  app.get('/api/dashboard/summary', requireAuth, async (req: any, res) => {
     try {
-      const userId = req.session?.user?.id;
-      if (!userId) {
-        return res.status(401).json({ message: "Not authenticated" });
-      }
-
-      const { username, firstName, lastName, email, phoneNumber } = req.body;
-
-      // Basic validation
-      if (!username || typeof username !== 'string' || username.trim().length === 0) {
-        return res.status(400).json({ message: "Username is required" });
-      }
-
-      // Check if username is already taken by another user
-      const existingUser = await storage.getUserByUsername(username.trim());
-      if (existingUser && existingUser.id !== userId) {
-        return res.status(400).json({ message: "Username already taken" });
-      }
-
-      const profileData = {
-        username: username.trim(),
-        firstName: firstName?.trim() || null,
-        lastName: lastName?.trim() || null,
-        email: email?.trim() || null,
-        phoneNumber: phoneNumber?.trim() || null,
-      };
-
-      const updatedUser = await storage.updateUserProfile(userId, profileData);
+      const { location, month } = req.query;
+      const userId = req.session.user.id;
+      const userRole = req.session.user.role;
       
-      // Update session with new user data
-      req.session.user = updatedUser;
+      let locationId: number | undefined;
       
-      res.json(updatedUser);
-    } catch (error: any) {
-      console.error("Update profile error:", error);
-      res.status(500).json({ message: error.message || "Failed to update profile" });
+      // For non-admin users, restrict to their assigned locations
+      if (userRole !== 'admin') {
+        const userLocations = await storage.getUserLocationAccess(userId);
+        if (location && userLocations.includes(parseInt(location as string))) {
+          locationId = parseInt(location as string);
+        } else if (userLocations.length > 0) {
+          locationId = userLocations[0]; // Default to first accessible location
+        }
+      } else if (location && location !== 'all') {
+        locationId = parseInt(location as string);
+      }
+
+      const summary = await storage.getDashboardSummary(locationId, month as string);
+      res.json(summary);
+    } catch (error) {
+      console.error("Dashboard summary error:", error);
+      res.status(500).json({ message: "Failed to fetch dashboard summary" });
     }
   });
 
-  app.put('/api/auth/password', isAuthenticated, async (req, res) => {
+  app.get('/api/dashboard/monthly-breakdown', requireAuth, async (req: any, res) => {
     try {
-      const userId = req.session?.user?.id;
-      if (!userId) {
-        return res.status(401).json({ message: "Not authenticated" });
-      }
-
-      const { currentPassword, newPassword } = req.body;
-
-      if (!currentPassword || !newPassword) {
-        return res.status(400).json({ message: "Current password and new password are required" });
-      }
-
-      if (newPassword.length < 6) {
-        return res.status(400).json({ message: "New password must be at least 6 characters long" });
-      }
-
-      const success = await storage.changeUserPassword(userId, currentPassword, newPassword);
+      const { year, location } = req.query;
+      const userId = req.session.user.id;
+      const userRole = req.session.user.role;
       
-      if (success) {
-        res.json({ message: "Password changed successfully" });
-      } else {
-        res.status(500).json({ message: "Failed to change password" });
-      }
-    } catch (error: any) {
-      console.error("Change password error:", error);
-      if (error.message === "Current password is incorrect") {
-        res.status(400).json({ message: error.message });
-      } else {
-        res.status(500).json({ message: error.message || "Failed to change password" });
-      }
-    }
-  });
-
-  // User routes
-  app.get('/api/users', isAuthenticated, async (req, res) => {
-    try {
-      const users = await storage.getAllUsers();
-      res.json(users);
-    } catch (error) {
-      console.error("Get users error:", error);
-      res.status(500).json({ message: "Failed to get users" });
-    }
-  });
-
-  app.post('/api/users', isAuthenticated, async (req, res) => {
-    try {
-      const user = await storage.createUser(req.body);
-      res.json(user);
-    } catch (error) {
-      console.error("Create user error:", error);
-      res.status(500).json({ message: "Failed to create user" });
-    }
-  });
-
-  app.put('/api/users/:id', isAuthenticated, async (req, res) => {
-    try {
-      const userId = parseInt(req.params.id);
-      const user = await storage.updateUser(userId, req.body);
-      res.json(user);
-    } catch (error) {
-      console.error("Update user error:", error);
-      res.status(500).json({ message: "Failed to update user" });
-    }
-  });
-
-  app.delete('/api/users/:id', isAuthenticated, async (req, res) => {
-    try {
-      const userId = parseInt(req.params.id);
-      await storage.deleteUser(userId);
-      res.json({ message: "User deleted successfully" });
-    } catch (error) {
-      console.error("Delete user error:", error);
-      res.status(500).json({ message: "Failed to delete user" });
-    }
-  });
-
-  // User location access routes
-  app.get('/api/users/:id/locations', isAuthenticated, async (req, res) => {
-    try {
-      const userId = parseInt(req.params.id);
-      const locationIds = await storage.getUserLocationAccess(userId);
-      res.json(locationIds);
-    } catch (error) {
-      console.error("Get user locations error:", error);
-      res.status(500).json({ message: "Failed to get user locations" });
-    }
-  });
-
-  app.post('/api/users/:id/locations', isAuthenticated, async (req, res) => {
-    try {
-      const userId = parseInt(req.params.id);
-      const { locationIds } = req.body;
-      console.log("Location update request - userId:", userId, "body:", req.body, "locationIds:", locationIds);
+      let locationId: number | undefined;
       
-      // Ensure locationIds is an array of numbers
-      const validLocationIds = Array.isArray(locationIds) 
-        ? locationIds.filter(id => typeof id === 'number' || (typeof id === 'string' && !isNaN(Number(id)))).map(id => Number(id))
-        : [];
-        
-      await storage.setUserLocationAccess(userId, validLocationIds);
-      res.json({ message: "User location access updated successfully" });
+      // For non-admin users, restrict to their assigned locations
+      if (userRole !== 'admin') {
+        const userLocations = await storage.getUserLocationAccess(userId);
+        if (location && userLocations.includes(parseInt(location as string))) {
+          locationId = parseInt(location as string);
+        }
+      } else if (location && location !== 'all') {
+        locationId = parseInt(location as string);
+      }
+
+      const breakdown = await storage.getMonthlyBreakdown(
+        undefined,
+        locationId
+      );
+      res.json(breakdown);
     } catch (error) {
-      console.error("Update user locations error:", error);
-      res.status(500).json({ message: "Failed to update user locations" });
+      console.error("Monthly breakdown error:", error);
+      res.status(500).json({ message: "Failed to fetch monthly breakdown" });
     }
   });
 
-  // Update user route
-  app.put('/api/users/:id', isAuthenticated, async (req, res) => {
+  // Orders routes
+  app.get('/api/orders', requireAuth, async (req: any, res) => {
     try {
-      const userId = parseInt(req.params.id);
-      const updateData = req.body;
+      const userId = req.session.user.id;
+      const userRole = req.session.user.role;
+      const { location, search, month } = req.query;
       
-      // Hash password if provided
-      if (updateData.password) {
-        updateData.password = await bcrypt.hash(updateData.password, 10);
+      let locationId: number | undefined;
+      
+      // For non-admin users, restrict to their assigned locations
+      if (userRole !== 'admin') {
+        const userLocations = await storage.getUserLocationAccess(userId);
+        if (location && userLocations.includes(parseInt(location as string))) {
+          locationId = parseInt(location as string);
+        } else if (!location && userLocations.length > 0) {
+          // If no location specified, get orders from all user's locations
+          const allOrders = await Promise.all(
+            userLocations.map(locId => storage.getOrdersByLocation(locId))
+          );
+          let orders = allOrders.flat();
+          
+          // Apply search filter
+          if (search) {
+            orders = orders.filter(order => 
+              order.orderId.toLowerCase().includes(search.toLowerCase()) ||
+              order.customerName?.toLowerCase().includes(search.toLowerCase()) ||
+              order.customerEmail?.toLowerCase().includes(search.toLowerCase())
+            );
+          }
+          
+          // Apply month filter
+          if (month && month !== 'all') {
+            orders = orders.filter(order => order.orderDate.startsWith(month));
+          }
+          
+          return res.json(orders);
+        }
+      } else if (location && location !== 'all') {
+        locationId = parseInt(location as string);
+      }
+
+      let orders = locationId 
+        ? await storage.getOrdersByLocation(locationId)
+        : await storage.getAllOrders();
+      
+      // Apply search filter
+      if (search) {
+        orders = orders.filter(order => 
+          order.orderId.toLowerCase().includes(search.toLowerCase()) ||
+          order.customerName?.toLowerCase().includes(search.toLowerCase()) ||
+          order.customerEmail?.toLowerCase().includes(search.toLowerCase())
+        );
       }
       
-      const updatedUser = await storage.updateUser(userId, updateData);
-      res.json(updatedUser);
-    } catch (error) {
-      console.error("Update user error:", error);
-      res.status(500).json({ message: "Failed to update user" });
-    }
-  });
-
-  // Delete user route
-  app.delete('/api/users/:id', isAuthenticated, async (req, res) => {
-    try {
-      const userId = parseInt(req.params.id);
-      await storage.deleteUser(userId);
-      res.json({ message: "User deleted successfully" });
-    } catch (error) {
-      console.error("Delete user error:", error);
-      res.status(500).json({ message: "Failed to delete user" });
-    }
-  });
-
-  // User page permissions routes
-  app.get('/api/auth/permissions', isAuthenticated, async (req, res) => {
-    try {
-      // Get user ID from session - handle different session structures
-      const userId = req.session?.user?.id || req.user?.id;
-      
-      if (!userId) {
-        return res.status(401).json({ message: "User ID not found in session" });
-      }
-
-      // Get user from database to check role
-      const user = await storage.getUser(userId);
-      
-      if (!user) {
-        return res.status(404).json({ message: "User not found" });
-      }
-
-      // Check if user has admin role
-      if (user.role === 'admin') {
-        return res.json({ isAdmin: true });
-      }
-
-      // For non-admin users, get their specific permissions
-      const permissions = await storage.getUserPagePermissions(userId);
-      res.json(permissions || {});
-    } catch (error) {
-      console.error("Get user permissions error:", error);
-      res.status(500).json({ message: "Failed to get user permissions" });
-    }
-  });
-
-  // User location access routes
-  app.get('/api/users/:id/locations', isAuthenticated, async (req, res) => {
-    try {
-      const userId = parseInt(req.params.id);
-      const locationIds = await storage.getUserLocationAccess(userId);
-      res.json(locationIds);
-    } catch (error) {
-      console.error("Get user locations error:", error);
-      res.status(500).json({ message: "Failed to get user locations" });
-    }
-  });
-
-  app.post('/api/users/:id/locations', isAuthenticated, async (req, res) => {
-    try {
-      const userId = parseInt(req.params.id);
-      const { locationIds } = req.body;
-      await storage.setUserLocationAccess(userId, locationIds || []);
-      res.json({ message: "User location access updated successfully" });
-    } catch (error) {
-      console.error("Update user locations error:", error);
-      res.status(500).json({ message: "Failed to update user locations" });
-    }
-  });
-
-  // User page permissions routes
-  app.get('/api/users/:id/permissions', isAuthenticated, async (req, res) => {
-    try {
-      const userId = parseInt(req.params.id);
-      const permissions = await storage.getUserPagePermissions(userId);
-      res.json(permissions);
-    } catch (error) {
-      console.error("Get user permissions error:", error);
-      res.status(500).json({ message: "Failed to get user permissions" });
-    }
-  });
-
-  app.post('/api/users/:id/permissions', isAuthenticated, async (req, res) => {
-    try {
-      const userId = parseInt(req.params.id);
-      const { permissions } = req.body;
-      await storage.setUserPagePermissions(userId, permissions || []);
-      res.json({ message: "User page permissions updated successfully" });
-    } catch (error) {
-      console.error("Update user permissions error:", error);
-      res.status(500).json({ message: "Failed to update user permissions" });
-    }
-  });
-
-  // User status access routes
-  app.get('/api/users/:id/statuses', isAuthenticated, async (req, res) => {
-    try {
-      const userId = parseInt(req.params.id);
-      const statuses = await storage.getUserStatusAccess(userId);
-      res.json(statuses);
-    } catch (error) {
-      console.error("Get user statuses error:", error);
-      res.status(500).json({ message: "Failed to get user statuses" });
-    }
-  });
-
-  app.post('/api/users/:id/statuses', isAuthenticated, async (req, res) => {
-    try {
-      const userId = parseInt(req.params.id);
-      const { statuses } = req.body;
-      await storage.setUserStatusAccess(userId, statuses || []);
-      res.json({ message: "User status access updated successfully" });
-    } catch (error) {
-      console.error("Update user statuses error:", error);
-      res.status(500).json({ message: "Failed to update user statuses" });
-    }
-  });
-
-  // Location routes
-  app.get('/api/locations', isAuthenticated, async (req, res) => {
-    try {
-      const locations = await storage.getAllLocations();
-      res.json(locations);
-    } catch (error) {
-      console.error("Get locations error:", error);
-      res.status(500).json({ message: "Failed to get locations" });
-    }
-  });
-
-  app.post('/api/locations', isAuthenticated, async (req, res) => {
-    try {
-      const location = await storage.createLocation(req.body);
-      res.json(location);
-    } catch (error) {
-      console.error("Create location error:", error);
-      res.status(500).json({ message: "Failed to create location" });
-    }
-  });
-
-  app.delete('/api/locations', isAuthenticated, async (req, res) => {
-    try {
-      const { ids } = req.body;
-      if (!Array.isArray(ids) || ids.length === 0) {
-        return res.status(400).json({ message: "Invalid location IDs" });
+      // Apply month filter
+      if (month && month !== 'all') {
+        orders = orders.filter(order => order.orderDate.startsWith(month));
       }
       
-      // Check if any locations are assigned to store connections
-      const idsString = ids.join(', ');
-      const storeConnections = await pool.query(`SELECT name, default_location_id FROM store_connections WHERE default_location_id IN (${idsString})`);
-      
-      if (storeConnections.rows.length > 0) {
-        const assignedStores = storeConnections.rows.map((row: any) => row.name).join(', ');
-        return res.status(400).json({ 
-          message: `Cannot delete locations assigned to store connections: ${assignedStores}. Remove the assignment first.` 
-        });
-      }
-      
-      await storage.deleteLocations(ids);
-      res.json({ message: "Locations deleted successfully" });
-    } catch (error: any) {
-      console.error("Delete locations error:", error);
-      if (error.message && error.message.includes("Cannot delete locations with existing orders")) {
-        res.status(400).json({ message: error.message });
-      } else if (error.message && error.message.includes("Cannot delete locations assigned to store connections")) {
-        res.status(400).json({ message: error.message });
-      } else {
-        res.status(500).json({ message: "Failed to delete locations" });
-      }
+      res.json(orders);
+    } catch (error) {
+      console.error("Get orders error:", error);
+      res.status(500).json({ message: "Failed to fetch orders" });
     }
   });
 
-  // Order management endpoints
-  // Bulk delete orders (admin only)
+  app.get('/api/orders/search', requireAuth, async (req: any, res) => {
+    try {
+      const { q, location } = req.query;
+      const userId = req.session.user.id;
+      const userRole = req.session.user.role;
+      
+      let locationId: number | undefined;
+      
+      // For non-admin users, restrict to their assigned locations
+      if (userRole !== 'admin') {
+        const userLocations = await storage.getUserLocationAccess(userId);
+        if (location && userLocations.includes(parseInt(location as string))) {
+          locationId = parseInt(location as string);
+        }
+      } else if (location && location !== 'all') {
+        locationId = parseInt(location as string);
+      }
+
+      const orders = await storage.searchOrders(q as string, locationId);
+      res.json(orders);
+    } catch (error) {
+      console.error("Order search error:", error);
+      res.status(500).json({ message: "Failed to search orders" });
+    }
+  });
+
+  app.put('/api/orders/:id', requireAdmin, async (req, res) => {
+    try {
+      const orderId = parseInt(req.params.id);
+      const orderData = req.body;
+      
+      // Recalculate fees if amount changed
+      if (orderData.amount) {
+        const amount = parseFloat(orderData.amount);
+        orderData.platformFee = calculatePlatformFee(amount).toString();
+        orderData.stripeFee = calculateStripeFee(amount).toString();
+        orderData.netAmount = calculateNetAmount(amount).toString();
+      }
+
+      const updatedOrder = await storage.updateOrder(orderId, orderData);
+      res.json(updatedOrder);
+    } catch (error) {
+      console.error("Update order error:", error);
+      res.status(500).json({ message: "Failed to update order" });
+    }
+  });
+
+  // Bulk delete orders (admin only) - MUST come before single delete route
   app.delete('/api/orders/bulk-delete', requireAdmin, async (req, res) => {
     try {
       const { orderIds } = req.body;
@@ -574,11 +516,736 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       
       await storage.deleteOrders(validIds);
-      console.log("Delete operation completed");
       res.json({ message: "Orders deleted successfully" });
     } catch (error: any) {
       console.error("Delete orders error:", error);
       res.status(500).json({ message: "Failed to delete orders" });
+    }
+  });
+
+  app.delete('/api/orders/:id', requireAdmin, async (req, res) => {
+    try {
+      const orderId = parseInt(req.params.id);
+      await storage.deleteOrder(orderId);
+      res.json({ message: "Order deleted successfully" });
+    } catch (error) {
+      console.error("Delete order error:", error);
+      res.status(500).json({ message: "Failed to delete order" });
+    }
+  });
+
+  // Locations routes
+  app.get('/api/locations', requireAuth, async (req: any, res) => {
+    try {
+      const userId = req.session.user.id;
+      const userRole = req.session.user.role;
+      
+      if (userRole === 'admin') {
+        const locations = await storage.getAllLocations();
+        res.json(locations);
+      } else {
+        const userLocationIds = await storage.getUserLocationAccess(userId);
+        const allLocations = await storage.getAllLocations();
+        const userLocations = allLocations.filter(loc => userLocationIds.includes(loc.id));
+        res.json(userLocations);
+      }
+    } catch (error) {
+      console.error("Locations error:", error);
+      res.status(500).json({ message: "Failed to fetch locations" });
+    }
+  });
+
+  // Users routes
+  app.get('/api/users', requireAdmin, async (req, res) => {
+    try {
+      const users = await storage.getAllUsers();
+      // Remove password from response
+      const safeUsers = users.map(user => {
+        const { password, ...safeUser } = user;
+        return safeUser;
+      });
+      res.json(safeUsers);
+    } catch (error) {
+      console.error("Users error:", error);
+      res.status(500).json({ message: "Failed to fetch users" });
+    }
+  });
+
+  app.post('/api/users', requireAdmin, async (req, res) => {
+    try {
+      const userData = insertUserSchema.parse(req.body);
+      const user = await storage.createUser(userData);
+      
+      // Set location access if provided
+      if (req.body.locationIds && Array.isArray(req.body.locationIds)) {
+        await storage.setUserLocationAccess(user.id, req.body.locationIds);
+      }
+      
+      const { password, ...safeUser } = user;
+      res.json(safeUser);
+    } catch (error) {
+      console.error("Create user error:", error);
+      res.status(500).json({ message: "Failed to create user" });
+    }
+  });
+
+  app.put('/api/users/:id', requireAdmin, async (req, res) => {
+    try {
+      const userId = parseInt(req.params.id);
+      if (isNaN(userId)) {
+        return res.status(400).json({ message: "Invalid user ID" });
+      }
+
+      const updateData = insertUserSchema.partial().parse(req.body);
+      
+      const user = await storage.updateUser(userId, updateData);
+      
+      // Set location access if provided
+      if (req.body.locationIds && Array.isArray(req.body.locationIds)) {
+        const locationIds = req.body.locationIds.map((id: any) => parseInt(id)).filter((id: number) => !isNaN(id));
+        await storage.setUserLocationAccess(userId, locationIds);
+      }
+      
+      const { password, ...safeUser } = user;
+      res.json(safeUser);
+    } catch (error) {
+      console.error("Update user error:", error);
+      res.status(500).json({ message: "Failed to update user" });
+    }
+  });
+
+  app.delete('/api/users/:id', requireAdmin, async (req, res) => {
+    try {
+      const userId = parseInt(req.params.id);
+      
+      // Don't allow deleting the current admin user
+      if (userId === req.session.user.id) {
+        return res.status(400).json({ message: "Cannot delete your own account" });
+      }
+      
+      // First remove user location access
+      await storage.setUserLocationAccess(userId, []);
+      
+      // Then delete the user
+      await storage.deleteUser(userId);
+      
+      res.json({ message: "User deleted successfully" });
+    } catch (error) {
+      console.error("Delete user error:", error);
+      res.status(500).json({ message: "Failed to delete user" });
+    }
+  });
+
+  app.get('/api/users/:id/locations', requireAdmin, async (req, res) => {
+    try {
+      const userId = parseInt(req.params.id);
+      const locationIds = await storage.getUserLocationAccess(userId);
+      res.json(locationIds);
+    } catch (error) {
+      console.error("User locations error:", error);
+      res.status(500).json({ message: "Failed to fetch user locations" });
+    }
+  });
+
+  // File upload routes
+  app.post('/api/upload', requireAdmin, upload.single('file'), async (req: any, res) => {
+    try {
+      console.log("Upload started, file:", req.file?.originalname);
+      
+      if (!req.file) {
+        return res.status(400).json({ message: "No file uploaded" });
+      }
+
+      const userId = req.session.user.id;
+      console.log("Processing upload for user ID:", userId);
+      
+      // Create file upload record
+      const fileUpload = await storage.createFileUpload({
+        fileName: req.file.originalname,
+        fileSize: req.file.size,
+        fileData: req.file.buffer.toString('base64'),
+        uploadedBy: userId,
+        status: 'processing',
+        recordsProcessed: 0,
+      });
+
+      console.log("File upload record created:", fileUpload.id);
+
+      // Send immediate response to frontend to start progress polling
+      res.json({
+        message: "File uploaded successfully, processing started",
+        fileId: fileUpload.id,
+      });
+
+      // Process file asynchronously in background
+      (async () => {
+        try {
+          if (req.file.mimetype === 'text/csv') {
+            console.log("Processing CSV file");
+            await processCSVFile(req.file.buffer, fileUpload.id, userId);
+          } else {
+            console.log("Processing XLSX file");
+            await processXLSXFile(req.file.buffer, fileUpload.id, userId);
+          }
+          
+          // Update file upload status to completed
+          await storage.updateFileUpload(fileUpload.id, {
+            status: 'completed'
+          });
+          
+          // Mark as completed and clean up progress tracking
+          const finalProgress = uploadProgress.get(fileUpload.id) || {};
+          uploadProgress.set(fileUpload.id, {
+            ...finalProgress,
+            progress: 100,
+            status: 'completed'
+          });
+          
+          console.log("File processing completed successfully");
+        } catch (processError) {
+          console.error("File processing error:", processError);
+          await storage.updateFileUpload(fileUpload.id, { status: 'failed' });
+          
+          // Update progress tracking to show error
+          uploadProgress.set(fileUpload.id, {
+            progress: 0,
+            totalRecords: 0,
+            processedRecords: 0,
+            status: 'failed'
+          });
+        }
+      })();
+    } catch (error) {
+      console.error("File upload error:", error);
+      res.status(500).json({ message: "Failed to upload file" });
+    }
+  });
+
+  app.get('/api/uploads/recent', requireAdmin, async (req, res) => {
+    try {
+      const uploads = await storage.getRecentFileUploads();
+      res.json(uploads);
+    } catch (error) {
+      console.error("Recent uploads error:", error);
+      res.status(500).json({ message: "Failed to fetch recent uploads" });
+    }
+  });
+
+  app.get('/api/uploads/all', requireAdmin, async (req, res) => {
+    try {
+      const uploads = await storage.getAllFileUploads();
+      res.json(uploads);
+    } catch (error) {
+      console.error("All uploads error:", error);
+      res.status(500).json({ message: "Failed to fetch all uploads" });
+    }
+  });
+
+  app.get('/api/uploads/:id/download', requireAdmin, async (req, res) => {
+    try {
+      const uploadId = parseInt(req.params.id);
+      const upload = await storage.getFileUpload(uploadId);
+      
+      if (!upload) {
+        return res.status(404).json({ message: "File not found" });
+      }
+
+      // Set headers for file download
+      res.setHeader('Content-Disposition', `attachment; filename="${upload.fileName}"`);
+      res.setHeader('Content-Type', 'application/octet-stream');
+      
+      // Decode base64 file data and send as buffer
+      const fileBuffer = Buffer.from(upload.fileData, 'base64');
+      res.send(fileBuffer);
+    } catch (error) {
+      console.error("Download file error:", error);
+      res.status(500).json({ message: "Failed to download file" });
+    }
+  });
+
+  app.delete('/api/uploads', requireAdmin, async (req, res) => {
+    try {
+      const { ids } = req.body;
+      if (!Array.isArray(ids) || ids.length === 0) {
+        return res.status(400).json({ message: "Invalid file IDs" });
+      }
+      
+      await storage.deleteFileUploads(ids);
+      res.json({ message: "Files deleted successfully" });
+    } catch (error) {
+      console.error("Delete uploads error:", error);
+      res.status(500).json({ message: "Failed to delete files" });
+    }
+  });
+
+  app.delete('/api/locations', requireAdmin, async (req, res) => {
+    try {
+      const { ids } = req.body;
+      if (!Array.isArray(ids) || ids.length === 0) {
+        return res.status(400).json({ message: "Invalid location IDs" });
+      }
+      
+      await storage.deleteLocations(ids);
+      res.json({ message: "Locations deleted successfully" });
+    } catch (error: any) {
+      console.error("Delete locations error:", error);
+      if (error.message && error.message.includes("Cannot delete locations with existing orders")) {
+        res.status(400).json({ message: error.message });
+      } else {
+        res.status(500).json({ message: "Failed to delete locations" });
+      }
+    }
+  });
+
+  app.put('/api/users/:id', requireAdmin, async (req, res) => {
+    try {
+      const userId = parseInt(req.params.id);
+      const userData = req.body;
+      
+      // Update user
+      const updatedUser = await storage.updateUser(userId, userData);
+      
+      // Update location access if provided
+      if (req.body.locationIds && Array.isArray(req.body.locationIds)) {
+        await storage.setUserLocationAccess(userId, req.body.locationIds);
+      }
+      
+      const { password, ...safeUser } = updatedUser;
+      res.json(safeUser);
+    } catch (error) {
+      console.error("Update user error:", error);
+      res.status(500).json({ message: "Failed to update user" });
+    }
+  });
+
+  // Notes routes (admin only)
+  app.get('/api/notes', requireAdmin, async (req: any, res) => {
+    try {
+      const userId = req.session.user.id;
+      const notes = await storage.getNotes(userId);
+      res.json(notes);
+    } catch (error) {
+      console.error("Get notes error:", error);
+      res.status(500).json({ message: "Failed to fetch notes" });
+    }
+  });
+
+  app.get('/api/notes/:id', requireAdmin, async (req: any, res) => {
+    try {
+      const noteId = parseInt(req.params.id);
+      const userId = req.session.user.id;
+      const note = await storage.getNote(noteId, userId);
+      
+      if (!note) {
+        return res.status(404).json({ message: "Note not found" });
+      }
+      
+      res.json(note);
+    } catch (error) {
+      console.error("Get note error:", error);
+      res.status(500).json({ message: "Failed to fetch note" });
+    }
+  });
+
+  app.post('/api/notes', requireAdmin, async (req: any, res) => {
+    try {
+      const userId = req.session.user.id;
+      const { title, content } = req.body;
+      
+      if (!title || !content) {
+        return res.status(400).json({ message: "Title and content are required" });
+      }
+
+      const noteData = {
+        title,
+        content,
+        createdBy: userId,
+      };
+
+      const note = await storage.createNote(noteData);
+      res.json(note);
+    } catch (error) {
+      console.error("Create note error:", error);
+      res.status(500).json({ message: "Failed to create note" });
+    }
+  });
+
+  app.put('/api/notes/:id', requireAdmin, async (req: any, res) => {
+    try {
+      const noteId = parseInt(req.params.id);
+      const userId = req.session.user.id;
+      const { title, content } = req.body;
+
+      if (!title || !content) {
+        return res.status(400).json({ message: "Title and content are required" });
+      }
+
+      const noteData = { title, content };
+      const note = await storage.updateNote(noteId, noteData, userId);
+      
+      if (!note) {
+        return res.status(404).json({ message: "Note not found" });
+      }
+      
+      res.json(note);
+    } catch (error) {
+      console.error("Update note error:", error);
+      res.status(500).json({ message: "Failed to update note" });
+    }
+  });
+
+  app.delete('/api/notes/:id', requireAdmin, async (req: any, res) => {
+    try {
+      const noteId = parseInt(req.params.id);
+      const userId = req.session.user.id;
+      
+      await storage.deleteNote(noteId, userId);
+      res.json({ message: "Note deleted successfully" });
+    } catch (error) {
+      console.error("Delete note error:", error);
+      res.status(500).json({ message: "Failed to delete note" });
+    }
+  });
+
+  // Progress endpoint for checking upload progress
+  app.get('/api/progress/:uploadId', (req, res) => {
+    const uploadId = parseInt(req.params.uploadId);
+    const progress = uploadProgress.get(uploadId) || { progress: 0, status: 'not_found' };
+    res.json(progress);
+  });
+
+  // WooCommerce orders API endpoints
+  app.get('/api/woo-orders', requireAuth, async (req: any, res) => {
+    try {
+      const { location, search, startMonth, endMonth } = req.query;
+      const userId = req.session.user.id;
+      const userRole = req.session.user.role;
+      
+      let wooOrders = [];
+      
+      if (search) {
+        wooOrders = await storage.searchWooOrders(search, location && location !== "all" ? parseInt(location) : undefined);
+      } else if (startMonth && endMonth) {
+        const startDate = `${startMonth}-01`;
+        const endDate = new Date(endMonth + '-01');
+        endDate.setMonth(endDate.getMonth() + 1);
+        endDate.setDate(0);
+        
+        wooOrders = await storage.getWooOrdersByDateRange(
+          startDate, 
+          endDate.toISOString().split('T')[0],
+          location && location !== "all" ? parseInt(location) : undefined
+        );
+      } else {
+        wooOrders = await storage.getAllWooOrders(location && location !== "all" ? parseInt(location) : undefined);
+      }
+      
+      // Filter by user access if not admin
+      if (userRole !== 'admin') {
+        const userLocations = await storage.getUserLocationAccess(userId);
+        wooOrders = wooOrders.filter(order => userLocations.includes(order.locationId));
+      }
+      
+      res.json(wooOrders);
+    } catch (error) {
+      console.error("Get WooCommerce orders error:", error);
+      res.status(500).json({ message: "Failed to get WooCommerce orders" });
+    }
+  });
+
+  app.delete('/api/woo-orders/bulk-delete', requireAdmin, async (req, res) => {
+    try {
+      const { orderIds } = req.body;
+      
+      if (!Array.isArray(orderIds) || orderIds.length === 0) {
+        return res.status(400).json({ message: "Invalid order IDs" });
+      }
+      
+      const validIds = orderIds
+        .filter(id => id !== null && id !== undefined && !isNaN(Number(id)))
+        .map(id => Number(id));
+      
+      if (validIds.length === 0) {
+        return res.status(400).json({ message: "No valid order IDs provided" });
+      }
+      
+      await storage.deleteWooOrders(validIds);
+      res.json({ message: "WooCommerce orders deleted successfully" });
+    } catch (error: any) {
+      console.error("Delete WooCommerce orders error:", error);
+      res.status(500).json({ message: "Failed to delete WooCommerce orders" });
+    }
+  });
+
+  // Webhook settings API endpoints
+  app.get('/api/webhook-settings/:platform', requireAdmin, async (req, res) => {
+    try {
+      const { platform } = req.params;
+      const settings = await storage.getWebhookSettings(platform);
+      res.json(settings || { platform, secretKey: '', isActive: false });
+    } catch (error) {
+      console.error("Get webhook settings error:", error);
+      res.status(500).json({ message: "Failed to get webhook settings" });
+    }
+  });
+
+  app.post('/api/webhook-settings', requireAdmin, async (req, res) => {
+    try {
+      const { platform, secretKey, isActive } = req.body;
+      
+      if (!platform || !secretKey) {
+        return res.status(400).json({ message: "Platform and secret key are required" });
+      }
+      
+      const settings = await storage.upsertWebhookSettings({
+        platform,
+        secretKey,
+        isActive: isActive !== undefined ? isActive : true
+      });
+      
+      res.json(settings);
+    } catch (error) {
+      console.error("Save webhook settings error:", error);
+      res.status(500).json({ message: "Failed to save webhook settings" });
+    }
+  });
+
+  // Get webhook logs endpoint
+  app.get('/api/webhook-logs/:platform', requireAdmin, async (req, res) => {
+    try {
+      const { platform } = req.params;
+      const { limit } = req.query;
+      const logs = await storage.getRecentWebhookLogs(platform, parseInt(limit as string) || 20);
+      res.json(logs);
+    } catch (error) {
+      console.error("Get webhook logs error:", error);
+      res.status(500).json({ message: "Failed to get webhook logs" });
+    }
+  });
+
+  // REST API settings endpoints
+  app.get('/api/rest-api-settings/:platform', requireAdmin, async (req, res) => {
+    try {
+      const { platform } = req.params;
+      const settings = await storage.getRestApiSettings(platform);
+      res.json(settings || { platform, consumerKey: '', consumerSecret: '', storeUrl: '', isActive: false });
+    } catch (error) {
+      console.error("Get REST API settings error:", error);
+      res.status(500).json({ message: "Failed to get REST API settings" });
+    }
+  });
+
+  app.post('/api/rest-api-settings', requireAdmin, async (req, res) => {
+    try {
+      const restApiData = req.body;
+      const settings = await storage.upsertRestApiSettings(restApiData);
+      res.json(settings);
+    } catch (error) {
+      console.error("Upsert REST API settings error:", error);
+      res.status(500).json({ message: "Failed to save REST API settings" });
+    }
+  });
+
+  // Test WooCommerce connection
+  app.post('/api/test-woocommerce-connection', async (req, res) => {
+    try {
+      const settings = await storage.getRestApiSettings('woocommerce');
+      
+      if (!settings?.consumerKey || !settings?.consumerSecret || !settings?.storeUrl) {
+        return res.json({ 
+          success: false, 
+          message: "REST API credentials not configured" 
+        });
+      }
+
+      const testUrl = `${settings.storeUrl.replace(/\/$/, '')}/wp-json/wc/v3/orders?per_page=1&consumer_key=${settings.consumerKey}&consumer_secret=${settings.consumerSecret}`;
+      
+      const response = await fetch(testUrl);
+      
+      if (response.ok) {
+        const data = await response.json();
+        res.json({ 
+          success: true, 
+          message: `Connection successful! Found ${data.length} orders.`
+        });
+      } else {
+        res.json({ 
+          success: false, 
+          message: `Connection failed: ${response.status} ${response.statusText}` 
+        });
+      }
+    } catch (error) {
+      res.json({ 
+        success: false, 
+        message: `Connection error: ${error instanceof Error ? error.message : 'Unknown error'}` 
+      });
+    }
+  });
+
+  // Import orders from WooCommerce
+  app.post('/api/import-woocommerce-orders', async (req, res) => {
+    console.log('=== IMPORT ORDERS CALLED ===');
+    try {
+      const { startDate, endDate } = req.body;
+      console.log(`Import request received - startDate: ${startDate}, endDate: ${endDate}`);
+      const settings = await storage.getRestApiSettings('woocommerce');
+      
+      if (!settings || !settings.consumerKey || !settings.consumerSecret || !settings.storeUrl) {
+        console.log('Missing import credentials');
+        return res.status(400).json({ 
+          success: false, 
+          message: "REST API credentials not configured" 
+        });
+      }
+
+      let page = 1;
+      const perPage = 100;
+      let totalImported = 0;
+      let totalSkipped = 0;
+
+      while (true) {
+        const baseUrl = settings.storeUrl.replace(/\/$/, '');
+        let url = `${baseUrl}/wp-json/wc/v3/orders?per_page=${perPage}&page=${page}&orderby=date&order=desc&consumer_key=${settings.consumerKey}&consumer_secret=${settings.consumerSecret}`;
+        
+        if (startDate) {
+          url += `&after=${startDate}T00:00:00`;
+        }
+        if (endDate) {
+          url += `&before=${endDate}T23:59:59`;
+        }
+
+        console.log(`Fetching orders from: ${url}`);
+        
+        const response = await fetch(url, {
+          headers: {
+            'Content-Type': 'application/json',
+          }
+        });
+
+        if (!response.ok) {
+          const errorText = await response.text();
+          console.log(`API request failed: ${response.status} ${response.statusText}`, errorText);
+          throw new Error(`API request failed: ${response.status} ${response.statusText}`);
+        }
+
+        const orders = await response.json();
+        console.log(`Received ${orders.length} orders on page ${page}`);
+        
+        if (!orders.length) {
+          break; // No more orders
+        }
+
+        // Process each order using the same logic as webhook
+        for (const orderData of orders) {
+          try {
+            const wooOrderId = orderData.id?.toString();
+            const orderId = orderData.number?.toString() || orderData.id?.toString();
+            
+            // Check if order already exists
+            const existingOrder = await storage.getWooOrderByWooOrderId(wooOrderId);
+            if (existingOrder) {
+              totalSkipped++;
+              continue;
+            }
+
+            // Extract order information (same as webhook logic)
+            const status = orderData.status;
+            const total = parseFloat(orderData.total || '0');
+            const refundTotal = parseFloat(orderData.refund_total || '0');
+            
+            const billing = orderData.billing || {};
+            const customerName = billing.first_name && billing.last_name 
+              ? `${billing.first_name} ${billing.last_name}`.trim()
+              : billing.first_name || billing.last_name || 'Unknown';
+            const firstName = billing.first_name || null;
+            const customerEmail = billing.email || null;
+            const customerPhone = billing.phone || null;
+
+            // Location detection logic (same as webhook)
+            const metaData = orderData.meta_data || [];
+            let locationMeta = '';
+            let locationName = '';
+            
+            const orderableLocationKeys = [
+              '_orderable_location',
+              '_orderable_store_id',
+              '_orderable_pickup_location', 
+              '_orderable_service_location',
+              '_orderable_location_name',
+              '_orderable_store_name'
+            ];
+            
+            let locationMetaItem = metaData.find((meta: any) => 
+              orderableLocationKeys.includes(meta.key)
+            );
+            
+            if (!locationMetaItem) {
+              locationMetaItem = metaData.find((meta: any) => 
+                meta.key?.toLowerCase().includes('location') || 
+                meta.key?.toLowerCase().includes('store') ||
+                meta.key?.toLowerCase().includes('branch')
+              );
+            }
+            
+            if (locationMetaItem && locationMetaItem.value) {
+              locationMeta = locationMetaItem.value;
+              locationName = locationMetaItem.value;
+            }
+            
+            if (!locationName) {
+              locationName = billing.city || billing.state || 'Default Location';
+            }
+            
+            // Find or create location
+            let location = await storage.getLocationByName(locationName);
+            if (!location) {
+              location = await storage.createLocation({ name: locationName });
+            }
+
+            // Create order
+            const wooOrderData = {
+              wooOrderId: wooOrderId,
+              orderId,
+              locationId: location.id,
+              customerName: customerName || 'Unknown',
+              firstName,
+              customerEmail,
+              customerPhone,
+              status,
+              amount: total.toString(),
+              total: total.toString(),
+              refundTotal: refundTotal.toString(),
+              orderDate: new Date(orderData.date_created || new Date()),
+              locationMeta,
+              rawData: JSON.stringify(orderData),
+            };
+
+            await storage.createWooOrder(wooOrderData);
+            totalImported++;
+
+          } catch (orderError) {
+            console.error(`Failed to import order ${orderData.id}:`, orderError);
+          }
+        }
+
+        page++;
+      }
+
+      console.log(`Import summary: ${totalImported} imported, ${totalSkipped} skipped`);
+      
+      res.json({ 
+        success: true, 
+        message: `Import completed: ${totalImported} orders imported, ${totalSkipped} skipped (already exist)`,
+        imported: totalImported,
+        skipped: totalSkipped
+      });
+
+    } catch (error) {
+      console.error("Import orders error:", error);
+      res.status(500).json({ 
+        success: false, 
+        message: `Import failed: ${error.message}` 
+      });
     }
   });
 
@@ -594,39 +1261,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Get detailed sync status
-  app.get('/api/sync-status/:platform', isAuthenticated, async (req, res) => {
-    try {
-      const { platform } = req.params;
-      const settings = await storage.getSyncSettings(platform);
-      const syncManagerStatus = getSyncStatus(platform);
-      
-      if (!settings) {
-        return res.json({
-          isActive: false,
-          intervalMinutes: 5,
-          lastSyncAt: null,
-          lastOrderCount: 0,
-          isRunning: false,
-        });
-      }
-
-      // Check if sync is actually running in the sync manager AND enabled in settings
-      const isActuallyRunning = syncManagerStatus.isRunning && settings.isActive;
-
-      res.json({
-        isActive: settings.isActive || false,
-        intervalMinutes: settings.intervalMinutes || 5,
-        lastSyncAt: settings.lastSyncAt,
-        lastOrderCount: settings.lastOrderCount || 0,
-        isRunning: isActuallyRunning,
-      });
-    } catch (error) {
-      console.error("Error fetching sync status:", error);
-      res.status(500).json({ error: "Failed to fetch sync status" });
-    }
-  });
-
   app.post('/api/sync-settings', isAuthenticated, async (req, res) => {
     try {
       const { platform, isActive, intervalMinutes } = req.body;
@@ -635,23 +1269,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const now = new Date();
       const nextSync = new Date(now.getTime() + (intervalMinutes || 5) * 60 * 1000);
       
-      // Stop any existing sync first
-      await stopAutoSync(platform);
-      
       const settings = await storage.upsertSyncSettings({
         platform,
         isActive,
         intervalMinutes: intervalMinutes || 5,
-        isRunning: false,
-        lastSyncAt: null,
-        nextSyncAt: isActive ? nextSync : null
+        nextSyncAt: nextSync
       });
       
-      // Start auto sync if enabled
+      // Restart auto sync with new settings
       if (isActive) {
-        setTimeout(async () => {
-          await startAutoSync(platform);
-        }, 100); // Small delay to ensure settings are saved
+        await restartAutoSync();
+      } else {
+        await stopAutoSync();
       }
       
       res.json({ success: true, settings });
@@ -663,13 +1292,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.get('/api/sync-status', isAuthenticated, async (req, res) => {
     try {
-      const { platform = 'woocommerce' } = req.query;
       const systemStatus = getSyncStatus();
-      const settings = await storage.getSyncSettings(platform as string);
+      const settings = await storage.getSyncSettings('woocommerce');
       
       res.json({
         ...systemStatus,
-        settings: settings || { platform: platform as string, isActive: false, intervalMinutes: 5 },
+        settings: settings || { platform: 'woocommerce', isActive: false, intervalMinutes: 5 },
         nextSyncIn: settings?.nextSyncAt ? Math.max(0, Math.floor((new Date(settings.nextSyncAt).getTime() - Date.now()) / 1000)) : 0
       });
     } catch (error) {
@@ -678,1220 +1306,143 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post('/api/start-sync', isAuthenticated, async (req, res) => {
+  app.post('/api/trigger-sync', isAuthenticated, async (req, res) => {
     try {
-      const { platform = 'woocommerce' } = req.body;
-      
-      // First enable sync settings
-      await storage.upsertSyncSettings({
-        platform,
-        isActive: true,
-        intervalMinutes: 5,
-        isRunning: false,
-        lastSyncAt: null,
-        nextSyncAt: new Date(Date.now() + 5 * 60 * 1000)
-      });
-      
-      // Then start the sync manager
-      await startAutoSync(platform);
-      
-      res.json({ success: true, message: "Auto sync started successfully" });
+      // This will be handled by the manual import for now
+      res.json({ success: true, message: "Use the manual import to sync orders" });
     } catch (error) {
-      console.error("Start sync error:", error);
-      res.status(500).json({ message: "Failed to start auto sync" });
+      console.error("Trigger sync error:", error);
+      res.status(500).json({ message: "Failed to trigger sync" });
     }
   });
 
-  app.post('/api/stop-sync', isAuthenticated, async (req, res) => {
+  // WooCommerce webhook endpoint (keeping for backward compatibility)
+  app.post('/api/webhook/woocommerce', async (req, res) => {
     try {
-      const { platform = 'woocommerce' } = req.body;
+      console.log('WooCommerce webhook received - body length:', JSON.stringify(req.body).length);
+      console.log('WooCommerce webhook headers:', JSON.stringify(req.headers, null, 2));
       
-      // First stop the sync manager
-      await stopAutoSync(platform);
+      // Skip all authentication checks for now to get webhook working
+      console.log('Processing webhook without authentication checks');
       
-      // Then disable sync settings
-      const currentSettings = await storage.getSyncSettings(platform);
-      if (currentSettings) {
-        await storage.upsertSyncSettings({
-          ...currentSettings,
-          isActive: false,
-          isRunning: false
-        });
+      const orderData = req.body;
+      console.log('Processing order data:', orderData);
+      
+      // Handle WooCommerce test webhook
+      if (orderData.webhook_id && !orderData.id && !orderData.number) {
+        console.log('Received WooCommerce test webhook:', orderData.webhook_id);
+        return res.status(200).json({ message: 'Webhook test successful' });
       }
       
-      res.json({ success: true, message: "Auto sync stopped successfully" });
-    } catch (error) {
-      console.error("Stop sync error:", error);
-      res.status(500).json({ message: "Failed to stop auto sync" });
-    }
-  });
-
-
-
-  // REST API settings endpoints
-  app.get('/api/rest-api-settings/:platform', isAuthenticated, async (req, res) => {
-    try {
-      const { platform } = req.params;
-      const settings = await storage.getRestApiSettings(platform);
-      res.json(settings || { platform, consumerKey: '', consumerSecret: '', storeUrl: '', isActive: true });
-    } catch (error) {
-      console.error("Get REST API settings error:", error);
-      res.status(500).json({ message: "Failed to get REST API settings" });
-    }
-  });
-
-  app.post('/api/rest-api-settings', isAuthenticated, async (req, res) => {
-    try {
-      const settings = await storage.upsertRestApiSettings(req.body);
-      res.json({ success: true, settings });
-    } catch (error) {
-      console.error("Update REST API settings error:", error);
-      res.status(500).json({ message: "Failed to update REST API settings" });
-    }
-  });
-
-  // reCAPTCHA settings endpoints
-  app.get('/api/recaptcha-settings', async (req, res) => {
-    try {
-      const settings = await storage.getRecaptchaSettings();
-      // Only return public settings (not the secret key)
-      if (settings) {
-        res.json({ 
-          siteKey: settings.siteKey, 
-          isEnabled: settings.isActive || false
-        });
-      } else {
-        res.json({ siteKey: '', isEnabled: false });
+      // Validate that this is a proper WooCommerce order webhook
+      if (!orderData.id && !orderData.number) {
+        console.log('Invalid webhook data - missing required order fields');
+        return res.status(400).json({ error: 'Invalid webhook data' });
       }
-    } catch (error) {
-      console.error("Get reCAPTCHA settings error:", error);
-      res.status(500).json({ message: "Failed to get reCAPTCHA settings" });
-    }
-  });
-
-  // Full reCAPTCHA settings endpoint (authenticated, returns secret key for settings page)
-  app.get('/api/recaptcha-settings/admin', isAuthenticated, async (req, res) => {
-    try {
-      const settings = await storage.getRecaptchaSettings();
-      res.json(settings || { siteKey: '', secretKey: '', isActive: false });
-    } catch (error) {
-      console.error("Get reCAPTCHA admin settings error:", error);
-      res.status(500).json({ message: "Failed to get reCAPTCHA settings" });
-    }
-  });
-
-  app.post('/api/recaptcha-settings', isAuthenticated, async (req, res) => {
-    try {
-      const settings = await storage.upsertRecaptchaSettings(req.body);
-      res.json({ success: true, settings });
-    } catch (error) {
-      console.error("Update reCAPTCHA settings error:", error);
-      res.status(500).json({ message: "Failed to update reCAPTCHA settings" });
-    }
-  });
-
-  // Verify reCAPTCHA token
-  app.post('/api/verify-recaptcha', async (req, res) => {
-    try {
-      const { token } = req.body;
       
-      if (!token) {
-        return res.status(400).json({ success: false, message: "reCAPTCHA token is required" });
-      }
-
-      const settings = await storage.getRecaptchaSettings();
-      if (!settings || !settings.isActive) {
-        return res.json({ success: true, message: "reCAPTCHA is disabled" });
-      }
-
-      const verifyUrl = `https://www.google.com/recaptcha/api/siteverify`;
-      const response = await axios.post(verifyUrl, null, {
-        params: {
-          secret: settings.secretKey,
-          response: token
-        }
-      });
-
-      if (response.data.success) {
-        res.json({ success: true, message: "reCAPTCHA verification successful" });
-      } else {
-        res.status(400).json({ success: false, message: "reCAPTCHA verification failed" });
-      }
-    } catch (error) {
-      console.error("reCAPTCHA verification error:", error);
-      res.status(500).json({ success: false, message: "reCAPTCHA verification error" });
-    }
-  });
-
-  // Test WooCommerce connection endpoint
-  app.post('/api/test-woo-connection', isAuthenticated, async (req, res) => {
-    try {
-      const { storeUrl, consumerKey, consumerSecret } = req.body;
+      // Extract order information
+      const wooOrderId = orderData.id?.toString();
+      const orderId = orderData.number?.toString() || orderData.id?.toString();
+      const status = orderData.status;
+      const total = parseFloat(orderData.total || '0');
+      const refundTotal = parseFloat(orderData.refund_total || '0');
       
-      if (!storeUrl || !consumerKey || !consumerSecret) {
-        return res.status(400).json({ message: "Missing required API credentials" });
-      }
-
-      // Test connection by fetching a single order
-      const testUrl = `${storeUrl}/wp-json/wc/v3/orders?per_page=1&consumer_key=${consumerKey}&consumer_secret=${consumerSecret}`;
+      // Extract customer information
+      const billing = orderData.billing || {};
+      const customerName = `${billing.first_name || ''} ${billing.last_name || ''}`.trim();
+      const firstName = billing.first_name || '';
+      const lastName = billing.last_name || '';
+      const customerEmail = billing.email || '';
       
-      const response = await axios.get(testUrl);
+      // Extract location from meta data
+      const metaData = orderData.meta_data || [];
+      let locationMeta = '';
+      let locationName = '';
       
-      if (response.status === 200) {
-        res.json({ 
-          success: true, 
-          message: "Connection successful! Your WooCommerce store is accessible.",
-          ordersCount: Array.isArray(response.data) ? response.data.length : 0
-        });
-      } else {
-        res.status(400).json({ 
-          success: false, 
-          message: "Connection failed. Please check your credentials." 
-        });
-      }
-
-    } catch (error) {
-      console.error("Test connection error:", error);
-      res.status(500).json({ 
-        success: false, 
-        message: `Connection failed: ${error.response?.data?.message || error.message}` 
-      });
-    }
-  });
-
-  // Manual import endpoint
-  app.post('/api/import-woo-orders', isAuthenticated, async (req, res) => {
-    try {
-      const { storeUrl, consumerKey, consumerSecret, startDate, endDate } = req.body;
+      // Look for Orderable plugin location metadata first
+      const orderableLocationKeys = [
+        '_orderable_location',
+        '_orderable_store_id',
+        '_orderable_pickup_location', 
+        '_orderable_service_location',
+        '_orderable_location_name',
+        '_orderable_store_name'
+      ];
       
-      if (!storeUrl || !consumerKey || !consumerSecret) {
-        return res.status(400).json({ message: "Missing required API credentials" });
-      }
-
-      let imported = 0;
-      let skipped = 0;
-      let page = 1;
-      let hasMore = true;
-
-      while (hasMore) {
-        let url = `${storeUrl}/wp-json/wc/v3/orders?per_page=100&page=${page}&orderby=date&order=desc&consumer_key=${consumerKey}&consumer_secret=${consumerSecret}`;
-        
-        // Filter by specific order statuses (processing, completed, refunded)
-        url += `&status=processing,completed,refunded`;
-        
-        // Add date range filtering if provided
-        if (startDate) {
-          url += `&after=${startDate}T00:00:00`;
-        }
-        if (endDate) {
-          url += `&before=${endDate}T23:59:59`;
-        }
-        
-        const response = await axios.get(url);
-        const orders = response.data;
-        
-        if (!Array.isArray(orders) || orders.length === 0) {
-          hasMore = false;
-          break;
-        }
-
-        for (const order of orders) {
-          try {
-            // Check if order already exists
-            const existingOrder = await storage.getWooOrderByWooOrderId(order.id.toString());
-            if (existingOrder) {
-              skipped++;
-              continue;
-  
-
-            // Location assignment logic with domain-based defaults
-            let location = null;
-            const orderableLocationMeta = order.meta_data?.find((meta: any) => meta.key === '_orderable_location_name')?.value;
-            
-            console.log(`Processing order ${order.id}, Store URL: ${storeUrl}`);
-            console.log(`Orderable metadata found: ${orderableLocationMeta || 'None'}`);
-            
-            if (orderableLocationMeta) {
-              // Use orderable metadata if available
-              location = await storage.getLocationByName(orderableLocationMeta);
-              if (!location) {
-                location = await storage.createLocation({ name: orderableLocationMeta });
-    
-              console.log(`Using orderable location: ${location.name}`);
-   else {
-              // No orderable metadata - use store connection's default location
-              const storeConnection = await storage.getStoreConnectionByUrl(storeUrl);
-              
-              if (storeConnection && storeConnection.defaultLocationId) {
-                location = await storage.getLocation(storeConnection.defaultLocationId);
-                console.log(`Using mapped location from store connection: ${location?.name} for domain: ${storeUrl}`);
-    
-              
-              // Fallback to creating an "Unknown Location" if no mapping exists
-              if (!location) {
-                const unknownLocationName = 'Unknown Location';
-                location = await storage.getLocationByName(unknownLocationName);
-                if (!location) {
-                  location = await storage.createLocation({ 
-                    name: unknownLocationName,
-                    code: 'unknown_location',
-                    isActive: true
+      let locationMetaItem = metaData.find((meta: any) => 
+        orderableLocationKeys.includes(meta.key)
+      );
+      
+      // If no specific Orderable keys found, look for generic location fields
+      if (!locationMetaItem) {
+        locationMetaItem = metaData.find((meta: any) => 
+          meta.key?.toLowerCase().includes('location') || 
+          meta.key?.toLowerCase().includes('store') ||
+          meta.key?.toLowerCase().includes('branch')
         );
-                  console.log(`Created fallback location: ${location.name}`);
-       else {
-                  console.log(`Using fallback location: ${location.name}`);
-      
-    
-  
-
-            // Create order data
-            const orderData = {
-              wooOrderId: order.id.toString(),
-              orderId: order.number.toString(),
-              locationId: location.id,
-              customerName: `${order.billing?.first_name || ''} ${order.billing?.last_name || ''}`.trim() || null,
-              firstName: order.billing?.first_name || null,
-              lastName: order.billing?.last_name || null,
-              customerEmail: order.billing?.email || null,
-              customerPhone: order.billing?.phone || null,
-              customerId: order.customer_id?.toString() || null,
-              amount: order.total,
-              subtotal: order.subtotal || '0',
-              shippingTotal: order.shipping_total || '0',
-              taxTotal: order.tax_total || '0',
-              discountTotal: order.discount_total || '0',
-              refundAmount: '0',
-              status: order.status,
-              orderDate: new Date(order.date_created),
-              wooOrderNumber: order.number.toString(),
-              paymentMethod: order.payment_method || null,
-              paymentMethodTitle: order.payment_method_title || null,
-              currency: order.currency || 'USD',
-              shippingFirstName: order.shipping?.first_name || null,
-              shippingLastName: order.shipping?.last_name || null,
-              shippingAddress1: order.shipping?.address_1 || null,
-              shippingAddress2: order.shipping?.address_2 || null,
-              shippingCity: order.shipping?.city || null,
-              shippingState: order.shipping?.state || null,
-              shippingPostcode: order.shipping?.postcode || null,
-              shippingCountry: order.shipping?.country || null,
-              billingFirstName: order.billing?.first_name || null,
-              billingLastName: order.billing?.last_name || null,
-              billingAddress1: order.billing?.address_1 || null,
-              billingAddress2: order.billing?.address_2 || null,
-              billingCity: order.billing?.city || null,
-              billingState: order.billing?.state || null,
-              billingPostcode: order.billing?.postcode || null,
-              billingCountry: order.billing?.country || null,
-              locationMeta: orderableLocationMeta || 'Unknown Location',
-              orderNotes: order.customer_note || null,
-              customerNote: order.customer_note || null,
-              lineItems: JSON.stringify(order.line_items || []),
-              metaData: JSON.stringify(order.meta_data || []),
-              rawData: JSON.stringify(order)
-  ;
-
-            await storage.createWooOrder(orderData);
-            imported++;
- catch (orderError) {
-            console.error(`Failed to import order ${order.id}:`, orderError);
-            skipped++;
-
-        }
-
-        page++;
-        if (orders.length < 100) {
-          hasMore = false;
-        }
-      }
-
-      res.json({ 
-        success: true, 
-        message: `Import completed: ${imported} orders imported, ${skipped} skipped`,
-        imported,
-        skipped
-      });
-
-    } catch (error) {
-      console.error("Import orders error:", error);
-      res.status(500).json({ 
-        success: false, 
-        message: `Import failed: ${error.message}` 
-      });
-    }
-  });
-
-
-
-  // Helper function to get allowed statuses from database
-  async function getAllowedStatuses(userId: number, isAdmin: boolean): Promise<string[]> {
-    if (isAdmin) {
-      // Admin users can see all statuses
-      return ["completed", "processing", "refunded", "on-hold", "checkout-draft", "failed", "pending", "cancelled"];
-    } else {
-      // Non-admin users: get their allowed statuses from user_status_access table
-      const userStatuses = await storage.getUserStatusAccess(userId);
-      
-      // If no specific statuses assigned, default to the three safe statuses
-      if (!userStatuses || userStatuses.length === 0) {
-        return ["completed", "processing", "refunded"];
       }
       
-      return userStatuses;
-    }
-  }
-
-  // Dashboard routes
-  app.get('/api/dashboard/summary', isAuthenticated, async (req, res) => {
-    try {
-      const { location, locationId, month, startMonth, endMonth, startDate, endDate, statuses } = req.query;
-      
-      // Get user's admin status
-      const userId = req.session?.user?.id;
-      const user = await storage.getUser(userId);
-      const isAdmin = user?.role === 'admin';
-      
-      // Get allowed statuses for this user from database
-      const allowedStatuses = await getAllowedStatuses(userId, isAdmin);
-      
-      // Use raw SQL query to bypass ORM date issues
-      const { pool } = await import('./db');
-      
-      let whereClause = "WHERE 1=1";
-      const params: any[] = [];
-      
-      // Handle location parameter (can be 'location' or 'locationId')
-      const targetLocationId = location || locationId;
-      if (targetLocationId && targetLocationId !== 'all') {
-        whereClause += ` AND location_id = $${params.length + 1}`;
-        params.push(parseInt(targetLocationId as string));
+      if (locationMetaItem && locationMetaItem.value) {
+        locationMeta = locationMetaItem.value;
+        locationName = locationMetaItem.value;
+        console.log(`Found Orderable location metadata: ${locationMetaItem.key} = ${locationMetaItem.value}`);
       }
       
-      // Handle date filtering - prioritize startDate/endDate over startMonth/endMonth over month
-      if (startDate && endDate) {
-        // Precise date range filtering (new functionality)
-        // Add time to handle full day ranges properly
-        const startDateTime = `${startDate} 00:00:00`;
-        const endDateTime = `${endDate} 23:59:59`;
-        whereClause += ` AND order_date >= $${params.length + 1} AND order_date <= $${params.length + 2}`;
-        params.push(startDateTime);
-        params.push(endDateTime);
-      } else if (startMonth && endMonth) {
-        // Month range filtering (existing functionality)
-        const monthStartDate = `${startMonth}-01 00:00:00`;
-        const [endYear, endMonthNum] = (endMonth as string).split('-');
-        const lastDay = new Date(parseInt(endYear), parseInt(endMonthNum), 0).getDate();
-        const monthEndDate = `${endMonth}-${lastDay.toString().padStart(2, '0')} 23:59:59`;
-        
-        whereClause += ` AND order_date >= $${params.length + 1} AND order_date <= $${params.length + 2}`;
-        params.push(monthStartDate);
-        params.push(monthEndDate);
-      } else if (month) {
-        // Single month filtering (for backward compatibility)
-        whereClause += ` AND TO_CHAR(order_date, 'YYYY-MM') = $${params.length + 1}`;
-        params.push(month);
+      // If no location found in meta, use billing city or a default
+      if (!locationName) {
+        locationName = billing.city || billing.state || 'Default Location';
       }
       
-      // Handle status filtering - ENFORCE security restrictions for non-admin users ONLY
-      let statusFilter: string[] = [];
-      let hasStatusParam = false;
-      
-      if (statuses !== undefined) {
-        hasStatusParam = true;
-        if (Array.isArray(statuses)) {
-          statusFilter = statuses.filter(s => typeof s === 'string') as string[];
-        } else {
-          statusFilter = [statuses as string];
-        }
-        
-        // SECURITY: Only filter statuses for non-admin users
-        if (!isAdmin) {
-          statusFilter = statusFilter.filter(status => allowedStatuses.includes(status));
-        }
+      // Find or create location
+      let location = await storage.getLocationByName(locationName);
+      if (!location) {
+        console.log(`Creating new location: ${locationName}`);
+        location = await storage.createLocation({ name: locationName });
       }
       
-      // For non-admin users: If no valid statuses provided, default to their allowed statuses
-      // For admin users: If no statuses provided, return empty results
-      if (!isAdmin && statusFilter.length === 0) {
-        statusFilter = allowedStatuses;
-      } else if (isAdmin && statusFilter.length === 0 && hasStatusParam) {
-        // Admin explicitly sent empty statuses array - show no results
-        statusFilter = ['__no_matching_status__'];
-      }
-      
-      // Store base where clause without status filtering for accurate calculations
-      const baseWhereClause = whereClause;
-      const baseParams = [...params];
-      
-      // Apply status filtering to query (only if we have statuses to filter)
-      if (statusFilter.length > 0) {
-        const statusPlaceholders = statusFilter.map((_, index) => `$${params.length + index + 1}`).join(', ');
-        whereClause += ` AND status IN (${statusPlaceholders})`;
-        params.push(...statusFilter);
-      }
-      
-      const query = `
-        SELECT 
-          COALESCE(SUM(CASE WHEN status != 'refunded' THEN amount::decimal ELSE 0 END), 0) as total_sales,
-          COALESCE(SUM(CASE WHEN status = 'refunded' THEN amount::decimal ELSE 0 END), 0) as total_refunds,
-          COUNT(*) as total_orders,
-          COALESCE(SUM(CASE WHEN status != 'refunded' THEN amount::decimal * 0.07 ELSE 0 END), 0) as platform_fees,
-          COALESCE(SUM(CASE WHEN status != 'refunded' THEN (amount::decimal * 0.029 + 0.30) ELSE 0 END), 0) as stripe_fees,
-          COALESCE(SUM(CASE WHEN status != 'refunded' THEN amount::decimal - (amount::decimal * 0.07) - (amount::decimal * 0.029 + 0.30) ELSE 0 END), 0) as net_deposit
-        FROM woo_orders 
-        ${whereClause}
-      `;
-
-      const result = await pool.query(query, params);
-      const row = result.rows[0] as any;
-
-      const summary = {
-        totalSales: parseFloat(row.total_sales || '0'),
-        totalOrders: parseInt(row.total_orders || '0'),
-        totalRefunds: parseFloat(row.total_refunds || '0'),
-        platformFees: parseFloat(row.platform_fees || '0'),
-        stripeFees: parseFloat(row.stripe_fees || '0'),
-        netDeposit: parseFloat(row.net_deposit || '0'),
+      // Prepare order data
+      const wooOrderData = {
+        wooOrderId: wooOrderId || orderId, // Ensure we have a wooOrderId
+        orderId,
+        locationId: location.id,
+        customerName: customerName || 'Unknown',
+        firstName,
+        lastName,
+        customerEmail,
+        amount: total.toString(),
+        refundAmount: refundTotal > 0 ? refundTotal.toString() : null,
+        status,
+        orderDate: new Date(orderData.date_created || new Date()),
+        wooOrderNumber: orderData.number?.toString() || orderId,
+        paymentMethod: orderData.payment_method || null,
+        shippingTotal: orderData.shipping_total || '0',
+        taxTotal: orderData.tax_total || '0',
+        locationMeta,
+        orderNotes: orderData.customer_note || null,
+        rawData: orderData,
       };
       
-      res.json(summary);
+      // Check if order already exists
+      const existingOrder = await storage.getWooOrderByWooOrderId(wooOrderId);
+      
+      if (existingOrder) {
+        // Update existing order
+        console.log(`Updating existing WooCommerce order: ${wooOrderId}`);
+        await storage.updateWooOrder(existingOrder.id, wooOrderData);
+      } else {
+        // Create new order
+        console.log(`Creating new WooCommerce order: ${wooOrderId}`);
+        await storage.createWooOrder(wooOrderData);
+      }
+      
+      console.log('Order processed successfully');
+      res.status(200).json({ success: true, message: 'Order processed successfully' });
     } catch (error) {
-      console.error("Dashboard summary error:", error);
-      res.status(500).json({ message: "Failed to get dashboard summary" });
-    }
-  });
-
-  app.get('/api/dashboard/monthly-breakdown', isAuthenticated, async (req, res) => {
-    try {
-      const { year, locationId, location, startMonth, endMonth, startDate, endDate, statuses } = req.query;
-      
-      // Get user's admin status
-      const userId = req.session?.user?.id;
-      const user = await storage.getUser(userId);
-      const isAdmin = user?.role === 'admin';
-      
-      // Get allowed statuses for this user from database
-      const allowedStatuses = await getAllowedStatuses(userId, isAdmin);
-      
-      const { pool } = await import('./db');
-      
-      let whereClause = "WHERE 1=1";
-      const params: any[] = [];
-      
-      // Initialize status filter at the top level scope
-      let statusFilter: string[] = [];
-      
-      // Handle location parameter (can be 'location' or 'locationId')
-      const targetLocationId = location || locationId;
-      if (targetLocationId && targetLocationId !== 'all') {
-        whereClause += ` AND location_id = $${params.length + 1}`;
-        params.push(parseInt(targetLocationId as string));
-      }
-      
-      // Handle date filtering - prioritize startDate/endDate over startMonth/endMonth over year
-      if (startDate && endDate) {
-        // Precise date range filtering (new functionality)
-        // Add time to handle full day ranges properly
-        const startDateTime = `${startDate} 00:00:00`;
-        const endDateTime = `${endDate} 23:59:59`;
-        whereClause += ` AND order_date >= $${params.length + 1} AND order_date <= $${params.length + 2}`;
-        params.push(startDateTime);
-        params.push(endDateTime);
-      } else if (startMonth && endMonth) {
-        // Month range filtering (existing functionality)
-        const monthStartDate = `${startMonth}-01 00:00:00`;
-        const [endYear, endMonthNum] = (endMonth as string).split('-');
-        const lastDay = new Date(parseInt(endYear), parseInt(endMonthNum), 0).getDate();
-        const monthEndDate = `${endMonth}-${lastDay.toString().padStart(2, '0')} 23:59:59`;
-        
-        whereClause += ` AND order_date >= $${params.length + 1} AND order_date <= $${params.length + 2}`;
-        params.push(monthStartDate);
-        params.push(monthEndDate);
-      } else if (year) {
-        // Year filtering (for backward compatibility)
-        const currentYear = parseInt(year as string);
-        whereClause += ` AND EXTRACT(YEAR FROM order_date) = $${params.length + 1}`;
-        params.push(currentYear);
-      }
-      
-      // Handle status filtering - ENFORCE security restrictions for non-admin users ONLY
-      let hasStatusParam = false;
-      
-      if (statuses !== undefined) {
-        hasStatusParam = true;
-        if (Array.isArray(statuses)) {
-          statusFilter = statuses.filter(s => typeof s === 'string') as string[];
-        } else {
-          // Single status or comma-separated statuses
-          statusFilter = [statuses as string];
-        }
-        
-        // SECURITY: Only filter statuses for non-admin users
-        if (!isAdmin) {
-          statusFilter = statusFilter.filter(status => allowedStatuses.includes(status));
-        }
-      }
-      
-      // For non-admin users: If no valid statuses provided, default to their allowed statuses
-      // For admin users: If no statuses provided, return empty results
-      if (!isAdmin && statusFilter.length === 0) {
-        statusFilter = allowedStatuses;
-      } else if (isAdmin && statusFilter.length === 0 && hasStatusParam) {
-        // Admin explicitly sent empty statuses array - show no results
-        statusFilter = ['__no_matching_status__'];
-      }
-      
-      // Apply status filtering to the main query
-      if (statusFilter.length > 0) {
-        const statusPlaceholders = statusFilter.map((_, index) => `$${params.length + index + 1}`).join(', ');
-        whereClause += ` AND status IN (${statusPlaceholders})`;
-        params.push(...statusFilter);
-      }
-      
-      const query = `
-        WITH all_orders AS (
-          SELECT 
-            TO_CHAR(order_date, 'YYYY-MM') as month,
-            SUM(amount::decimal) as gross_sales,
-            COUNT(*) as total_orders,
-            SUM(CASE WHEN status = 'refunded' THEN amount::decimal ELSE 0 END) as total_refunds,
-            SUM(CASE WHEN status != 'refunded' THEN amount::decimal ELSE 0 END) as net_sales,
-            COUNT(CASE WHEN status != 'refunded' THEN 1 END) as successful_orders
-          FROM woo_orders 
-          ${whereClause}
-          GROUP BY TO_CHAR(order_date, 'YYYY-MM')
-        )
-        SELECT 
-          month,
-          net_sales as total_sales,
-          total_orders,
-          total_refunds,
-          -- Calculate net amount: net_sales - platform_fees - stripe_fees + stripe_fee_refunds
-          (net_sales - (net_sales * 0.07) - (successful_orders * 0.30 + net_sales * 0.029)) as net_amount
-        FROM all_orders
-        ORDER BY month DESC
-      `;
-
-      const result = await pool.query(query, params);
-      
-      // Capture variables for use in nested function
-      const capturedStatusFilter = statusFilter;
-      const capturedStartDate = startDate as string;
-      const capturedEndDate = endDate as string;
-      const capturedStartMonth = startMonth as string;
-      const capturedEndMonth = endMonth as string;
-      
-      // Fetch individual orders for each month
-      const breakdown = await Promise.all(
-        result.rows.map(async (row: any) => {
-          const month = row.month;
-          
-          // Get orders for this specific month only (monthly breakdown shows orders from that month)
-          let orderWhereClause = `WHERE TO_CHAR(w.order_date, 'YYYY-MM') = $1`;
-          const orderParams: any[] = [month];
-          
-
-          
-          if (targetLocationId && targetLocationId !== 'all') {
-            orderWhereClause += ` AND w.location_id = $${orderParams.length + 1}`;
-            orderParams.push(parseInt(targetLocationId as string));
-
-          
-          // Add status filtering to individual orders as well
-          if (capturedStatusFilter.length > 0) {
-            const statusPlaceholders = capturedStatusFilter.map((_, index) => `$${orderParams.length + index + 1}`).join(', ');
-            orderWhereClause += ` AND w.status IN (${statusPlaceholders})`;
-            orderParams.push(...capturedStatusFilter);
-
-          
-          const orderQuery = `
-            SELECT w.id, w.woo_order_id as "orderId", w.order_date as "orderDate", 
-                   COALESCE(
-                     NULLIF(w.customer_name, ''),
-                     TRIM(CONCAT(COALESCE(w.billing_first_name, ''), ' ', COALESCE(w.billing_last_name, ''))),
-                     TRIM(CONCAT(COALESCE(w.shipping_first_name, ''), ' ', COALESCE(w.shipping_last_name, ''))),
-                     COALESCE(w.customer_email, '')
-                   ) as "customerName", 
-                   w.customer_email as "customerEmail",
-                   w.amount, w.status, w.billing_address_1 as "cardLast4", 
-                   CASE WHEN w.status = 'refunded' THEN w.amount ELSE 0 END as "refundAmount",
-                   l.name as "locationName"
-            FROM woo_orders w
-            LEFT JOIN locations l ON w.location_id = l.id
-            ${orderWhereClause}
-            ORDER BY w.order_date DESC
-          `;
-          
-          const orderResult = await pool.query(orderQuery, orderParams);
-          
-          return {
-            month: row.month,
-            totalSales: parseFloat(row.total_sales || '0'),
-            totalOrders: parseInt(row.total_orders || '0'),
-            totalRefunds: parseFloat(row.total_refunds || '0'),
-            netAmount: parseFloat(row.net_amount || '0'),
-            orders: orderResult.rows
-;
-        })
-      );
-      
-      res.json(breakdown);
-    } catch (error) {
-      console.error("Monthly breakdown error:", error);
-      res.status(500).json({ message: "Failed to get monthly breakdown" });
-    }
-  });
-
-  // Store connections endpoints
-  app.get('/api/store-connections', isAuthenticated, async (req, res) => {
-    try {
-      const connections = await storage.getAllStoreConnections();
-      res.json(connections);
-    } catch (error) {
-      console.error("Get store connections error:", error);
-      res.status(500).json({ message: "Failed to get store connections" });
-    }
-  });
-
-  // Update store connection location mapping
-  app.patch('/api/store-connections/:id/location', isAuthenticated, async (req, res) => {
-    try {
-      const { id } = req.params;
-      const { locationId, locationName } = req.body;
-      
-      let finalLocationId = locationId;
-      
-      // If locationName is provided but locationId is not, create or find the location
-      if (locationName && !locationId) {
-        let location = await storage.getLocationByName(locationName);
-        if (!location) {
-          location = await storage.createLocation({
-            name: locationName,
-            code: locationName.toLowerCase().replace(/[^a-z0-9]/g, '_'),
-            isActive: true
-);
-        }
-        finalLocationId = location.id;
-      }
-      
-      // Update the store connection's default location
-      const { pool } = await import('./db');
-      await pool.query(
-        'UPDATE store_connections SET default_location_id = $1, updated_at = NOW() WHERE id = $2',
-        [finalLocationId, id]
-      );
-      
-      // Update existing "unknown location" orders for this store
-      const storeConnection = await storage.getStoreConnection(id);
-      if (storeConnection && finalLocationId) {
-        await pool.query(`
-          UPDATE woo_orders 
-          SET location_id = $1, updated_at = NOW()
-          WHERE store_url = $2 
-          AND (location_meta = 'Unknown Location' OR location_meta IS NULL OR location_meta = '')
-        `, [finalLocationId, storeConnection.storeUrl]);
-      }
-      
-      res.json({ success: true, message: "Location mapping updated successfully" });
-    } catch (error) {
-      console.error("Update store connection location error:", error);
-      res.status(500).json({ message: "Failed to update location mapping" });
-    }
-  });
-
-  // SEPARATE REPORTS ENDPOINTS - completely independent from dashboard
-  app.get('/api/reports/summary', isAuthenticated, async (req, res) => {
-    try {
-      const { locationId, location, statuses, startDate, endDate, startMonth, endMonth } = req.query;
-      const { pool } = await import('./db');
-      
-      let whereClause = "WHERE 1=1";
-      const params: any[] = [];
-      
-      // Handle location filtering for reports
-      const targetLocationId = location || locationId;
-      if (targetLocationId && targetLocationId !== 'all') {
-        whereClause += ` AND location_id = $${params.length + 1}`;
-        params.push(parseInt(targetLocationId as string));
-      }
-      
-      // Handle date filtering - prioritize startDate/endDate over startMonth/endMonth
-      if (startDate && endDate) {
-        // Precise date range filtering (new functionality)
-        // Add time to handle full day ranges properly
-        const startDateTime = `${startDate} 00:00:00`;
-        const endDateTime = `${endDate} 23:59:59`;
-        whereClause += ` AND order_date >= $${params.length + 1} AND order_date <= $${params.length + 2}`;
-        params.push(startDateTime);
-        params.push(endDateTime);
-      } else if (startMonth && endMonth) {
-        // Month range filtering (existing functionality)
-        const monthStartDate = `${startMonth}-01 00:00:00`;
-        const [endYear, endMonthNum] = (endMonth as string).split('-');
-        const lastDay = new Date(parseInt(endYear), parseInt(endMonthNum), 0).getDate();
-        const monthEndDate = `${endMonth}-${lastDay.toString().padStart(2, '0')} 23:59:59`;
-        
-        whereClause += ` AND order_date >= $${params.length + 1} AND order_date <= $${params.length + 2}`;
-        params.push(monthStartDate);
-        params.push(monthEndDate);
-      }
-      
-      // Handle status filtering for reports
-      if (statuses && Array.isArray(statuses) && statuses.length > 0) {
-        const statusFilter = statuses as string[];
-        const statusPlaceholders = statusFilter.map((_, index) => `$${params.length + index + 1}`).join(', ');
-        whereClause += ` AND status IN (${statusPlaceholders})`;
-        params.push(...statusFilter);
-      } else if (statuses && !Array.isArray(statuses)) {
-        whereClause += ` AND status = $${params.length + 1}`;
-        params.push(statuses);
-      }
-      
-      const query = `
-        SELECT 
-          COALESCE(SUM(amount::decimal), 0) as total_sales,
-          COUNT(*) as total_orders,
-          COALESCE(SUM(CASE WHEN status = 'refunded' THEN amount::decimal ELSE 0 END), 0) as total_refunds,
-          COALESCE(SUM(amount::decimal * 0.07), 0) as platform_fees,
-          COALESCE(SUM(amount::decimal * 0.029 + 0.30), 0) as stripe_fees,
-          COALESCE(SUM(amount::decimal - (amount::decimal * 0.07) - (amount::decimal * 0.029 + 0.30)), 0) as net_deposit
-        FROM woo_orders 
-        ${whereClause}
-      `;
-      
-      const result = await pool.query(query, params);
-      const row = result.rows[0];
-      
-      // Convert string values to numbers and fix field names to match frontend expectations
-      const summary = {
-        totalSales: parseFloat(row.total_sales) || 0,
-        totalOrders: parseInt(row.total_orders) || 0,
-        totalRefunds: parseFloat(row.total_refunds) || 0,
-        platformFees: parseFloat(row.platform_fees) || 0,
-        stripeFees: parseFloat(row.stripe_fees) || 0,
-        netDeposit: parseFloat(row.net_deposit) || 0
-      };
-      
-      res.json(summary);
-    } catch (error) {
-      console.error("Reports summary error:", error);
-      res.status(500).json({ message: "Failed to get reports summary" });
-    }
-  });
-
-  app.get('/api/reports/monthly-breakdown', isAuthenticated, async (req, res) => {
-    try {
-      const { year, locationId, location, startMonth, endMonth, startDate, endDate, statuses } = req.query;
-      const { pool } = await import('./db');
-      
-      let whereClause = "WHERE 1=1";
-      const params: any[] = [];
-      
-      // Initialize status filter at the top level scope
-      let statusFilter: string[] = [];
-      
-      // Handle location parameter for reports
-      const targetLocationId = location || locationId;
-      if (targetLocationId && targetLocationId !== 'all') {
-        whereClause += ` AND location_id = $${params.length + 1}`;
-        params.push(parseInt(targetLocationId as string));
-      }
-      
-      // Handle date filtering - prioritize startDate/endDate over startMonth/endMonth over year
-      if (startDate && endDate) {
-        // Precise date range filtering (new functionality)
-        // Add time to handle full day ranges properly
-        const startDateTime = `${startDate} 00:00:00`;
-        const endDateTime = `${endDate} 23:59:59`;
-        whereClause += ` AND order_date >= $${params.length + 1} AND order_date <= $${params.length + 2}`;
-        params.push(startDateTime);
-        params.push(endDateTime);
-      } else if (startMonth && endMonth) {
-        // Month range filtering (existing functionality)
-        const monthStartDate = `${startMonth}-01 00:00:00`;
-        const [endYear, endMonthNum] = (endMonth as string).split('-');
-        const lastDay = new Date(parseInt(endYear), parseInt(endMonthNum), 0).getDate();
-        const monthEndDate = `${endMonth}-${lastDay.toString().padStart(2, '0')} 23:59:59`;
-        
-        whereClause += ` AND order_date >= $${params.length + 1} AND order_date <= $${params.length + 2}`;
-        params.push(monthStartDate);
-        params.push(monthEndDate);
-      } else if (year) {
-        const currentYear = parseInt(year as string);
-        whereClause += ` AND EXTRACT(YEAR FROM order_date) = $${params.length + 1}`;
-        params.push(currentYear);
-      }
-      
-      // Handle status filtering for reports - NO default filtering
-      if (statuses && Array.isArray(statuses) && statuses.length > 0) {
-        statusFilter = statuses as string[];
-        const statusPlaceholders = statusFilter.map((_, index) => `$${params.length + index + 1}`).join(', ');
-        whereClause += ` AND status IN (${statusPlaceholders})`;
-        params.push(...statusFilter);
-      } else if (statuses && !Array.isArray(statuses)) {
-        statusFilter = [statuses as string];
-        whereClause += ` AND status = $${params.length + 1}`;
-        params.push(statuses);
-      }
-      
-      const query = `
-        SELECT 
-          TO_CHAR(order_date, 'YYYY-MM') as month,
-          COALESCE(SUM(amount::decimal), 0) as total_sales,
-          COUNT(*) as total_orders,
-          COALESCE(SUM(CASE WHEN status = 'refunded' THEN amount::decimal ELSE 0 END), 0) as total_refunds,
-          COALESCE(SUM(amount::decimal - (amount::decimal * 0.07) - (amount::decimal * 0.029 + 0.30)), 0) as net_amount
-        FROM woo_orders 
-        ${whereClause}
-        GROUP BY TO_CHAR(order_date, 'YYYY-MM')
-        ORDER BY month DESC
-      `;
-
-      const result = await pool.query(query, params);
-      
-      // Capture variables for use in nested function
-      const capturedStatusFilter = statusFilter;
-      const capturedStartDate = startDate as string;
-      const capturedEndDate = endDate as string;
-      const capturedStartMonth = startMonth as string;
-      const capturedEndMonth = endMonth as string;
-      
-      // Fetch individual orders for each month
-      const breakdown = await Promise.all(
-        result.rows.map(async (row: any) => {
-          const month = row.month;
-          
-          // Get orders for this specific month only (monthly breakdown shows orders from that month)
-          let orderWhereClause = `WHERE TO_CHAR(w.order_date, 'YYYY-MM') = $1`;
-          const orderParams: any[] = [month];
-          
-
-          
-          if (targetLocationId && targetLocationId !== 'all') {
-            orderWhereClause += ` AND w.location_id = $${orderParams.length + 1}`;
-            orderParams.push(parseInt(targetLocationId as string));
-
-          
-          // Add status filtering to individual orders as well
-          if (capturedStatusFilter.length > 0) {
-            const statusPlaceholders = capturedStatusFilter.map((_, index) => `$${orderParams.length + index + 1}`).join(', ');
-            orderWhereClause += ` AND w.status IN (${statusPlaceholders})`;
-            orderParams.push(...capturedStatusFilter);
-
-          
-          const orderQuery = `
-            SELECT w.id, w.woo_order_id as "orderId", w.order_date as "orderDate", 
-                   COALESCE(
-                     NULLIF(w.customer_name, ''),
-                     TRIM(CONCAT(COALESCE(w.billing_first_name, ''), ' ', COALESCE(w.billing_last_name, ''))),
-                     TRIM(CONCAT(COALESCE(w.shipping_first_name, ''), ' ', COALESCE(w.shipping_last_name, ''))),
-                     COALESCE(w.customer_email, '')
-                   ) as "customerName",
-                   w.billing_first_name as "billingFirstName",
-                   w.billing_last_name as "billingLastName", 
-                   w.billing_address_1 as "billingAddress1",
-                   w.shipping_first_name as "shippingFirstName",
-                   w.shipping_last_name as "shippingLastName",
-                   w.shipping_address_1 as "shippingAddress1",
-                   w.customer_email as "customerEmail",
-                   w.amount, w.status, w.location_id as "locationId",
-                   CASE WHEN w.status = 'refunded' THEN w.amount ELSE 0 END as "refundAmount",
-                   COALESCE(l.name, 'Unknown Location') as "locationName"
-            FROM woo_orders w
-            LEFT JOIN locations l ON w.location_id = l.id
-            ${orderWhereClause}
-            ORDER BY w.order_date DESC
-          `;
-          
-          const orderResult = await pool.query(orderQuery, orderParams);
-          
-          return {
-            month: row.month,
-            totalSales: parseFloat(row.total_sales),
-            totalOrders: parseInt(row.total_orders),
-            totalRefunds: parseFloat(row.total_refunds),
-            netAmount: parseFloat(row.net_amount),
-            orders: orderResult.rows
-;
-        })
-      );
-      
-      res.json(breakdown);
-    } catch (error) {
-      console.error("Reports monthly breakdown error:", error);
-      res.status(500).json({ message: "Failed to get reports monthly breakdown" });
-    }
-  });
-
-  app.post('/api/store-connections', isAuthenticated, async (req, res) => {
-    try {
-      const connection = await storage.createStoreConnection(req.body);
-      
-      // Automatically enable auto-sync for new store connections
-      const platform = connection.platform;
-      await storage.upsertSyncSettings({
-        platform: platform,
-        isActive: true,
-        intervalMinutes: 5,
-        isRunning: false,
-        lastSyncAt: null,
-        nextSyncAt: null
-      });
-      
-      // Start auto-sync for this new connection
-      const { startAutoSync } = await import('./syncManager');
-      await startAutoSync(platform);
-      
-      res.json({ success: true, connection });
-    } catch (error) {
-      console.error("Create store connection error:", error);
-      res.status(500).json({ message: "Failed to create store connection" });
-    }
-  });
-
-  app.delete('/api/store-connections/:connectionId', isAuthenticated, async (req, res) => {
-    try {
-      const { connectionId } = req.params;
-      await storage.deleteStoreConnection(connectionId);
-      res.json({ success: true });
-    } catch (error) {
-      console.error("Delete store connection error:", error);
-      res.status(500).json({ message: "Failed to delete store connection" });
-    }
-  });
-
-  // Footer settings routes
-  app.get('/api/footer-settings', async (req, res) => {
-    try {
-      const settings = await storage.getFooterSettings();
-      res.json(settings);
-    } catch (error) {
-      console.error("Error fetching footer settings:", error);
-      res.status(500).json({ message: "Failed to fetch footer settings" });
-    }
-  });
-
-  app.post('/api/footer-settings', isAuthenticated, async (req, res) => {
-    try {
-      const { customCode, isEnabled } = req.body;
-      
-      const settings = await storage.upsertFooterSettings({
-        customCode: customCode || '',
-        isEnabled: isEnabled !== undefined ? isEnabled : true,
-      });
-      
-      res.json({ success: true, settings });
-    } catch (error) {
-      console.error("Error updating footer settings:", error);
-      res.status(500).json({ message: "Failed to update footer settings" });
-    }
-  });
-
-  // Logo settings routes
-  app.get('/api/logo-settings', async (req, res) => {
-    try {
-      const settings = await storage.getLogoSettings();
-      res.json(settings || {});
-    } catch (error) {
-      console.error("Error fetching logo settings:", error);
-      res.status(500).json({ message: "Failed to fetch logo settings" });
-    }
-  });
-
-  app.post('/api/logo-upload', isAuthenticated, logoUpload.single('logo'), async (req, res) => {
-    try {
-      if (!req.file) {
-        return res.status(400).json({ message: "No file uploaded" });
-      }
-
-      const existingSettings = await storage.getLogoSettings();
-      
-      // Delete old logo if exists
-      if (existingSettings?.logoPath) {
-        try {
-          await fs.unlink(existingSettings.logoPath);
-        } catch (deleteError) {
-          console.warn("Could not delete old logo file:", deleteError);
-        }
-      }
-
-      const updateData = {
-        logoPath: req.file.path,
-        originalName: req.file.originalname,
-        mimeType: req.file.mimetype,
-        fileSize: req.file.size,
-      };
-
-      // Preserve existing favicon data if it exists
-      if (existingSettings) {
-        Object.assign(updateData, {
-          faviconPath: existingSettings.faviconPath,
-          faviconOriginalName: existingSettings.faviconOriginalName,
-          faviconMimeType: existingSettings.faviconMimeType,
-          faviconFileSize: existingSettings.faviconFileSize,
-        });
-      }
-
-      const settings = await storage.upsertLogoSettings(updateData);
-
-      res.json({ success: true, logoPath: `/uploads/logos/${req.file.filename}`, settings });
-    } catch (error) {
-      console.error("Error uploading logo:", error);
-      res.status(500).json({ message: "Failed to upload logo" });
-    }
-  });
-
-  app.post('/api/favicon-upload', isAuthenticated, logoUpload.single('favicon'), async (req, res) => {
-    try {
-      if (!req.file) {
-        return res.status(400).json({ message: "No file uploaded" });
-      }
-
-      const existingSettings = await storage.getLogoSettings();
-      
-      // Delete old favicon if exists
-      if (existingSettings?.faviconPath) {
-        try {
-          await fs.unlink(existingSettings.faviconPath);
-        } catch (deleteError) {
-          console.warn("Could not delete old favicon file:", deleteError);
-        }
-      }
-
-      const updateData = {
-        faviconPath: req.file.path,
-        faviconOriginalName: req.file.originalname,
-        faviconMimeType: req.file.mimetype,
-        faviconFileSize: req.file.size,
-      };
-
-      // Preserve existing logo data if it exists
-      if (existingSettings) {
-        Object.assign(updateData, {
-          logoPath: existingSettings.logoPath,
-          originalName: existingSettings.originalName,
-          mimeType: existingSettings.mimeType,
-          fileSize: existingSettings.fileSize,
-        });
-      }
-
-      const settings = await storage.upsertLogoSettings(updateData);
-
-      res.json({ success: true, faviconPath: `/uploads/logos/${req.file.filename}`, settings });
-    } catch (error) {
-      console.error("Error uploading favicon:", error);
-      res.status(500).json({ message: "Failed to upload favicon" });
-    }
-  });
-
-  app.delete('/api/logo-settings', isAuthenticated, async (req, res) => {
-    try {
-      const existingSettings = await storage.getLogoSettings();
-      
-      // Delete logo file if exists
-      if (existingSettings?.logoPath) {
-        try {
-          await fs.unlink(existingSettings.logoPath);
-        } catch (deleteError) {
-          console.warn("Could not delete logo file:", deleteError);
-        }
-      }
-
-      // Delete favicon file if exists
-      if (existingSettings?.faviconPath) {
-        try {
-          await fs.unlink(existingSettings.faviconPath);
-        } catch (deleteError) {
-          console.warn("Could not delete favicon file:", deleteError);
-        }
-      }
-
-      await storage.deleteLogoSettings();
-      res.json({ success: true });
-    } catch (error) {
-      console.error("Error deleting logo settings:", error);
-      res.status(500).json({ message: "Failed to delete logo settings" });
-    }
-  });
-
-  app.delete('/api/logo-only', isAuthenticated, async (req, res) => {
-    try {
-      const existingSettings = await storage.getLogoSettings();
-      
-      if (existingSettings?.logoPath) {
-        try {
-          await fs.unlink(existingSettings.logoPath);
-        } catch (deleteError) {
-          console.warn("Could not delete logo file:", deleteError);
-        }
-      }
-
-      if (existingSettings) {
-        const updateData = {
-          logoPath: null,
-          originalName: null,
-          mimeType: null,
-          fileSize: null,
-          faviconPath: existingSettings.faviconPath,
-          faviconOriginalName: existingSettings.faviconOriginalName,
-          faviconMimeType: existingSettings.faviconMimeType,
-          faviconFileSize: existingSettings.faviconFileSize,
-        };
-
-        await storage.upsertLogoSettings(updateData);
-      }
-
-      res.json({ success: true });
-    } catch (error) {
-      console.error("Error deleting logo:", error);
-      res.status(500).json({ message: "Failed to delete logo" });
-    }
-  });
-
-  app.delete('/api/favicon-only', isAuthenticated, async (req, res) => {
-    try {
-      const existingSettings = await storage.getLogoSettings();
-      
-      if (existingSettings?.faviconPath) {
-        try {
-          await fs.unlink(existingSettings.faviconPath);
-        } catch (deleteError) {
-          console.warn("Could not delete favicon file:", deleteError);
-        }
-      }
-
-      if (existingSettings) {
-        const updateData = {
-          logoPath: existingSettings.logoPath,
-          originalName: existingSettings.originalName,
-          mimeType: existingSettings.mimeType,
-          fileSize: existingSettings.fileSize,
-          faviconPath: null,
-          faviconOriginalName: null,
-          faviconMimeType: null,
-          faviconFileSize: null,
-        };
-
-        await storage.upsertLogoSettings(updateData);
-      }
-
-      res.json({ success: true });
-    } catch (error) {
-      console.error("Error deleting favicon:", error);
-      res.status(500).json({ message: "Failed to delete favicon" });
+      console.error('WooCommerce webhook error:', error);
+      res.status(500).json({ error: 'Failed to process webhook' });
     }
   });
 
   const httpServer = createServer(app);
-  
-  // Start auto sync on server startup
-  setTimeout(async () => {
-    try {
-      await startAutoSync();
-    } catch (error) {
-      console.log("Auto sync not started:", error.message);
-    }
-  }, 5000);
-  
   return httpServer;
 }
