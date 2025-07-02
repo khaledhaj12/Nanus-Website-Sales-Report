@@ -15,6 +15,8 @@ import multer from "multer";
 import * as XLSX from "xlsx";
 import csv from "csv-parser";
 import { Readable } from "stream";
+import { promises as fs } from "fs";
+import path from "path";
 import { z } from "zod";
 import { insertUserSchema, insertOrderSchema } from "@shared/schema";
 // Configure multer for file uploads
@@ -1443,6 +1445,32 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Google reCAPTCHA settings management routes
+  app.get('/api/recaptcha-settings', async (req, res) => {
+    try {
+      const settings = await storage.getRecaptchaSettings();
+      res.json(settings || { siteKey: '', secretKey: '', isActive: false });
+    } catch (error) {
+      console.error("Get reCAPTCHA settings error:", error);
+      res.status(500).json({ message: "Failed to get reCAPTCHA settings" });
+    }
+  });
+
+  app.post('/api/recaptcha-settings', requireAdmin, async (req, res) => {
+    try {
+      const { siteKey, secretKey, isActive } = req.body;
+      const settings = await storage.upsertRecaptchaSettings({
+        siteKey,
+        secretKey,
+        isActive: isActive !== undefined ? isActive : false
+      });
+      res.json(settings);
+    } catch (error) {
+      console.error("Save reCAPTCHA settings error:", error);
+      res.status(500).json({ message: "Failed to save reCAPTCHA settings" });
+    }
+  });
+
   // Google reCAPTCHA verification route
   app.post('/api/verify-recaptcha', async (req, res) => {
     try {
@@ -1479,6 +1507,84 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error('reCAPTCHA verification error:', error);
       res.status(500).json({ success: false, message: 'Failed to verify reCAPTCHA' });
+    }
+  });
+
+  // Logo settings management routes
+  app.get('/api/logo-settings', async (req, res) => {
+    try {
+      const settings = await storage.getLogoSettings();
+      res.json(settings || { logoPath: null, faviconPath: null, originalName: null, faviconOriginalName: null });
+    } catch (error) {
+      console.error("Get logo settings error:", error);
+      res.status(500).json({ message: "Failed to get logo settings" });
+    }
+  });
+
+  app.post('/api/logo-upload', requireAdmin, upload.fields([
+    { name: 'logo', maxCount: 1 },
+    { name: 'favicon', maxCount: 1 }
+  ]), async (req, res) => {
+    try {
+      const files = req.files as { [fieldname: string]: Express.Multer.File[] };
+      const logoFile = files.logo?.[0];
+      const faviconFile = files.favicon?.[0];
+      
+      if (!logoFile && !faviconFile) {
+        return res.status(400).json({ message: "No files uploaded" });
+      }
+
+      const updates: any = {};
+
+      if (logoFile) {
+        // Save logo file
+        const logoPath = `uploads/logos/logo-${Date.now()}.${logoFile.originalname.split('.').pop()}`;
+        await fs.writeFile(logoPath, logoFile.buffer);
+        
+        updates.logoPath = logoPath;
+        updates.originalName = logoFile.originalname;
+        updates.mimeType = logoFile.mimetype;
+        updates.fileSize = logoFile.size;
+      }
+
+      if (faviconFile) {
+        // Save favicon file
+        const faviconPath = `uploads/logos/favicon-${Date.now()}.${faviconFile.originalname.split('.').pop()}`;
+        await fs.writeFile(faviconPath, faviconFile.buffer);
+        
+        updates.faviconPath = faviconPath;
+        updates.faviconOriginalName = faviconFile.originalname;
+        updates.faviconMimeType = faviconFile.mimetype;
+        updates.faviconFileSize = faviconFile.size;
+      }
+
+      const settings = await storage.upsertLogoSettings(updates);
+      res.json(settings);
+    } catch (error) {
+      console.error("Logo upload error:", error);
+      res.status(500).json({ message: "Failed to upload files" });
+    }
+  });
+
+  // Footer settings management
+  app.get('/api/footer-settings', async (req, res) => {
+    try {
+      const settings = await storage.getFooterSettings();
+      res.json(settings || { customCode: '' });
+    } catch (error) {
+      console.error("Get footer settings error:", error);
+      res.status(500).json({ message: "Failed to get footer settings" });
+    }
+  });
+
+  app.post('/api/footer-settings', requireAdmin, async (req, res) => {
+    try {
+      const { customCode } = req.body;
+      const settings = await storage.upsertFooterSettings({ customCode });
+      res.json(settings);
+    } catch (error) {
+      console.error("Save footer settings error:", error);
+      res.status(500).json({ message: "Failed to save footer settings" });
     }
   });
 
