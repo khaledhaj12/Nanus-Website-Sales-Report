@@ -178,7 +178,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           
           if (!verifyResponse.data.success) {
             return res.status(400).json({ message: "reCAPTCHA verification failed" });
-          }
+
         } catch (recaptchaError) {
           console.error("reCAPTCHA verification error:", recaptchaError);
           return res.status(500).json({ message: "reCAPTCHA verification error" });
@@ -902,7 +902,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
             if (existingOrder) {
               skipped++;
               continue;
-            }
+  
 
             // Location assignment logic with domain-based defaults
             let location = null;
@@ -916,16 +916,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
               location = await storage.getLocationByName(orderableLocationMeta);
               if (!location) {
                 location = await storage.createLocation({ name: orderableLocationMeta });
-              }
+    
               console.log(`Using orderable location: ${location.name}`);
-            } else {
+   else {
               // No orderable metadata - use store connection's default location
               const storeConnection = await storage.getStoreConnectionByUrl(storeUrl);
               
               if (storeConnection && storeConnection.defaultLocationId) {
                 location = await storage.getLocation(storeConnection.defaultLocationId);
                 console.log(`Using mapped location from store connection: ${location?.name} for domain: ${storeUrl}`);
-              }
+    
               
               // Fallback to creating an "Unknown Location" if no mapping exists
               if (!location) {
@@ -936,13 +936,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
                     name: unknownLocationName,
                     code: 'unknown_location',
                     isActive: true
-                  });
+        );
                   console.log(`Created fallback location: ${location.name}`);
-                } else {
+       else {
                   console.log(`Using fallback location: ${location.name}`);
-                }
-              }
-            }
+      
+    
+  
 
             // Create order data
             const orderData = {
@@ -989,14 +989,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
               lineItems: JSON.stringify(order.line_items || []),
               metaData: JSON.stringify(order.meta_data || []),
               rawData: JSON.stringify(order)
-            };
+  ;
 
             await storage.createWooOrder(orderData);
             imported++;
-          } catch (orderError) {
+ catch (orderError) {
             console.error(`Failed to import order ${order.id}:`, orderError);
             skipped++;
-          }
+
         }
 
         page++;
@@ -1286,29 +1286,23 @@ export async function registerRoutes(app: Express): Promise<Server> {
         result.rows.map(async (row: any) => {
           const month = row.month;
           
-          // Get orders for this specific period - apply same date filtering as main query
+          // Get orders for this specific month only (monthly breakdown shows orders from that month)
           let orderWhereClause = `WHERE TO_CHAR(w.order_date, 'YYYY-MM') = $1`;
           const orderParams: any[] = [month];
           
-          // If we have specific date filtering, apply it to individual orders too
-          if (capturedStartDate && capturedEndDate) {
-            const startDateTime = `${capturedStartDate} 00:00:00`;
-            const endDateTime = `${capturedEndDate} 23:59:59`;
-            orderWhereClause = `WHERE w.order_date >= $1 AND w.order_date <= $2`;
-            orderParams.splice(0, 1, startDateTime, endDateTime); // Replace month param with date range
-          }
+
           
           if (targetLocationId && targetLocationId !== 'all') {
             orderWhereClause += ` AND w.location_id = $${orderParams.length + 1}`;
             orderParams.push(parseInt(targetLocationId as string));
-          }
+
           
           // Add status filtering to individual orders as well
           if (capturedStatusFilter.length > 0) {
             const statusPlaceholders = capturedStatusFilter.map((_, index) => `$${orderParams.length + index + 1}`).join(', ');
             orderWhereClause += ` AND w.status IN (${statusPlaceholders})`;
             orderParams.push(...capturedStatusFilter);
-          }
+
           
           const orderQuery = `
             SELECT w.id, w.woo_order_id as "orderId", w.order_date as "orderDate", 
@@ -1337,7 +1331,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
             totalRefunds: parseFloat(row.total_refunds || '0'),
             netAmount: parseFloat(row.net_amount || '0'),
             orders: orderResult.rows
-          };
+;
         })
       );
       
@@ -1375,7 +1369,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
             name: locationName,
             code: locationName.toLowerCase().replace(/[^a-z0-9]/g, '_'),
             isActive: true
-          });
+);
         }
         finalLocationId = location.id;
       }
@@ -1567,29 +1561,23 @@ export async function registerRoutes(app: Express): Promise<Server> {
         result.rows.map(async (row: any) => {
           const month = row.month;
           
-          // Get orders for this specific period - apply same date filtering as main query
+          // Get orders for this specific month only (monthly breakdown shows orders from that month)
           let orderWhereClause = `WHERE TO_CHAR(w.order_date, 'YYYY-MM') = $1`;
           const orderParams: any[] = [month];
           
-          // If we have specific date filtering, apply it to individual orders too
-          if (capturedStartDate && capturedEndDate) {
-            const startDateTime = `${capturedStartDate} 00:00:00`;
-            const endDateTime = `${capturedEndDate} 23:59:59`;
-            orderWhereClause = `WHERE w.order_date >= $1 AND w.order_date <= $2`;
-            orderParams.splice(0, 1, startDateTime, endDateTime); // Replace month param with date range
-          }
+
           
           if (targetLocationId && targetLocationId !== 'all') {
             orderWhereClause += ` AND w.location_id = $${orderParams.length + 1}`;
             orderParams.push(parseInt(targetLocationId as string));
-          }
+
           
           // Add status filtering to individual orders as well
           if (capturedStatusFilter.length > 0) {
             const statusPlaceholders = capturedStatusFilter.map((_, index) => `$${orderParams.length + index + 1}`).join(', ');
             orderWhereClause += ` AND w.status IN (${statusPlaceholders})`;
             orderParams.push(...capturedStatusFilter);
-          }
+
           
           const orderQuery = `
             SELECT w.id, w.woo_order_id as "orderId", w.order_date as "orderDate", 
@@ -1624,7 +1612,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
             totalRefunds: parseFloat(row.total_refunds),
             netAmount: parseFloat(row.net_amount),
             orders: orderResult.rows
-          };
+;
         })
       );
       
