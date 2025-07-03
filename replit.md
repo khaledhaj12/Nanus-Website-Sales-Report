@@ -121,6 +121,7 @@ Changelog:
 - July 02, 2025. Critical auto-sync bug fix - discovered sync was missing orders created within minute of sync window, added 10-minute buffer to catch orders created during sync intervals, manually imported missing order 30691 and reset sync timestamps to ensure future orders are captured
 - July 02, 2025. Production readiness confirmed - auto-sync now reliably capturing all new orders within 5 minutes, timezone display accurate, dashboard showing current data (7 orders, $150.72), platform ready for production deployment
 - July 02, 2025. Critical security hardening completed - fixed session vulnerabilities, implemented API key protection, added login rate limiting, secured file uploads, and added admin-only access controls. Platform now meets enterprise security standards for production deployment
+- July 03, 2025. Fixed auto-sync status filtering - removed checkout-draft orders from sync query to match dashboard filtering requirements. Auto-sync now correctly fetches only processing, completed, and refunded orders
 ```
 
 ## User Preferences
