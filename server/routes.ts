@@ -501,6 +501,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const userId = parseInt(req.params.id);
       const { permissions } = req.body;
+      console.log(`Setting permissions for user ${userId}:`, JSON.stringify(permissions, null, 2));
       await storage.setUserPagePermissions(userId, permissions || []);
       res.json({ message: "User page permissions updated successfully" });
     } catch (error) {
