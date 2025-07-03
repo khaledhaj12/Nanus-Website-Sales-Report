@@ -38,6 +38,9 @@ export default function CreateUserModal({ isOpen, onClose, editingUser }: Create
   const queryClient = useQueryClient();
   const isEditMode = Boolean(editingUser);
   
+  // Debug logging
+  console.log('CreateUserModal render:', { isOpen, isEditMode, editingUser });
+  
   const [formData, setFormData] = useState({
     username: '',
     firstName: '',
