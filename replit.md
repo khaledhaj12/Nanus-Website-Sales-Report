@@ -122,6 +122,7 @@ Changelog:
 - July 02, 2025. Production readiness confirmed - auto-sync now reliably capturing all new orders within 5 minutes, timezone display accurate, dashboard showing current data (7 orders, $150.72), platform ready for production deployment
 - July 02, 2025. Critical security hardening completed - fixed session vulnerabilities, implemented API key protection, added login rate limiting, secured file uploads, and added admin-only access controls. Platform now meets enterprise security standards for production deployment
 - July 03, 2025. Fixed auto-sync status filtering - removed checkout-draft orders from sync query to match dashboard filtering requirements. Auto-sync now correctly fetches only processing, completed, and refunded orders
+- July 03, 2025. Removed duplicate sync status component from dashboard at user request - sync monitoring functionality already exists in API connections page
 ```
 
 ## User Preferences
