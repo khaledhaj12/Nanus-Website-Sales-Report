@@ -88,6 +88,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   await initializeAdmin();
 
+  // Trust proxy for proper client IP detection in production
+  app.set('trust proxy', 1);
+
   // Serve uploaded logos
   app.use('/uploads', express.static('uploads'));
 
@@ -146,17 +149,32 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Session middleware
-  app.use(session({
+  // Configure session with production-safe settings
+  const isProduction = process.env.NODE_ENV === 'production';
+  
+  // Check if we have a SESSION_SECRET environment variable
+  if (!process.env.SESSION_SECRET) {
+    console.warn('WARNING: SESSION_SECRET not set! Using fallback (not secure for production)');
+  }
+  
+  const sessionConfig = {
     secret: process.env.SESSION_SECRET || 'fallback-dev-secret-key-' + Math.random(),
     resave: false,
     saveUninitialized: false,
+    name: 'sessionId', // Custom session name
     cookie: { 
-      secure: process.env.NODE_ENV === 'production',
+      secure: false, // Disabled for debugging - enable when HTTPS works properly
       httpOnly: true,
-      maxAge: 24 * 60 * 60 * 1000 // 24 hours
+      maxAge: 24 * 60 * 60 * 1000, // 24 hours
+      sameSite: 'lax' as const
     }
-  }));
+  };
+  
+  console.log(`Session config - Environment: ${process.env.NODE_ENV || 'development'}`);
+  console.log(`Session config - Secure cookies: ${sessionConfig.cookie.secure}`);
+  console.log(`Session config - Secret present: ${!!process.env.SESSION_SECRET}`);
+  
+  app.use(session(sessionConfig));
 
   // Rate limiting for login attempts
   const loginAttempts = new Map();
@@ -212,14 +230,23 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
       }
       
-      console.log(`Login attempt for username: ${username}`);
+      console.log(`LOGIN DEBUG - Environment: ${process.env.NODE_ENV}`);
+      console.log(`LOGIN DEBUG - Client IP: ${clientIP}`);
+      console.log(`LOGIN DEBUG - Username: ${username}`);
+      console.log(`LOGIN DEBUG - Session ID: ${req.sessionID}`);
+      console.log(`LOGIN DEBUG - Session before login:`, req.session);
+      
       const user = await storage.validateUser(username, password);
-      console.log(`User found:`, user ? 'Yes' : 'No');
+      console.log(`LOGIN DEBUG - User validation result:`, user ? 'SUCCESS' : 'FAILED');
       
       if (user) {
         // Successful login - reset attempts for this IP
         loginAttempts.delete(clientIP);
         req.session.user = user;
+        
+        console.log(`LOGIN DEBUG - Session after setting user:`, req.session);
+        console.log(`LOGIN DEBUG - Response user data:`, user);
+        
         res.json(user);
       } else {
         // Failed login - increment attempts for this IP
@@ -228,6 +255,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           lastAttempt: now
         };
         loginAttempts.set(clientIP, newAttemptData);
+        console.log(`LOGIN DEBUG - Login failed, attempts: ${newAttemptData.count}`);
         res.status(401).json({ message: "Invalid credentials" });
       }
     } catch (error) {
@@ -237,6 +265,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   app.get('/api/auth/user', (req, res) => {
+    console.log(`AUTH CHECK - Session ID: ${req.sessionID}`);
+    console.log(`AUTH CHECK - Session exists:`, !!req.session);
+    console.log(`AUTH CHECK - Session user:`, req.session?.user ? 'EXISTS' : 'MISSING');
+    console.log(`AUTH CHECK - Full session:`, req.session);
+    
     if (req.session?.user) {
       res.json(req.session.user);
     } else {
