@@ -3,6 +3,7 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import Header from "@/components/layout/header";
 import SummaryCards from "@/components/dashboard/summary-cards";
 import MonthlyBreakdown from "@/components/dashboard/monthly-breakdown";
+import SyncStatus from "@/components/dashboard/sync-status";
 import { DateRangePicker } from "@/components/ui/date-range-picker";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useAuth } from "@/hooks/useAuth";
@@ -314,6 +315,8 @@ export default function Dashboard({ onMenuClick }: DashboardProps) {
           totalRefunds={summary?.totalRefunds || 0}
           isLoading={summaryLoading}
         />
+        
+        <SyncStatus isAdmin={isAdmin} />
         
         <MonthlyBreakdown
           data={monthlyData}

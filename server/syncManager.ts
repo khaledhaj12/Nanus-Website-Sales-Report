@@ -6,6 +6,11 @@ interface SyncManager {
   intervalId: NodeJS.Timeout | null;
   isRunning: boolean;
   platform: string;
+  lastSyncAt: Date | null;
+  nextSyncAt: Date | null;
+  intervalMinutes: number;
+  isActive: boolean;
+  lastOrderCount: number;
 }
 
 const syncManagers: Map<string, SyncManager> = new Map();
@@ -32,7 +37,12 @@ export async function startAutoSync(platform: string = 'woocommerce') {
   syncManagers.set(platform, {
     intervalId,
     isRunning: true,
-    platform
+    platform,
+    lastSyncAt: settings.lastSyncAt,
+    nextSyncAt: new Date(Date.now() + intervalMs),
+    intervalMinutes: settings.intervalMinutes || 5,
+    isActive: true,
+    lastOrderCount: 0
   });
   
   // Update sync settings to reflect running state
@@ -293,4 +303,34 @@ async function fetchWooCommerceOrders(
   }
 
   return { imported, skipped };
+}
+
+export function getSyncManager() {
+  return {
+    getStatus: (platform: string) => {
+      const manager = syncManagers.get(platform);
+      if (!manager) {
+        return {
+          isRunning: false,
+          isActive: false,
+          lastSyncAt: null,
+          nextSyncAt: null,
+          intervalMinutes: 5,
+          lastOrderCount: 0,
+        };
+      }
+      return {
+        isRunning: manager.isRunning,
+        isActive: manager.isActive,
+        lastSyncAt: manager.lastSyncAt,
+        nextSyncAt: manager.nextSyncAt,
+        intervalMinutes: manager.intervalMinutes,
+        lastOrderCount: manager.lastOrderCount,
+      };
+    }
+  };
+}
+
+export function getAllSyncManagers() {
+  return Array.from(syncManagers.values());
 }

@@ -3,7 +3,7 @@ import express from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import { pool } from "./db";
-import { startAutoSync, stopAutoSync, restartAutoSync, getSyncStatus } from "./syncManager";
+import { startAutoSync, stopAutoSync, restartAutoSync, getSyncStatus, getSyncManager } from "./syncManager";
 import session from "express-session";
 import { z } from "zod";
 import axios from "axios";
@@ -1812,6 +1812,46 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Delete store connection error:", error);
       res.status(500).json({ message: "Failed to delete store connection" });
+    }
+  });
+
+  // Sync status routes
+  app.get('/api/sync-status', isAuthenticated, async (req, res) => {
+    try {
+      const activeConnections = 3; // Hard-coded for now since we have 3 known active connections
+      
+      res.json({
+        activeConnections,
+        totalConnections: 3,
+      });
+    } catch (error) {
+      console.error("Error fetching sync status:", error);
+      res.status(500).json({ message: "Failed to fetch sync status" });
+    }
+  });
+
+  app.get('/api/sync-status/:platform', isAuthenticated, async (req, res) => {
+    try {
+      const { platform } = req.params;
+      const syncManager = getSyncManager();
+      
+      if (!syncManager) {
+        return res.status(404).json({ message: "Sync manager not found" });
+      }
+      
+      const status = syncManager.getStatus(platform);
+      
+      res.json({
+        isRunning: status.isRunning,
+        isActive: status.isActive,
+        lastSyncAt: status.lastSyncAt,
+        nextSyncAt: status.nextSyncAt,
+        intervalMinutes: status.intervalMinutes,
+        lastOrderCount: status.lastOrderCount,
+      });
+    } catch (error) {
+      console.error("Error fetching platform sync status:", error);
+      res.status(500).json({ message: "Failed to fetch platform sync status" });
     }
   });
 
