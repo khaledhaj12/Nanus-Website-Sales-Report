@@ -28,7 +28,7 @@ import Sidebar from "@/components/layout/sidebar";
 import Footer from "@/components/layout/footer";
 
 function AppRouter() {
-  const { isAuthenticated, isLoading, isAdmin } = useAuth();
+  const { isAuthenticated, isLoading, isAdmin, permissions } = useAuth();
   const [, setLocation] = useLocation();
   const [activeSection, setActiveSection] = useState("dashboard");
   const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -80,14 +80,49 @@ function AppRouter() {
   const renderPage = () => {
     const commonProps = { onMenuClick: toggleSidebar };
 
-    switch (activeSection) {
+    // Helper function to check if user has permission to view a page
+    const hasPageAccess = (pageId: string) => {
+      // Admin users have access to all admin pages
+      if (isAdmin) return true;
+      
+      // Everyone has access to profile and home/dashboard
+      if (pageId === 'profile' || pageId === 'home' || pageId === 'dashboard') return true;
+      
+      // Check specific permissions for other pages
+      return permissions[pageId]?.canView === true;
+    };
+
+    // Get the first accessible page for this user
+    const getDefaultPage = () => {
+      if (isAdmin) return 'dashboard';
+      
+      // For non-admin users, find the first page they have access to
+      const accessiblePages = ['dashboard', 'reports', 'locations'];
+      for (const page of accessiblePages) {
+        if (hasPageAccess(page)) return page;
+      }
+      return 'profile'; // Fallback to profile if no other access
+    };
+
+    // If user doesn't have access to the current section, redirect to default
+    if (!hasPageAccess(activeSection)) {
+      const defaultPage = getDefaultPage();
+      if (activeSection !== defaultPage) {
+        setActiveSection(defaultPage);
+      }
+      return renderPageComponent(defaultPage, commonProps);
+    }
+
+    return renderPageComponent(activeSection, commonProps);
+  };
+
+  const renderPageComponent = (section: string, commonProps: any) => {
+    switch (section) {
       case "home":
-        return <Dashboard {...commonProps} />;
       case "dashboard":
         return <Dashboard {...commonProps} />;
       case "reports":
         return <Reports {...commonProps} />;
-
       case "locations":
         return <Locations {...commonProps} />;
       case "profile":
