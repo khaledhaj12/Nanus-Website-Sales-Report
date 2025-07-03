@@ -38,8 +38,7 @@ export default function CreateUserModal({ isOpen, onClose, editingUser }: Create
   const queryClient = useQueryClient();
   const isEditMode = Boolean(editingUser);
   
-  // Debug logging
-  console.log('CreateUserModal render:', { isOpen, isEditMode, editingUser });
+
   
   const [formData, setFormData] = useState({
     username: '',
@@ -82,7 +81,7 @@ export default function CreateUserModal({ isOpen, onClose, editingUser }: Create
 
   // Populate form data when editing user
   useEffect(() => {
-    if (editingUser) {
+    if (isOpen && editingUser) {
       setFormData({
         username: editingUser.username || '',
         firstName: editingUser.firstName || '',
@@ -96,8 +95,8 @@ export default function CreateUserModal({ isOpen, onClose, editingUser }: Create
         pagePermissions: userPermissions || {},
         orderStatuses: userStatuses || [],
       });
-    } else {
-      // Reset form for new user
+    } else if (isOpen && !editingUser) {
+      // Reset form for new user only when modal opens
       setFormData({
         username: '',
         firstName: '',
@@ -112,7 +111,7 @@ export default function CreateUserModal({ isOpen, onClose, editingUser }: Create
         orderStatuses: [],
       });
     }
-  }, [editingUser, userLocations, userStatuses, userPermissions]);
+  }, [isOpen, editingUser?.id]); // Only depend on isOpen and user ID
 
   const validatePassword = (password: string) => {
     const minLength = password.length >= 8;
@@ -212,8 +211,8 @@ export default function CreateUserModal({ isOpen, onClose, editingUser }: Create
         title: "Success",
         description: editingUser ? "User updated successfully" : "User created successfully",
       });
-      onClose();
       resetForm();
+      onClose();
     },
     onError: (error: any) => {
       toast({
@@ -302,8 +301,13 @@ export default function CreateUserModal({ isOpen, onClose, editingUser }: Create
     }));
   };
 
+  const handleClose = () => {
+    resetForm();
+    onClose();
+  };
+
   return (
-    <Dialog open={isOpen} onOpenChange={onClose}>
+    <Dialog open={isOpen} onOpenChange={handleClose}>
       <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>{isEditMode ? "Edit User" : "Add New User"}</DialogTitle>
@@ -512,7 +516,7 @@ export default function CreateUserModal({ isOpen, onClose, editingUser }: Create
           </Card>
 
           <DialogFooter>
-            <Button type="button" variant="outline" onClick={onClose}>
+            <Button type="button" variant="outline" onClick={handleClose}>
               Cancel
             </Button>
             <Button type="submit" disabled={userMutation.isPending}>
