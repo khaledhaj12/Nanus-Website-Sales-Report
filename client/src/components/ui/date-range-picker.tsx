@@ -259,6 +259,23 @@ export function DateRangePicker({
             variant="outline"
             size="sm"
             onClick={() => {
+              const today = new Date();
+              const lastMonth = new Date(today.getFullYear(), today.getMonth() - 1, 1);
+              const lastMonthEnd = new Date(today.getFullYear(), today.getMonth(), 0);
+              const startStr = `${lastMonth.getFullYear()}-${(lastMonth.getMonth() + 1).toString().padStart(2, '0')}-${lastMonth.getDate().toString().padStart(2, '0')}`;
+              const endStr = `${lastMonthEnd.getFullYear()}-${(lastMonthEnd.getMonth() + 1).toString().padStart(2, '0')}-${lastMonthEnd.getDate().toString().padStart(2, '0')}`;
+              onStartChange(startStr);
+              onEndChange(endStr);
+              setSelectingStart(true);
+              setIsOpen(false);
+            }}
+          >
+            Last Month
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => {
               onStartChange("");
               onEndChange("");
               setSelectingStart(true);
