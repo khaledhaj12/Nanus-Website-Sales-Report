@@ -105,9 +105,8 @@ function ConnectionSettings({ connectionId, platform }: ConnectionSettingsProps)
   });
 
   const { data: syncStatus, isLoading: syncStatusLoading } = useQuery({
-    queryKey: ["/api/sync-status"],
-    refetchInterval: connectionId === 'default' ? 1000 : 0, // Only auto-refresh for main store
-    enabled: connectionId === 'default', // Only check sync status for main store
+    queryKey: [`/api/sync-status/${platformId}`],
+    refetchInterval: 2000, // Auto-refresh every 2 seconds for all connections
   });
 
   // Initialize settings from API data - only populate if data exists, otherwise keep defaults
@@ -325,8 +324,8 @@ function ConnectionSettings({ connectionId, platform }: ConnectionSettingsProps)
   const isSyncRunning = Boolean(
     syncStatus && 
     typeof syncStatus === 'object' && 
-    'isRunning' in syncStatus && 
-    syncStatus.isRunning
+    'isActive' in syncStatus && 
+    syncStatus.isActive
   );
 
   const handleToggleSync = () => {
