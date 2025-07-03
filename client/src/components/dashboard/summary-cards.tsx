@@ -28,8 +28,6 @@ export default function SummaryCards({
       icon: DollarSign,
       bgColor: "bg-blue-50",
       iconColor: "text-blue-600",
-      growth: "+12.5%",
-      growthText: "vs last month",
     },
     {
       title: "Total Orders",
@@ -37,8 +35,6 @@ export default function SummaryCards({
       icon: ShoppingCart,
       bgColor: "bg-green-50",
       iconColor: "text-green-600",
-      growth: "+8.2%",
-      growthText: "vs last month",
     },
     {
       title: "Platform Fees",
