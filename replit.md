@@ -124,6 +124,7 @@ Changelog:
 - July 03, 2025. Fixed auto-sync status filtering - removed checkout-draft orders from sync query to match dashboard filtering requirements. Auto-sync now correctly fetches only processing, completed, and refunded orders
 - July 03, 2025. Removed duplicate sync status component from dashboard at user request - sync monitoring functionality already exists in API connections page
 - July 03, 2025. Fixed Start/Stop sync button functionality in API connections - buttons now properly toggle for each individual connection (Main Store, Delaware Store, Drexel Store) with real-time status updates
+- July 03, 2025. CRITICAL REGRESSION FIX - Restored sync status endpoints that were mistakenly removed while fixing page permissions bug. Auto-sync was still running but frontend couldn't display status. Restored /api/sync-status and /api/sync-status/:platform endpoints to working state
 ```
 
 ## User Preferences
