@@ -663,38 +663,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Get detailed sync status
-  app.get('/api/sync-status/:platform', isAuthenticated, async (req, res) => {
-    try {
-      const { platform } = req.params;
-      const settings = await storage.getSyncSettings(platform);
-      const syncManagerStatus = getSyncStatus(platform);
-      
-      if (!settings) {
-        return res.json({
-          isActive: false,
-          intervalMinutes: 5,
-          lastSyncAt: null,
-          lastOrderCount: 0,
-          isRunning: false,
-        });
-      }
-
-      // Check if sync is actually running in the sync manager AND enabled in settings
-      const isActuallyRunning = syncManagerStatus.isRunning && settings.isActive;
-
-      res.json({
-        isActive: settings.isActive || false,
-        intervalMinutes: settings.intervalMinutes || 5,
-        lastSyncAt: settings.lastSyncAt,
-        lastOrderCount: settings.lastOrderCount || 0,
-        isRunning: isActuallyRunning,
-      });
-    } catch (error) {
-      console.error("Error fetching sync status:", error);
-      res.status(500).json({ error: "Failed to fetch sync status" });
-    }
-  });
+  // Removed duplicate sync status endpoint - using the newer implementation below
 
   app.post('/api/sync-settings', isAuthenticated, async (req, res) => {
     try {
@@ -730,22 +699,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.get('/api/sync-status', isAuthenticated, async (req, res) => {
-    try {
-      const { platform = 'woocommerce' } = req.query;
-      const systemStatus = getSyncStatus();
-      const settings = await storage.getSyncSettings(platform as string);
-      
-      res.json({
-        ...systemStatus,
-        settings: settings || { platform: platform as string, isActive: false, intervalMinutes: 5 },
-        nextSyncIn: settings?.nextSyncAt ? Math.max(0, Math.floor((new Date(settings.nextSyncAt).getTime() - Date.now()) / 1000)) : 0
-      });
-    } catch (error) {
-      console.error("Get sync status error:", error);
-      res.status(500).json({ message: "Failed to get sync status" });
-    }
-  });
+  // Removed duplicate - using platform-specific endpoint below
 
   app.post('/api/start-sync', isAuthenticated, async (req, res) => {
     try {
@@ -1867,21 +1821,33 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get('/api/sync-status/:platform', isAuthenticated, async (req, res) => {
     try {
       const { platform } = req.params;
+      console.log(`Getting sync status for platform: ${platform}`);
+      
       const syncManager = getSyncManager();
+      console.log(`Sync manager exists: ${!!syncManager}`);
       
       if (!syncManager) {
-        return res.status(404).json({ message: "Sync manager not found" });
+        console.log(`No sync manager found, returning default status`);
+        return res.json({
+          isRunning: false,
+          isActive: false,
+          lastSyncAt: null,
+          nextSyncAt: null,
+          intervalMinutes: 5,
+          lastOrderCount: 0,
+        });
       }
       
       const status = syncManager.getStatus(platform);
+      console.log(`Sync status for ${platform}:`, status);
       
       res.json({
-        isRunning: status.isRunning,
-        isActive: status.isActive,
-        lastSyncAt: status.lastSyncAt,
-        nextSyncAt: status.nextSyncAt,
-        intervalMinutes: status.intervalMinutes,
-        lastOrderCount: status.lastOrderCount,
+        isRunning: status.isRunning || false,
+        isActive: status.isActive || false,
+        lastSyncAt: status.lastSyncAt || null,
+        nextSyncAt: status.nextSyncAt || null,
+        intervalMinutes: status.intervalMinutes || 5,
+        lastOrderCount: status.lastOrderCount || 0,
       });
     } catch (error) {
       console.error("Error fetching platform sync status:", error);
