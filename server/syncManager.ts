@@ -131,14 +131,14 @@ async function performSync(platform: string = 'woocommerce') {
     }
 
     // Calculate date range - sync orders from last sync time or last 24 hours
-    // Add 10-minute buffer to catch orders created during sync windows
+    // Add 1-hour buffer to catch orders created during sync windows and timezone issues
     const now = new Date();
     const lastSync = settings.lastSyncAt ? 
-      new Date(settings.lastSyncAt.getTime() - 10 * 60 * 1000) : // 10 minutes before last sync
-      new Date(now.getTime() - 24 * 60 * 60 * 1000); // or last 24 hours
+      new Date(settings.lastSyncAt.getTime() - 60 * 60 * 1000) : // 1 hour before last sync
+      new Date(now.getTime() - 48 * 60 * 60 * 1000); // or last 48 hours for first sync
     const nextSync = new Date(now.getTime() + (settings.intervalMinutes || 5) * 60 * 1000);
     
-    // Fetch new/updated orders
+    // Fetch new/updated orders using comprehensive approach
     const result = await fetchWooCommerceOrders(
       apiSettings.storeUrl,
       apiSettings.consumerKey,
@@ -192,15 +192,45 @@ async function fetchWooCommerceOrders(
   let hasMore = true;
 
   while (hasMore) {
-    const url = `${storeUrl}/wp-json/wc/v3/orders?per_page=100&page=${page}&orderby=date&order=desc&consumer_key=${consumerKey}&consumer_secret=${consumerSecret}&after=${startDate}&before=${endDate}&status=processing,completed,refunded`;
+    // Use 'after' parameter to catch orders by creation date rather than modification date
+    // This ensures we catch all orders created since the last sync
+    const url = `${storeUrl}/wp-json/wc/v3/orders?per_page=100&page=${page}&orderby=date&order=desc&consumer_key=${consumerKey}&consumer_secret=${consumerSecret}&after=${startDate}&status=processing,completed,refunded`;
     
     console.log(`Fetching auto sync page ${page}...`);
-    const response = await axios.get(url);
-    const orders = response.data;
+    console.log(`Sync query: after=${startDate}`);
+    
+    let response: any;
+    let retryCount = 0;
+    const maxRetries = 3;
+    
+    while (retryCount < maxRetries) {
+      try {
+        response = await axios.get(url, { timeout: 30000 });
+        break;
+      } catch (error: any) {
+        retryCount++;
+        console.log(`API call failed (attempt ${retryCount}/${maxRetries}):`, error.message);
+        if (retryCount >= maxRetries) {
+          throw error;
+        }
+        // Wait before retry
+        await new Promise(resolve => setTimeout(resolve, 1000 * retryCount));
+      }
+    }
+    
+    const orders = response?.data || [];
     
     if (!Array.isArray(orders) || orders.length === 0) {
       hasMore = false;
       break;
+    }
+    
+    console.log(`Found ${orders.length} orders on page ${page}`);
+    
+    // Log first few order IDs for debugging
+    if (orders.length > 0) {
+      const orderIds = orders.slice(0, 5).map(o => o.id);
+      console.log(`Page ${page} order IDs: ${orderIds.join(', ')}`);
     }
 
     for (const order of orders) {
