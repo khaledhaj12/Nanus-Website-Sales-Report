@@ -823,7 +823,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.post('/api/rest-api-settings', isAuthenticated, requireAdmin, async (req, res) => {
     try {
+      console.log('Saving API settings:', req.body);
       const settings = await storage.upsertRestApiSettings(req.body);
+      console.log('API settings saved successfully:', settings);
+      
+      // If this is the main store (woocommerce platform), restart auto-sync with new credentials
+      if (req.body.platform === 'woocommerce') {
+        console.log('Restarting auto-sync for main store with new credentials');
+        await restartAutoSync('woocommerce');
+      }
+      
       res.json({ success: true, settings });
     } catch (error) {
       console.error("Update REST API settings error:", error);
