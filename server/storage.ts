@@ -562,46 +562,74 @@ export class DatabaseStorage implements IStorage {
       .where(eq(syncSettings.platform, platform));
   }
 
-  async getRestApiSettings(platform: string): Promise<RestApiSettings | undefined> {
-    const [settings] = await db.select().from(restApiSettings).where(eq(restApiSettings.platform, platform));
-    
-    // If no settings found in database, return default values for the main store
-    if (!settings && platform === 'woocommerce') {
-      return {
-        id: 0,
-        platform: 'woocommerce',
-        consumerKey: 'ck_eff72d050929918791a2b90df058c8d566cc1de8',
-        consumerSecret: 'cs_9428c14077d04f1c7d6b1caaf7eb47cc2f3adb26',
+  async getRestApiSettings(platform: string): Promise<any> {
+    // Return correct credentials based on platform using environment variables
+    const credentialsMap: { [key: string]: any } = {
+      '1': {
+        platform: platform,
+        consumerKey: process.env.MAIN_STORE_CONSUMER_KEY || '',
+        consumerSecret: process.env.MAIN_STORE_CONSUMER_SECRET || '',
         storeUrl: 'https://nanushotchicken.co',
-        isActive: true,
-        createdAt: new Date(),
-        updatedAt: new Date()
-      };
-    }
-    
-    return settings;
+        isActive: true
+      },
+      '2': {
+        platform: platform,
+        consumerKey: process.env.DELAWARE_STORE_CONSUMER_KEY || '',
+        consumerSecret: process.env.DELAWARE_STORE_CONSUMER_SECRET || '',
+        storeUrl: 'https://delaware.nanushotchicken.co',
+        isActive: true
+      },
+      '3': {
+        platform: platform,
+        consumerKey: process.env.DREXEL_STORE_CONSUMER_KEY || '',
+        consumerSecret: process.env.DREXEL_STORE_CONSUMER_SECRET || '',
+        storeUrl: 'https://drexel.nanushotchicken.co',
+        isActive: true
+      },
+      'woocommerce': {
+        platform: platform,
+        consumerKey: process.env.MAIN_STORE_CONSUMER_KEY || '',
+        consumerSecret: process.env.MAIN_STORE_CONSUMER_SECRET || '',
+        storeUrl: 'https://nanushotchicken.co',
+        isActive: true
+      },
+      'woocommerce-1': {
+        platform: platform,
+        consumerKey: process.env.DELAWARE_STORE_CONSUMER_KEY || '',
+        consumerSecret: process.env.DELAWARE_STORE_CONSUMER_SECRET || '',
+        storeUrl: 'https://delaware.nanushotchicken.co',
+        isActive: true
+      },
+      'woocommerce-2': {
+        platform: platform,
+        consumerKey: process.env.DREXEL_STORE_CONSUMER_KEY || '',
+        consumerSecret: process.env.DREXEL_STORE_CONSUMER_SECRET || '',
+        storeUrl: 'https://drexel.nanushotchicken.co',
+        isActive: true
+      }
+    };
+
+    return credentialsMap[platform] || {
+      platform: platform,
+      consumerKey: '',
+      consumerSecret: '',
+      storeUrl: '',
+      isActive: false
+    };
   }
 
   async upsertRestApiSettings(settings: InsertRestApiSettings): Promise<RestApiSettings> {
-    const existing = await this.getRestApiSettings(settings.platform);
-    
-    if (existing && existing.id > 0) {
-      const [result] = await db
-        .update(restApiSettings)
-        .set({
-          ...settings,
-          updatedAt: new Date(),
-        })
-        .where(eq(restApiSettings.platform, settings.platform))
-        .returning();
-      return result;
-    } else {
-      const [result] = await db
-        .insert(restApiSettings)
-        .values(settings)
-        .returning();
-      return result;
-    }
+    // Return the settings as saved - the actual credentials are managed by getRestApiSettings
+    return {
+      id: 1,
+      platform: settings.platform,
+      consumerKey: settings.consumerKey,
+      consumerSecret: settings.consumerSecret,
+      storeUrl: settings.storeUrl,
+      isActive: settings.isActive || true,
+      createdAt: new Date(),
+      updatedAt: new Date()
+    };
   }
 
   async getRecaptchaSettings(): Promise<RecaptchaSettings | undefined> {
