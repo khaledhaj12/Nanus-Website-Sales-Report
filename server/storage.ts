@@ -590,17 +590,28 @@ export class DatabaseStorage implements IStorage {
   }
 
   async upsertRestApiSettings(settings: InsertRestApiSettings): Promise<RestApiSettings> {
-    // Return the settings as saved - the actual credentials are managed by getRestApiSettings
-    return {
-      id: 1,
-      platform: settings.platform,
-      consumerKey: settings.consumerKey,
-      consumerSecret: settings.consumerSecret,
-      storeUrl: settings.storeUrl,
-      isActive: settings.isActive || true,
-      createdAt: new Date(),
-      updatedAt: new Date()
-    };
+    // Actually save the credentials to the database
+    const [restApiSetting] = await db
+      .insert(restApiSettings)
+      .values({
+        platform: settings.platform,
+        consumerKey: settings.consumerKey,
+        consumerSecret: settings.consumerSecret,
+        storeUrl: settings.storeUrl,
+        isActive: settings.isActive ?? true,
+      })
+      .onConflictDoUpdate({
+        target: restApiSettings.platform,
+        set: {
+          consumerKey: settings.consumerKey,
+          consumerSecret: settings.consumerSecret,
+          storeUrl: settings.storeUrl,
+          isActive: settings.isActive ?? true,
+          updatedAt: new Date(),
+        },
+      })
+      .returning();
+    return restApiSetting;
   }
 
   async getRecaptchaSettings(): Promise<RecaptchaSettings | undefined> {
