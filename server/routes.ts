@@ -956,6 +956,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       // Get credentials directly from database instead of from frontend
       const settings = await storage.getRestApiSettings(platform);
+      console.log('Import - Retrieved settings:', settings ? 'FOUND' : 'NOT_FOUND');
+      console.log('Import - Has consumerKey:', !!settings?.consumerKey);
+      console.log('Import - Has consumerSecret:', !!settings?.consumerSecret);
+      console.log('Import - Has storeUrl:', !!settings?.storeUrl);
+      
       if (!settings || !settings.consumerKey || !settings.consumerSecret || !settings.storeUrl) {
         return res.status(400).json({ message: "REST API credentials not configured" });
       }
