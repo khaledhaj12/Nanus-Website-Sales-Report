@@ -156,10 +156,10 @@ export const storeConnections = pgTable("store_connections", {
 // REST API settings table
 export const restApiSettings = pgTable("rest_api_settings", {
   id: serial("id").primaryKey(),
-  connectionId: varchar("connection_id").references(() => storeConnections.id),
-  endpoint: varchar("endpoint", { length: 500 }).notNull(),
-  method: varchar("method", { length: 10 }).notNull().default("GET"),
-  headers: jsonb("headers"),
+  platform: varchar("platform", { length: 100 }).notNull(),
+  consumerKey: varchar("consumer_key", { length: 255 }).notNull(),
+  consumerSecret: varchar("consumer_secret", { length: 255 }).notNull(),
+  storeUrl: varchar("store_url", { length: 500 }).notNull(),
   isActive: boolean("is_active").notNull().default(true),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),

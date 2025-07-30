@@ -563,53 +563,24 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getRestApiSettings(platform: string): Promise<any> {
-    // Return correct credentials based on platform using environment variables
-    const credentialsMap: { [key: string]: any } = {
-      '1': {
+    // Get credentials from database (stored via API Connections page)
+    const [settings] = await db
+      .select()
+      .from(restApiSettings)
+      .where(eq(restApiSettings.platform, platform));
+    
+    if (settings) {
+      return {
         platform: platform,
-        consumerKey: process.env.MAIN_STORE_CONSUMER_KEY || '',
-        consumerSecret: process.env.MAIN_STORE_CONSUMER_SECRET || '',
-        storeUrl: 'https://nanushotchicken.co',
-        isActive: true
-      },
-      '2': {
-        platform: platform,
-        consumerKey: process.env.DELAWARE_STORE_CONSUMER_KEY || '',
-        consumerSecret: process.env.DELAWARE_STORE_CONSUMER_SECRET || '',
-        storeUrl: 'https://delaware.nanushotchicken.co',
-        isActive: true
-      },
-      '3': {
-        platform: platform,
-        consumerKey: process.env.DREXEL_STORE_CONSUMER_KEY || '',
-        consumerSecret: process.env.DREXEL_STORE_CONSUMER_SECRET || '',
-        storeUrl: 'https://drexel.nanushotchicken.co',
-        isActive: true
-      },
-      'woocommerce': {
-        platform: platform,
-        consumerKey: process.env.MAIN_STORE_CONSUMER_KEY || '',
-        consumerSecret: process.env.MAIN_STORE_CONSUMER_SECRET || '',
-        storeUrl: 'https://nanushotchicken.co',
-        isActive: true
-      },
-      'woocommerce-1': {
-        platform: platform,
-        consumerKey: process.env.DELAWARE_STORE_CONSUMER_KEY || '',
-        consumerSecret: process.env.DELAWARE_STORE_CONSUMER_SECRET || '',
-        storeUrl: 'https://delaware.nanushotchicken.co',
-        isActive: true
-      },
-      'woocommerce-2': {
-        platform: platform,
-        consumerKey: process.env.DREXEL_STORE_CONSUMER_KEY || '',
-        consumerSecret: process.env.DREXEL_STORE_CONSUMER_SECRET || '',
-        storeUrl: 'https://drexel.nanushotchicken.co',
-        isActive: true
-      }
-    };
+        consumerKey: settings.consumerKey,
+        consumerSecret: settings.consumerSecret,
+        storeUrl: settings.storeUrl,
+        isActive: settings.isActive
+      };
+    }
 
-    return credentialsMap[platform] || {
+    // Fallback: return empty credentials if not found in database
+    return {
       platform: platform,
       consumerKey: '',
       consumerSecret: '',
