@@ -952,11 +952,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Manual import endpoint
   app.post('/api/import-woo-orders', isAuthenticated, async (req, res) => {
     try {
-      const { storeUrl, consumerKey, consumerSecret, startDate, endDate } = req.body;
+      const { startDate, endDate, platform = 'woocommerce' } = req.body;
       
-      if (!storeUrl || !consumerKey || !consumerSecret) {
-        return res.status(400).json({ message: "Missing required API credentials" });
+      // Get credentials directly from database instead of from frontend
+      const settings = await storage.getRestApiSettings(platform);
+      if (!settings || !settings.consumerKey || !settings.consumerSecret || !settings.storeUrl) {
+        return res.status(400).json({ message: "REST API credentials not configured" });
       }
+      
+      const { storeUrl, consumerKey, consumerSecret } = settings;
 
       let imported = 0;
       let skipped = 0;
