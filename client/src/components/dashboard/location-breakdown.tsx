@@ -509,6 +509,50 @@ export default function LocationBreakdown({ data, isLoading, selectedLocation, s
               selectedStatuses={selectedStatuses}
             />
           ))}
+
+          {/* All Locations Summary Row */}
+          {filteredData.length > 0 && (
+            <div className="border border-gray-300 rounded-lg bg-blue-50 mt-2">
+              <div className="flex items-center justify-between px-4 py-3">
+                <div className="flex items-center gap-2 flex-1 min-w-0">
+                  <MapPin className="h-4 w-4 text-blue-800 flex-shrink-0" />
+                  <h3 className="font-bold text-blue-900">All Locations ({filteredData.length})</h3>
+                </div>
+                <div className="flex items-center gap-8">
+                  {visibleColumns.sales && (
+                    <span className="w-16 text-center font-bold text-blue-800">
+                      ${filteredData.reduce((sum, loc) => sum + parseFloat(loc.sales.toString()), 0).toFixed(2)}
+                    </span>
+                  )}
+                  {visibleColumns.orders && (
+                    <span className="w-16 text-center font-bold text-blue-800">
+                      {filteredData.reduce((sum, loc) => sum + parseInt(loc.orders.toString()), 0)}
+                    </span>
+                  )}
+                  {visibleColumns.platform && (
+                    <span className="w-16 text-center font-bold text-blue-800">
+                      ${filteredData.reduce((sum, loc) => sum + parseFloat(loc.platform_fees.toString()), 0).toFixed(2)}
+                    </span>
+                  )}
+                  {visibleColumns.stripe && (
+                    <span className="w-16 text-center font-bold text-blue-800">
+                      ${filteredData.reduce((sum, loc) => sum + parseFloat(loc.stripe_fees.toString()), 0).toFixed(2)}
+                    </span>
+                  )}
+                  {visibleColumns.refunds && (
+                    <span className="w-16 text-center font-bold text-blue-800">
+                      ${filteredData.reduce((sum, loc) => sum + parseFloat(loc.refunds.toString()), 0).toFixed(2)}
+                    </span>
+                  )}
+                  {visibleColumns.net && (
+                    <span className="w-16 text-center font-bold text-blue-800">
+                      ${filteredData.reduce((sum, loc) => sum + parseFloat(loc.net_deposit.toString()), 0).toFixed(2)}
+                    </span>
+                  )}
+                </div>
+              </div>
+            </div>
+          )}
         </div>
       </CardContent>
     </Card>
