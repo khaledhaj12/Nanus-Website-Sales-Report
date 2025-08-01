@@ -10,9 +10,9 @@ import { useState, useMemo, useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { formatCurrency } from "@/lib/feeCalculations";
 
-// Format numbers with commas but no currency symbol to match Monthly Breakdown
+// Format numbers with commas and dollar sign to match Monthly Breakdown
 const formatNumber = (amount: number): string => {
-  return amount.toLocaleString('en-US', {
+  return '$' + amount.toLocaleString('en-US', {
     minimumFractionDigits: 2,
     maximumFractionDigits: 2
   });
