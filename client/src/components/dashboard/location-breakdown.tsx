@@ -3,9 +3,11 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Checkbox } from "@/components/ui/checkbox";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { MapPin, DollarSign, ShoppingCart, Percent, CreditCard, RefreshCw, TrendingUp, Settings, ChevronDown, ChevronRight } from "lucide-react";
 import { useState, useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
+import { formatCurrency } from "@/lib/feeCalculations";
 
 interface LocationData {
   location: string;
@@ -142,43 +144,144 @@ function LocationRow({
 
       {/* Expanded orders section */}
       {isExpanded && (
-        <div className="border-t bg-gray-25 px-4 py-3">
-          {ordersLoading ? (
-            <div className="text-center py-4 text-gray-500">Loading orders...</div>
-          ) : orders.length > 0 ? (
-            <div className="space-y-2">
-              <div className="text-sm font-medium text-gray-700 mb-3">
-                Orders for {location.location}
-              </div>
-              <div className="space-y-1">
-                {orders.map((order: any, index: number) => (
-                  <div key={order.order_id || index} className="flex items-center justify-between py-2 px-3 bg-white rounded border text-sm">
-                    <div className="flex items-center gap-4">
-                      <span className="font-medium text-gray-900">#{order.order_id}</span>
-                      <span className="text-gray-600">
-                        {new Date(order.order_date).toLocaleString()}
-                      </span>
+        <div className="border-t bg-gray-50">
+          <div className="p-6">
+            {ordersLoading ? (
+              <div className="text-center py-4 text-gray-500">Loading orders...</div>
+            ) : orders.length > 0 ? (
+              <>
+                {/* Desktop Table View */}
+                <div className="hidden md:block overflow-x-auto">
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Date</TableHead>
+                        <TableHead>Time</TableHead>
+                        <TableHead>Order ID</TableHead>
+                        <TableHead>Customer</TableHead>
+                        <TableHead>Amount</TableHead>
+                        <TableHead>Refund</TableHead>
+                        <TableHead>Status</TableHead>
+                        <TableHead>Location</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {orders.map((order: any) => (
+                        <TableRow key={order.id}>
+                          <TableCell>
+                            {new Date(order.orderDate).toLocaleDateString()}
+                          </TableCell>
+                          <TableCell>
+                            {new Date(order.orderDate).toLocaleTimeString('en-US', { 
+                              hour: 'numeric',
+                              minute: '2-digit',
+                              hour12: true
+                            })}
+                          </TableCell>
+                          <TableCell className="font-mono text-blue-600">
+                            {order.orderId}
+                          </TableCell>
+                          <TableCell>
+                            <div>
+                              <div>
+                                {order.customerName || 
+                                 (order.billingFirstName && order.billingLastName 
+                                   ? `${order.billingFirstName} ${order.billingLastName}`.trim()
+                                   : (order.shippingFirstName && order.shippingLastName 
+                                      ? `${order.shippingFirstName} ${order.shippingLastName}`.trim()
+                                      : 'N/A'))}
+                              </div>
+                              {(order.billingAddress1 || order.shippingAddress1) && (
+                                <div className="text-sm text-gray-500">
+                                  {order.billingAddress1 || order.shippingAddress1}
+                                </div>
+                              )}
+                            </div>
+                          </TableCell>
+                          <TableCell className="font-semibold">
+                            {formatCurrency(parseFloat(order.amount))}
+                          </TableCell>
+                          <TableCell className="text-red-600 font-medium">
+                            {order.refundAmount ? formatCurrency(parseFloat(order.refundAmount)) : '$0.00'}
+                          </TableCell>
+                          <TableCell>
+                            <Badge className={`${
+                              order.status === 'completed' ? 'bg-green-100 text-green-800' :
+                              order.status === 'processing' ? 'bg-blue-100 text-blue-800' :
+                              order.status === 'refunded' ? 'bg-red-100 text-red-800' :
+                              'bg-gray-100 text-gray-800'
+                            }`}>
+                              {order.status.charAt(0).toUpperCase() + order.status.slice(1)}
+                            </Badge>
+                          </TableCell>
+                          <TableCell className="text-sm text-gray-600">
+                            {order.locationName || location.location}
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </div>
+
+                {/* Mobile Card View */}
+                <div className="md:hidden space-y-3">
+                  {orders.map((order: any) => (
+                    <div key={order.id} className="bg-white border rounded-lg p-4">
+                      <div className="flex justify-between items-start mb-2">
+                        <div className="font-mono text-blue-600 font-medium">
+                          {order.orderId}
+                        </div>
+                        <Badge className={`${
+                          order.status === 'completed' ? 'bg-green-100 text-green-800' :
+                          order.status === 'processing' ? 'bg-blue-100 text-blue-800' :
+                          order.status === 'refunded' ? 'bg-red-100 text-red-800' :
+                          'bg-gray-100 text-gray-800'
+                        }`}>
+                          {order.status.charAt(0).toUpperCase() + order.status.slice(1)}
+                        </Badge>
+                      </div>
+                      
+                      <div className="space-y-2 text-sm">
+                        <div className="flex justify-between">
+                          <span className="text-gray-500">Date:</span>
+                          <span>{new Date(order.orderDate).toLocaleDateString()}</span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span className="text-gray-500">Time:</span>
+                          <span>{new Date(order.orderDate).toLocaleTimeString('en-US', { 
+                            hour: 'numeric',
+                            minute: '2-digit',
+                            hour12: true
+                          })}</span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span className="text-gray-500">Customer:</span>
+                          <span>{order.customerName || 
+                                 (order.billingFirstName && order.billingLastName 
+                                   ? `${order.billingFirstName} ${order.billingLastName}`.trim()
+                                   : 'N/A')}</span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span className="text-gray-500">Location:</span>
+                          <span>{order.locationName || location.location}</span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span className="text-gray-500">Amount:</span>
+                          <span className="font-semibold">{formatCurrency(parseFloat(order.amount))}</span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span className="text-gray-500">Refund:</span>
+                          <span className="text-red-600 font-medium">{order.refundAmount ? formatCurrency(parseFloat(order.refundAmount)) : '$0.00'}</span>
+                        </div>
+                      </div>
                     </div>
-                    <div className="flex items-center gap-4">
-                      <span className="text-green-600 font-medium">
-                        ${parseFloat(order.amount).toFixed(2)}
-                      </span>
-                      <span className={`px-2 py-1 rounded-full text-xs font-medium ${
-                        order.status === 'completed' ? 'bg-green-100 text-green-800' :
-                        order.status === 'processing' ? 'bg-blue-100 text-blue-800' :
-                        order.status === 'refunded' ? 'bg-red-100 text-red-800' :
-                        'bg-gray-100 text-gray-800'
-                      }`}>
-                        {order.status}
-                      </span>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-          ) : (
-            <div className="text-center py-4 text-gray-500">No orders found for this location</div>
-          )}
+                  ))}
+                </div>
+              </>
+            ) : (
+              <div className="text-center py-4 text-gray-500">No orders found for this location</div>
+            )}
+          </div>
         </div>
       )}
     </div>
