@@ -3,6 +3,7 @@ import { useQuery, useQueryClient, useMutation } from "@tanstack/react-query";
 import Header from "@/components/layout/header";
 import SummaryCards from "@/components/dashboard/summary-cards";
 import MonthlyBreakdown from "@/components/dashboard/monthly-breakdown";
+import LocationBreakdown from "@/components/dashboard/location-breakdown";
 import { DateRangePicker } from "@/components/ui/date-range-picker";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useAuth } from "@/hooks/useAuth";
@@ -177,6 +178,36 @@ export default function Dashboard({ onMenuClick }: DashboardProps) {
       
       if (!response.ok) {
         throw new Error("Failed to fetch monthly breakdown");
+      }
+      
+      return response.json();
+    },
+  });
+
+  // Fetch location breakdown data - reuse the export endpoint
+  const { data: locationData = [], isLoading: locationLoading } = useQuery({
+    queryKey: ["/api/dashboard/export", { startDate, endDate, location: selectedLocation, statuses: selectedStatuses }],
+    queryFn: async () => {
+      const params = new URLSearchParams();
+      if (selectedLocation && selectedLocation !== "all") {
+        params.append("locationId", selectedLocation);
+      }
+      if (startDate) {
+        params.append("startDate", startDate);
+      }
+      if (endDate) {
+        params.append("endDate", endDate);
+      }
+      selectedStatuses.forEach(status => {
+        params.append("statuses", status);
+      });
+      
+      const response = await fetch(`/api/dashboard/export?${params}`, {
+        credentials: "include",
+      });
+      
+      if (!response.ok) {
+        throw new Error("Failed to fetch location breakdown");
       }
       
       return response.json();
@@ -405,6 +436,11 @@ export default function Dashboard({ onMenuClick }: DashboardProps) {
           netDeposit={summary?.netDeposit || 0}
           totalRefunds={summary?.totalRefunds || 0}
           isLoading={summaryLoading}
+        />
+        
+        <LocationBreakdown
+          data={locationData}
+          isLoading={locationLoading}
         />
         
         <MonthlyBreakdown
