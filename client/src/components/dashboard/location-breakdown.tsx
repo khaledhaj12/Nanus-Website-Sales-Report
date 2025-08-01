@@ -1,6 +1,10 @@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { MapPin, DollarSign, ShoppingCart, Percent, CreditCard, RefreshCw, TrendingUp } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Checkbox } from "@/components/ui/checkbox";
+import { MapPin, DollarSign, ShoppingCart, Percent, CreditCard, RefreshCw, TrendingUp, Settings } from "lucide-react";
+import { useState } from "react";
 
 interface LocationData {
   location: string;
@@ -18,6 +22,30 @@ interface LocationBreakdownProps {
 }
 
 export default function LocationBreakdown({ data, isLoading }: LocationBreakdownProps) {
+  const [visibleColumns, setVisibleColumns] = useState({
+    sales: true,
+    orders: true,
+    platform: true,
+    stripe: true,
+    refunds: true,
+    net: true,
+  });
+
+  const toggleColumn = (columnKey: keyof typeof visibleColumns) => {
+    setVisibleColumns(prev => ({
+      ...prev,
+      [columnKey]: !prev[columnKey]
+    }));
+  };
+
+  const columnConfig = [
+    { key: 'sales' as const, label: 'Sales', width: 'w-16' },
+    { key: 'orders' as const, label: 'Orders', width: 'w-16' },
+    { key: 'platform' as const, label: 'Platform', width: 'w-16' },
+    { key: 'stripe' as const, label: 'Stripe', width: 'w-16' },
+    { key: 'refunds' as const, label: 'Refunds', width: 'w-16' },
+    { key: 'net' as const, label: 'Net', width: 'w-16' },
+  ];
   if (isLoading) {
     return (
       <Card className="w-full">
@@ -68,11 +96,45 @@ export default function LocationBreakdown({ data, isLoading }: LocationBreakdown
   return (
     <Card className="w-full">
       <CardHeader>
-        <CardTitle className="flex items-center gap-2">
-          <MapPin className="h-5 w-5" />
-          Location Breakdown
-        </CardTitle>
-        <CardDescription>Sales performance by location</CardDescription>
+        <div className="flex items-center justify-between">
+          <div>
+            <CardTitle className="flex items-center gap-2">
+              <MapPin className="h-5 w-5" />
+              Location Breakdown
+            </CardTitle>
+            <CardDescription>Sales performance by location</CardDescription>
+          </div>
+          <Popover>
+            <PopoverTrigger asChild>
+              <Button variant="outline" size="sm" className="gap-2">
+                <Settings className="h-4 w-4" />
+                Columns
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent className="w-48" align="end">
+              <div className="space-y-3">
+                <h4 className="font-medium text-sm">Show/Hide Columns</h4>
+                <div className="space-y-2">
+                  {columnConfig.map((column) => (
+                    <div key={column.key} className="flex items-center space-x-2">
+                      <Checkbox
+                        id={column.key}
+                        checked={visibleColumns[column.key]}
+                        onCheckedChange={() => toggleColumn(column.key)}
+                      />
+                      <label
+                        htmlFor={column.key}
+                        className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
+                      >
+                        {column.label}
+                      </label>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </PopoverContent>
+          </Popover>
+        </div>
       </CardHeader>
       <CardContent>
         <div className="space-y-4">
@@ -83,12 +145,13 @@ export default function LocationBreakdown({ data, isLoading }: LocationBreakdown
               <span>Location</span>
             </div>
             <div className="flex items-center gap-8">
-              <span className="w-16 text-center">Sales</span>
-              <span className="w-16 text-center">Orders</span>
-              <span className="w-16 text-center">Platform</span>
-              <span className="w-16 text-center">Stripe</span>
-              <span className="w-16 text-center">Refunds</span>
-              <span className="w-16 text-center">Net</span>
+              {columnConfig.map((column) => (
+                visibleColumns[column.key] && (
+                  <span key={column.key} className={`${column.width} text-center`}>
+                    {column.label}
+                  </span>
+                )
+              ))}
             </div>
           </div>
 
@@ -100,24 +163,36 @@ export default function LocationBreakdown({ data, isLoading }: LocationBreakdown
                 <h3 className="font-medium text-gray-900 truncate">{location.location}</h3>
               </div>
               <div className="flex items-center gap-8">
-                <span className="w-16 text-center font-semibold text-green-600">
-                  ${parseFloat(location.sales.toString()).toFixed(2)}
-                </span>
-                <span className="w-16 text-center font-semibold text-blue-600">
-                  {parseInt(location.orders.toString())}
-                </span>
-                <span className="w-16 text-center font-semibold text-orange-600">
-                  ${parseFloat(location.platform_fees.toString()).toFixed(2)}
-                </span>
-                <span className="w-16 text-center font-semibold text-purple-600">
-                  ${parseFloat(location.stripe_fees.toString()).toFixed(2)}
-                </span>
-                <span className="w-16 text-center font-semibold text-red-600">
-                  ${parseFloat(location.refunds.toString()).toFixed(2)}
-                </span>
-                <span className="w-16 text-center font-semibold text-emerald-600">
-                  ${parseFloat(location.net_deposit.toString()).toFixed(2)}
-                </span>
+                {visibleColumns.sales && (
+                  <span className="w-16 text-center font-semibold text-green-600">
+                    ${parseFloat(location.sales.toString()).toFixed(2)}
+                  </span>
+                )}
+                {visibleColumns.orders && (
+                  <span className="w-16 text-center font-semibold text-blue-600">
+                    {parseInt(location.orders.toString())}
+                  </span>
+                )}
+                {visibleColumns.platform && (
+                  <span className="w-16 text-center font-semibold text-orange-600">
+                    ${parseFloat(location.platform_fees.toString()).toFixed(2)}
+                  </span>
+                )}
+                {visibleColumns.stripe && (
+                  <span className="w-16 text-center font-semibold text-purple-600">
+                    ${parseFloat(location.stripe_fees.toString()).toFixed(2)}
+                  </span>
+                )}
+                {visibleColumns.refunds && (
+                  <span className="w-16 text-center font-semibold text-red-600">
+                    ${parseFloat(location.refunds.toString()).toFixed(2)}
+                  </span>
+                )}
+                {visibleColumns.net && (
+                  <span className="w-16 text-center font-semibold text-emerald-600">
+                    ${parseFloat(location.net_deposit.toString()).toFixed(2)}
+                  </span>
+                )}
               </div>
             </div>
           ))}
