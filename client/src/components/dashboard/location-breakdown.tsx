@@ -3,9 +3,10 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Checkbox } from "@/components/ui/checkbox";
+import { Input } from "@/components/ui/input";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { MapPin, DollarSign, ShoppingCart, Percent, CreditCard, RefreshCw, TrendingUp, Settings, ChevronDown, ChevronRight } from "lucide-react";
-import { useState, useMemo } from "react";
+import { MapPin, DollarSign, ShoppingCart, Percent, CreditCard, RefreshCw, TrendingUp, Settings, ChevronDown, ChevronRight, Search, X } from "lucide-react";
+import { useState, useMemo, useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { formatCurrency } from "@/lib/feeCalculations";
 
@@ -307,6 +308,10 @@ export default function LocationBreakdown({ data, isLoading, selectedLocation, s
   
   // Track expanded locations
   const [expandedLocations, setExpandedLocations] = useState<Record<string, boolean>>({});
+  
+  // Search functionality
+  const [searchQuery, setSearchQuery] = useState("");
+  const [searchResults, setSearchResults] = useState<{location: string, orderId: string}[]>([]);
 
   // Initialize location visibility when data changes
   useMemo(() => {
@@ -349,8 +354,52 @@ export default function LocationBreakdown({ data, isLoading, selectedLocation, s
     { key: 'net' as const, label: 'Net', width: 'w-16' },
   ];
 
-  // Filter data based on visible locations
-  const filteredData = data.filter(location => visibleLocations[location.location] !== false);
+  // Search for orders across all locations
+  const searchForOrder = async (query: string) => {
+    if (!query.trim()) {
+      setSearchResults([]);
+      return;
+    }
+
+    try {
+      const params = new URLSearchParams();
+      params.append("searchQuery", query.trim());
+      if (startDate) params.append("startDate", startDate);
+      if (endDate) params.append("endDate", endDate);
+      selectedStatuses.forEach(status => params.append("statuses", status));
+
+      const response = await fetch(`/api/dashboard/search-orders?${params}`, {
+        credentials: "include",
+      });
+
+      if (response.ok) {
+        const results = await response.json();
+        setSearchResults(results);
+        
+        // Auto-expand locations that contain the searched order
+        if (results.length > 0) {
+          const newExpandedLocations: Record<string, boolean> = {};
+          results.forEach((result: any) => {
+            newExpandedLocations[result.location] = true;
+          });
+          setExpandedLocations(newExpandedLocations);
+        }
+      }
+    } catch (error) {
+      console.error("Search failed:", error);
+    }
+  };
+
+  // Filter data based on visible locations and search results
+  let filteredData = data.filter(location => visibleLocations[location.location] !== false);
+  
+  // If there's a search query with results, filter to only show locations with matching orders
+  if (searchQuery.trim() && searchResults.length > 0) {
+    const searchLocationNames = searchResults.map(result => result.location);
+    filteredData = filteredData.filter(location => 
+      searchLocationNames.includes(location.location)
+    );
+  }
 
   // Function to get location ID from location name - we'll need this for the orders query
   const getLocationIdFromName = (locationName: string) => {
@@ -416,13 +465,42 @@ export default function LocationBreakdown({ data, isLoading, selectedLocation, s
             </CardTitle>
             <CardDescription>Sales performance by location</CardDescription>
           </div>
-          <Popover>
-            <PopoverTrigger asChild>
-              <Button variant="outline" size="sm" className="gap-2">
-                <Settings className="h-4 w-4" />
-                Columns
-              </Button>
-            </PopoverTrigger>
+          <div className="flex items-center gap-3">
+            {/* Search Input */}
+            <div className="relative">
+              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+              <Input
+                placeholder="Search order number..."
+                value={searchQuery}
+                onChange={(e) => {
+                  setSearchQuery(e.target.value);
+                  searchForOrder(e.target.value);
+                }}
+                className="pl-10 pr-10 w-64"
+              />
+              {searchQuery && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="absolute right-1 top-1/2 transform -translate-y-1/2 h-6 w-6 p-0"
+                  onClick={() => {
+                    setSearchQuery("");
+                    setSearchResults([]);
+                    setExpandedLocations({});
+                  }}
+                >
+                  <X className="h-3 w-3" />
+                </Button>
+              )}
+            </div>
+            
+            <Popover>
+              <PopoverTrigger asChild>
+                <Button variant="outline" size="sm" className="gap-2">
+                  <Settings className="h-4 w-4" />
+                  Columns
+                </Button>
+              </PopoverTrigger>
             <PopoverContent className="w-64" align="end">
               <div className="space-y-4">
                 {/* Columns Section */}
@@ -474,6 +552,7 @@ export default function LocationBreakdown({ data, isLoading, selectedLocation, s
               </div>
             </PopoverContent>
           </Popover>
+          </div>
         </div>
       </CardHeader>
       <CardContent>

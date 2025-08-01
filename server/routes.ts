@@ -1260,6 +1260,90 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Search orders endpoint for location breakdown
+  app.get('/api/dashboard/search-orders', isAuthenticated, async (req, res) => {
+    try {
+      const { searchQuery, startDate, endDate, statuses } = req.query;
+      
+      if (!searchQuery || typeof searchQuery !== 'string') {
+        return res.json([]);
+      }
+
+      // Get user's admin status and permissions
+      const userId = req.session?.user?.id;
+      const user = await storage.getUser(userId);
+      const isAdmin = user?.role === 'admin';
+      const allowedStatuses = await getAllowedStatuses(userId, isAdmin);
+      
+      const { pool } = await import('./db');
+      
+      let whereClause = "WHERE 1=1";
+      const params: any[] = [];
+
+      // Add order ID search filter
+      whereClause += ` AND order_id ILIKE $${params.length + 1}`;
+      params.push(`%${searchQuery.trim()}%`);
+
+      // Add date filters if provided
+      if (startDate && typeof startDate === 'string') {
+        const startDateTime = `${startDate} 00:00:00`;
+        whereClause += ` AND order_date >= $${params.length + 1}`;
+        params.push(startDateTime);
+      }
+
+      if (endDate && typeof endDate === 'string') {
+        const endDateTime = `${endDate} 23:59:59`;
+        whereClause += ` AND order_date <= $${params.length + 1}`;
+        params.push(endDateTime);
+      }
+
+      // Add status filters if provided
+      let statusFilter: string[] = [];
+      if (statuses) {
+        if (Array.isArray(statuses)) {
+          statusFilter = statuses.filter(s => typeof s === 'string') as string[];
+        } else {
+          statusFilter = [statuses as string];
+        }
+        
+        // Security: Filter statuses for non-admin users
+        if (!isAdmin) {
+          statusFilter = statusFilter.filter(status => allowedStatuses.includes(status));
+        }
+        
+        if (statusFilter.length > 0) {
+          const statusPlaceholders = statusFilter.map((_, index) => `$${params.length + index + 1}`).join(', ');
+          whereClause += ` AND status IN (${statusPlaceholders})`;
+          params.push(...statusFilter);
+        }
+      }
+
+      const query = `
+        SELECT 
+          w.order_id,
+          l.name as location_name
+        FROM woo_orders w
+        LEFT JOIN locations l ON w.location_id = l.id
+        ${whereClause}
+        ORDER BY w.order_date DESC
+        LIMIT 50
+      `;
+
+      const result = await pool.query(query, params);
+      
+      // Format results for frontend
+      const searchResults = result.rows.map((row: any) => ({
+        location: row.location_name || 'Unknown Location',
+        orderId: row.order_id
+      }));
+
+      res.json(searchResults);
+    } catch (error) {
+      console.error("Search orders error:", error);
+      res.status(500).json({ message: "Failed to search orders" });
+    }
+  });
+
   // Dashboard export - location-wise summary data
   app.get('/api/dashboard/export', isAuthenticated, async (req, res) => {
     try {
