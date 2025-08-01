@@ -46,7 +46,8 @@ function LocationRow({
   selectedLocation,
   startDate,
   endDate,
-  selectedStatuses
+  selectedStatuses,
+  searchTerm
 }: {
   location: LocationData;
   visibleColumns: Record<string, boolean>;
@@ -56,6 +57,7 @@ function LocationRow({
   startDate?: string;
   endDate?: string;
   selectedStatuses: string[];
+  searchTerm?: string;
 }) {
   // Fetch orders for this location when expanded
   const { data: orders = [], isLoading: ordersLoading } = useQuery({
@@ -88,9 +90,17 @@ function LocationRow({
       data.forEach((month: any) => {
         if (month.orders) {
           // Filter orders to only include those from this specific location
-          const locationOrders = month.orders.filter((order: any) => 
+          let locationOrders = month.orders.filter((order: any) => 
             order.locationName === location.location
           );
+          
+          // If there's a search term, filter further to show only matching orders
+          if (searchTerm && searchTerm.trim()) {
+            locationOrders = locationOrders.filter((order: any) => 
+              order.orderId?.toString().includes(searchTerm.trim())
+            );
+          }
+          
           allOrders.push(...locationOrders);
         }
       });
@@ -594,6 +604,7 @@ export default function LocationBreakdown({ data, isLoading, selectedLocation, s
               startDate={startDate}
               endDate={endDate}
               selectedStatuses={selectedStatuses}
+              searchTerm={searchQuery}
             />
           ))}
 
