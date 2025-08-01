@@ -65,7 +65,8 @@ function LocationRow({
       locationName: location.location, 
       startDate, 
       endDate, 
-      statuses: selectedStatuses 
+      statuses: selectedStatuses,
+      searchTerm: searchTerm 
     }],
     queryFn: async () => {
       if (!isExpanded) return [];
