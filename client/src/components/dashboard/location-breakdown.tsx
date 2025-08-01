@@ -10,6 +10,14 @@ import { useState, useMemo, useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { formatCurrency } from "@/lib/feeCalculations";
 
+// Format numbers with commas but no currency symbol to match Monthly Breakdown
+const formatNumber = (amount: number): string => {
+  return amount.toLocaleString('en-US', {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2
+  });
+};
+
 interface LocationData {
   location: string;
   sales: number;
@@ -116,7 +124,7 @@ function LocationRow({
         <div className="flex items-center gap-8">
           {visibleColumns.sales && (
             <span className="w-16 text-center font-semibold text-green-600">
-              ${parseFloat(location.sales.toString()).toFixed(2)}
+              {formatNumber(parseFloat(location.sales.toString()))}
             </span>
           )}
           {visibleColumns.orders && (
@@ -126,22 +134,22 @@ function LocationRow({
           )}
           {visibleColumns.platform && (
             <span className="w-16 text-center font-semibold text-orange-600">
-              ${parseFloat(location.platform_fees.toString()).toFixed(2)}
+              {formatNumber(parseFloat(location.platform_fees.toString()))}
             </span>
           )}
           {visibleColumns.stripe && (
             <span className="w-16 text-center font-semibold text-purple-600">
-              ${parseFloat(location.stripe_fees.toString()).toFixed(2)}
+              {formatNumber(parseFloat(location.stripe_fees.toString()))}
             </span>
           )}
           {visibleColumns.refunds && (
             <span className="w-16 text-center font-semibold text-red-600">
-              ${parseFloat(location.refunds.toString()).toFixed(2)}
+              {formatNumber(parseFloat(location.refunds.toString()))}
             </span>
           )}
           {visibleColumns.net && (
             <span className="w-16 text-center font-semibold text-emerald-600">
-              ${parseFloat(location.net_deposit.toString()).toFixed(2)}
+              {formatNumber(parseFloat(location.net_deposit.toString()))}
             </span>
           )}
         </div>
@@ -204,10 +212,10 @@ function LocationRow({
                             </div>
                           </TableCell>
                           <TableCell className="font-semibold">
-                            {formatCurrency(parseFloat(order.amount))}
+                            {formatNumber(parseFloat(order.amount))}
                           </TableCell>
                           <TableCell className="text-red-600 font-medium">
-                            {order.refundAmount ? formatCurrency(parseFloat(order.refundAmount)) : '$0.00'}
+                            {order.refundAmount ? formatNumber(parseFloat(order.refundAmount)) : '0.00'}
                           </TableCell>
                           <TableCell>
                             <Badge className={`${
@@ -272,11 +280,11 @@ function LocationRow({
                         </div>
                         <div className="flex justify-between">
                           <span className="text-gray-500">Amount:</span>
-                          <span className="font-semibold">{formatCurrency(parseFloat(order.amount))}</span>
+                          <span className="font-semibold">{formatNumber(parseFloat(order.amount))}</span>
                         </div>
                         <div className="flex justify-between">
                           <span className="text-gray-500">Refund:</span>
-                          <span className="text-red-600 font-medium">{order.refundAmount ? formatCurrency(parseFloat(order.refundAmount)) : '$0.00'}</span>
+                          <span className="text-red-600 font-medium">{order.refundAmount ? formatNumber(parseFloat(order.refundAmount)) : '0.00'}</span>
                         </div>
                       </div>
                     </div>
@@ -600,7 +608,7 @@ export default function LocationBreakdown({ data, isLoading, selectedLocation, s
                 <div className="flex items-center gap-8">
                   {visibleColumns.sales && (
                     <span className="w-16 text-center font-bold text-blue-800">
-                      ${filteredData.reduce((sum, loc) => sum + parseFloat(loc.sales.toString()), 0).toFixed(2)}
+                      {formatNumber(filteredData.reduce((sum, loc) => sum + parseFloat(loc.sales.toString()), 0))}
                     </span>
                   )}
                   {visibleColumns.orders && (
@@ -610,22 +618,22 @@ export default function LocationBreakdown({ data, isLoading, selectedLocation, s
                   )}
                   {visibleColumns.platform && (
                     <span className="w-16 text-center font-bold text-blue-800">
-                      ${filteredData.reduce((sum, loc) => sum + parseFloat(loc.platform_fees.toString()), 0).toFixed(2)}
+                      {formatNumber(filteredData.reduce((sum, loc) => sum + parseFloat(loc.platform_fees.toString()), 0))}
                     </span>
                   )}
                   {visibleColumns.stripe && (
                     <span className="w-16 text-center font-bold text-blue-800">
-                      ${filteredData.reduce((sum, loc) => sum + parseFloat(loc.stripe_fees.toString()), 0).toFixed(2)}
+                      {formatNumber(filteredData.reduce((sum, loc) => sum + parseFloat(loc.stripe_fees.toString()), 0))}
                     </span>
                   )}
                   {visibleColumns.refunds && (
                     <span className="w-16 text-center font-bold text-blue-800">
-                      ${filteredData.reduce((sum, loc) => sum + parseFloat(loc.refunds.toString()), 0).toFixed(2)}
+                      {formatNumber(filteredData.reduce((sum, loc) => sum + parseFloat(loc.refunds.toString()), 0))}
                     </span>
                   )}
                   {visibleColumns.net && (
                     <span className="w-16 text-center font-bold text-blue-800">
-                      ${filteredData.reduce((sum, loc) => sum + parseFloat(loc.net_deposit.toString()), 0).toFixed(2)}
+                      {formatNumber(filteredData.reduce((sum, loc) => sum + parseFloat(loc.net_deposit.toString()), 0))}
                     </span>
                   )}
                 </div>
