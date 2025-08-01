@@ -441,6 +441,10 @@ export default function Dashboard({ onMenuClick }: DashboardProps) {
         <LocationBreakdown
           data={locationData}
           isLoading={locationLoading}
+          selectedLocation={selectedLocation}
+          startDate={startDate}
+          endDate={endDate}
+          selectedStatuses={selectedStatuses}
         />
         
         <MonthlyBreakdown
