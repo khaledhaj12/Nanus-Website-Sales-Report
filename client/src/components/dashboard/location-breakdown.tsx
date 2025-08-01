@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Checkbox } from "@/components/ui/checkbox";
 import { MapPin, DollarSign, ShoppingCart, Percent, CreditCard, RefreshCw, TrendingUp, Settings } from "lucide-react";
-import { useState } from "react";
+import { useState, useMemo } from "react";
 
 interface LocationData {
   location: string;
@@ -31,10 +31,31 @@ export default function LocationBreakdown({ data, isLoading }: LocationBreakdown
     net: true,
   });
 
+  // Initialize visible locations state dynamically based on data
+  const [visibleLocations, setVisibleLocations] = useState<Record<string, boolean>>({});
+
+  // Initialize location visibility when data changes
+  useMemo(() => {
+    if (data && data.length > 0) {
+      const newVisibleLocations: Record<string, boolean> = {};
+      data.forEach((location) => {
+        newVisibleLocations[location.location] = visibleLocations[location.location] ?? true;
+      });
+      setVisibleLocations(newVisibleLocations);
+    }
+  }, [data]);
+
   const toggleColumn = (columnKey: keyof typeof visibleColumns) => {
     setVisibleColumns(prev => ({
       ...prev,
       [columnKey]: !prev[columnKey]
+    }));
+  };
+
+  const toggleLocation = (locationName: string) => {
+    setVisibleLocations(prev => ({
+      ...prev,
+      [locationName]: !prev[locationName]
     }));
   };
 
@@ -46,6 +67,9 @@ export default function LocationBreakdown({ data, isLoading }: LocationBreakdown
     { key: 'refunds' as const, label: 'Refunds', width: 'w-16' },
     { key: 'net' as const, label: 'Net', width: 'w-16' },
   ];
+
+  // Filter data based on visible locations
+  const filteredData = data.filter(location => visibleLocations[location.location] !== false);
   if (isLoading) {
     return (
       <Card className="w-full">
@@ -111,26 +135,54 @@ export default function LocationBreakdown({ data, isLoading }: LocationBreakdown
                 Columns
               </Button>
             </PopoverTrigger>
-            <PopoverContent className="w-48" align="end">
-              <div className="space-y-3">
-                <h4 className="font-medium text-sm">Show/Hide Columns</h4>
-                <div className="space-y-2">
-                  {columnConfig.map((column) => (
-                    <div key={column.key} className="flex items-center space-x-2">
-                      <Checkbox
-                        id={column.key}
-                        checked={visibleColumns[column.key]}
-                        onCheckedChange={() => toggleColumn(column.key)}
-                      />
-                      <label
-                        htmlFor={column.key}
-                        className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
-                      >
-                        {column.label}
-                      </label>
-                    </div>
-                  ))}
+            <PopoverContent className="w-64" align="end">
+              <div className="space-y-4">
+                {/* Columns Section */}
+                <div>
+                  <h4 className="font-medium text-sm mb-2">Show/Hide Columns</h4>
+                  <div className="space-y-2">
+                    {columnConfig.map((column) => (
+                      <div key={column.key} className="flex items-center space-x-2">
+                        <Checkbox
+                          id={column.key}
+                          checked={visibleColumns[column.key]}
+                          onCheckedChange={() => toggleColumn(column.key)}
+                        />
+                        <label
+                          htmlFor={column.key}
+                          className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
+                        >
+                          {column.label}
+                        </label>
+                      </div>
+                    ))}
+                  </div>
                 </div>
+
+                {/* Locations Section */}
+                {data && data.length > 0 && (
+                  <div className="border-t pt-3">
+                    <h4 className="font-medium text-sm mb-2">Show/Hide Locations</h4>
+                    <div className="space-y-2 max-h-40 overflow-y-auto">
+                      {data.map((location) => (
+                        <div key={location.location} className="flex items-center space-x-2">
+                          <Checkbox
+                            id={`location-${location.location}`}
+                            checked={visibleLocations[location.location] !== false}
+                            onCheckedChange={() => toggleLocation(location.location)}
+                          />
+                          <label
+                            htmlFor={`location-${location.location}`}
+                            className="text-sm leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 truncate"
+                            title={location.location}
+                          >
+                            {location.location}
+                          </label>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
               </div>
             </PopoverContent>
           </Popover>
@@ -156,7 +208,7 @@ export default function LocationBreakdown({ data, isLoading }: LocationBreakdown
           </div>
 
           {/* Data rows */}
-          {data.map((location) => (
+          {filteredData.map((location) => (
             <div key={location.location} className="flex items-center justify-between px-4 py-3 border border-gray-200 rounded-lg hover:bg-gray-50">
               <div className="flex items-center gap-2 flex-1 min-w-0">
                 <MapPin className="h-4 w-4 text-blue-600 flex-shrink-0" />
