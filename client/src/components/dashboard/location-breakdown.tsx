@@ -74,11 +74,15 @@ function LocationRow({
       }
       
       const data = await response.json();
-      // Extract all orders from all months
+      // Extract all orders from all months and filter by location
       const allOrders: any[] = [];
       data.forEach((month: any) => {
         if (month.orders) {
-          allOrders.push(...month.orders);
+          // Filter orders to only include those from this specific location
+          const locationOrders = month.orders.filter((order: any) => 
+            order.locationName === location.location
+          );
+          allOrders.push(...locationOrders);
         }
       });
       return allOrders;
