@@ -1260,6 +1260,87 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Dashboard export - location-wise summary data
+  app.get('/api/dashboard/export', isAuthenticated, async (req, res) => {
+    try {
+      const { startDate, endDate, locationId, statuses } = req.query;
+      
+      // Get user's admin status and allowed statuses
+      const userId = req.session?.user?.id;
+      const user = await storage.getUser(userId);
+      const isAdmin = user?.role === 'admin';
+      const allowedStatuses = await getAllowedStatuses(userId, isAdmin);
+      
+      const { pool } = await import('./db');
+      
+      let whereClause = "WHERE 1=1";
+      const params: any[] = [];
+      
+      // Handle location filtering
+      if (locationId && locationId !== 'all') {
+        whereClause += ` AND wo.location_id = $${params.length + 1}`;
+        params.push(parseInt(locationId as string));
+      }
+      
+      // Handle date filtering
+      if (startDate && endDate) {
+        const startDateTime = `${startDate} 00:00:00`;
+        const endDateTime = `${endDate} 23:59:59`;
+        whereClause += ` AND wo.order_date >= $${params.length + 1} AND wo.order_date <= $${params.length + 2}`;
+        params.push(startDateTime);
+        params.push(endDateTime);
+      }
+      
+      // Handle status filtering
+      let statusFilter: string[] = [];
+      if (statuses) {
+        if (Array.isArray(statuses)) {
+          statusFilter = statuses.filter(s => typeof s === 'string') as string[];
+        } else {
+          statusFilter = (statuses as string).split(',');
+        }
+        
+        // Security: filter statuses for non-admin users
+        if (!isAdmin) {
+          statusFilter = statusFilter.filter(status => allowedStatuses.includes(status));
+        }
+      } else {
+        // Default to allowed statuses if none specified
+        statusFilter = isAdmin ? ["completed", "processing", "refunded"] : allowedStatuses;
+      }
+      
+      if (statusFilter.length > 0) {
+        const statusPlaceholders = statusFilter.map((_, index) => `$${params.length + index + 1}`).join(', ');
+        whereClause += ` AND wo.status IN (${statusPlaceholders})`;
+        params.push(...statusFilter);
+      }
+      
+      const query = `
+        SELECT 
+          l.name as location,
+          SUM(CASE WHEN wo.status != 'refunded' THEN wo.amount::decimal ELSE 0 END) as sales,
+          COUNT(CASE WHEN wo.status != 'refunded' THEN 1 END) as orders,
+          SUM(CASE WHEN wo.status != 'refunded' THEN wo.amount::decimal * 0.07 ELSE 0 END) as platform_fees,
+          SUM(CASE WHEN wo.status != 'refunded' THEN (wo.amount::decimal * 0.029 + 0.30) ELSE 0 END) as stripe_fees,
+          SUM(CASE WHEN wo.status = 'refunded' THEN wo.amount::decimal ELSE 0 END) as refunds,
+          SUM(CASE WHEN wo.status != 'refunded' THEN 
+            wo.amount::decimal - (wo.amount::decimal * 0.07) - (wo.amount::decimal * 0.029 + 0.30)
+            ELSE 0 END) as net_deposit
+        FROM woo_orders wo
+        JOIN locations l ON wo.location_id = l.id
+        ${whereClause}
+        GROUP BY l.id, l.name
+        ORDER BY l.name
+      `;
+      
+      const result = await pool.query(query, params);
+      res.json(result.rows);
+    } catch (error) {
+      console.error("Dashboard export error:", error);
+      res.status(500).json({ message: "Failed to get export data" });
+    }
+  });
+
   app.get('/api/dashboard/monthly-breakdown', isAuthenticated, async (req, res) => {
     // Force cache invalidation to apply timezone fix
     res.set('Cache-Control', 'no-cache, no-store, must-revalidate');

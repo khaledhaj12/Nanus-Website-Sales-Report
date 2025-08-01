@@ -1,5 +1,5 @@
 import { useState, useMemo, useEffect } from "react";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useQuery, useQueryClient, useMutation } from "@tanstack/react-query";
 import Header from "@/components/layout/header";
 import SummaryCards from "@/components/dashboard/summary-cards";
 import MonthlyBreakdown from "@/components/dashboard/monthly-breakdown";
@@ -10,8 +10,10 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem } from "@/components/ui/command";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Check, ChevronsUpDown, X } from "lucide-react";
+import { Check, ChevronsUpDown, X, Download } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { apiRequest } from "@/lib/queryClient";
+import { useToast } from "@/hooks/use-toast";
 
 interface DashboardProps {
   onMenuClick: () => void;
@@ -20,6 +22,7 @@ interface DashboardProps {
 export default function Dashboard({ onMenuClick }: DashboardProps) {
   const { isAdmin, user } = useAuth();
   const queryClient = useQueryClient();
+  const { toast } = useToast();
   const currentDate = new Date();
   const todayStr = `${currentDate.getFullYear()}-${(currentDate.getMonth() + 1).toString().padStart(2, '0')}-${currentDate.getDate().toString().padStart(2, '0')}`;
   const [startDate, setStartDate] = useState(todayStr);
@@ -180,11 +183,100 @@ export default function Dashboard({ onMenuClick }: DashboardProps) {
     },
   });
 
+  // Export functionality
+  const exportMutation = useMutation({
+    mutationFn: async () => {
+      const params = new URLSearchParams();
+      if (selectedLocation && selectedLocation !== "all") {
+        params.append("locationId", selectedLocation);
+      }
+      if (startDate) {
+        params.append("startDate", startDate);
+      }
+      if (endDate) {
+        params.append("endDate", endDate);
+      }
+      selectedStatuses.forEach(status => {
+        params.append("statuses", status);
+      });
+      
+      const response = await apiRequest("GET", `/api/dashboard/export?${params}`);
+      return response.json();
+    },
+    onSuccess: (data) => {
+      // Convert data to CSV format
+      if (!data || data.length === 0) {
+        toast({
+          title: "No Data",
+          description: "No data available for the selected filters.",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      const csvHeaders = ['Location', 'Sales', 'Orders', 'Platform Fees', 'Stripe Fees', 'Refunds', 'Net Deposit'];
+      const csvRows = data.map((row: any) => [
+        row.location,
+        parseFloat(row.sales || 0).toFixed(2),
+        parseInt(row.orders || 0),
+        parseFloat(row.platform_fees || 0).toFixed(2),
+        parseFloat(row.stripe_fees || 0).toFixed(2),
+        parseFloat(row.refunds || 0).toFixed(2),
+        parseFloat(row.net_deposit || 0).toFixed(2)
+      ]);
+
+      const csvContent = [csvHeaders, ...csvRows]
+        .map(row => row.map(field => `"${field}"`).join(','))
+        .join('\n');
+
+      // Create and download CSV file
+      const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+      const link = document.createElement('a');
+      const url = URL.createObjectURL(blob);
+      link.setAttribute('href', url);
+      
+      // Generate filename with date range
+      const filename = `dashboard-export-${startDate}-to-${endDate}.csv`;
+      link.setAttribute('download', filename);
+      link.style.visibility = 'hidden';
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+
+      toast({
+        title: "Export Successful",
+        description: `Data exported to ${filename}`,
+      });
+    },
+    onError: (error) => {
+      toast({
+        title: "Export Failed",
+        description: error.message || "Failed to export data",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const handleExport = () => {
+    exportMutation.mutate();
+  };
+
   return (
     <div className="flex-1 flex flex-col overflow-hidden">
       <Header
         title="Dashboard"
         onMenuClick={onMenuClick}
+        rightContent={
+          <Button
+            onClick={handleExport}
+            disabled={exportMutation.isPending}
+            className="flex items-center gap-2"
+            variant="outline"
+          >
+            <Download className="h-4 w-4" />
+            {exportMutation.isPending ? "Exporting..." : "Export"}
+          </Button>
+        }
       />
       
       <main className="flex-1 overflow-auto p-4 md:p-6 bg-slate-50">

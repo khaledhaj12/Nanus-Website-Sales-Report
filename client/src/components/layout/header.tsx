@@ -13,6 +13,7 @@ interface HeaderProps {
   selectedLocation?: string;
   onLocationChange?: (location: string) => void;
   showFilters?: boolean;
+  rightContent?: React.ReactNode;
 }
 
 export default function Header({
@@ -23,6 +24,7 @@ export default function Header({
   selectedLocation,
   onLocationChange,
   showFilters = false,
+  rightContent,
 }: HeaderProps) {
   const { isAdmin, user } = useAuth();
   
@@ -69,40 +71,48 @@ export default function Header({
           <h2 className="text-2xl font-bold text-gray-900">{title}</h2>
         </div>
         
-        {showFilters && (
-          <div className="hidden md:flex items-center space-x-4">
-            {onMonthChange && (
-              <div>
-                <MonthYearPicker
-                  value={selectedMonth}
-                  onChange={onMonthChange}
-                  placeholder="Select month"
-                  className="w-48"
-                />
-              </div>
-            )}
-            
-            {onLocationChange && (
-              <div>
-                <Select value={selectedLocation} onValueChange={onLocationChange}>
-                  <SelectTrigger className="w-48">
-                    <SelectValue placeholder="Select location" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {isAdmin && (
-                      <SelectItem value="all">All Locations</SelectItem>
-                    )}
-                    {locations.map((location: any) => (
-                      <SelectItem key={location.id} value={location.id.toString()}>
-                        {location.name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-            )}
-          </div>
-        )}
+        <div className="flex items-center space-x-4">
+          {showFilters && (
+            <div className="hidden md:flex items-center space-x-4">
+              {onMonthChange && (
+                <div>
+                  <MonthYearPicker
+                    value={selectedMonth}
+                    onChange={onMonthChange}
+                    placeholder="Select month"
+                    className="w-48"
+                  />
+                </div>
+              )}
+              
+              {onLocationChange && (
+                <div>
+                  <Select value={selectedLocation} onValueChange={onLocationChange}>
+                    <SelectTrigger className="w-48">
+                      <SelectValue placeholder="Select location" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {isAdmin && (
+                        <SelectItem value="all">All Locations</SelectItem>
+                      )}
+                      {locations.map((location: any) => (
+                        <SelectItem key={location.id} value={location.id.toString()}>
+                          {location.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              )}
+            </div>
+          )}
+          
+          {rightContent && (
+            <div className="flex items-center">
+              {rightContent}
+            </div>
+          )}
+        </div>
       </div>
     </header>
   );
