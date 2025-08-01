@@ -1318,17 +1318,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const query = `
         SELECT 
           l.name as location,
-          SUM(CASE WHEN wo.status != 'refunded' THEN wo.amount::decimal ELSE 0 END) as sales,
-          COUNT(CASE WHEN wo.status != 'refunded' THEN 1 END) as orders,
-          SUM(CASE WHEN wo.status != 'refunded' THEN wo.amount::decimal * 0.07 ELSE 0 END) as platform_fees,
-          SUM(CASE WHEN wo.status != 'refunded' THEN (wo.amount::decimal * 0.029 + 0.30) ELSE 0 END) as stripe_fees,
-          SUM(CASE WHEN wo.status = 'refunded' THEN wo.amount::decimal ELSE 0 END) as refunds,
-          SUM(CASE WHEN wo.status != 'refunded' THEN 
+          COALESCE(SUM(CASE WHEN wo.status != 'refunded' THEN wo.amount::decimal ELSE 0 END), 0) as sales,
+          COALESCE(COUNT(CASE WHEN wo.status != 'refunded' THEN 1 END), 0) as orders,
+          COALESCE(SUM(CASE WHEN wo.status != 'refunded' THEN wo.amount::decimal * 0.07 ELSE 0 END), 0) as platform_fees,
+          COALESCE(SUM(CASE WHEN wo.status != 'refunded' THEN (wo.amount::decimal * 0.029 + 0.30) ELSE 0 END), 0) as stripe_fees,
+          COALESCE(SUM(CASE WHEN wo.status = 'refunded' THEN wo.amount::decimal ELSE 0 END), 0) as refunds,
+          COALESCE(SUM(CASE WHEN wo.status != 'refunded' THEN 
             wo.amount::decimal - (wo.amount::decimal * 0.07) - (wo.amount::decimal * 0.029 + 0.30)
-            ELSE 0 END) as net_deposit
-        FROM woo_orders wo
-        JOIN locations l ON wo.location_id = l.id
-        ${whereClause}
+            ELSE 0 END), 0) as net_deposit
+        FROM locations l
+        LEFT JOIN woo_orders wo ON l.id = wo.location_id 
+          AND (${whereClause.replace('WHERE 1=1', '1=1')})
         GROUP BY l.id, l.name
         ORDER BY l.name
       `;
